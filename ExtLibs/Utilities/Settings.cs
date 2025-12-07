@@ -19,6 +19,13 @@ namespace MissionPlanner.Utilities
 
         public static string AppConfigName { get; set; } = "Mission Planner";
 
+        /// <summary>
+        /// Optional prefix to prepend to all keys. Set at startup to namespace settings.
+        /// </summary>
+        public static string KeyPrefix { get; set; } = "";
+
+        private static string PrefixKey(string key) => string.IsNullOrEmpty(KeyPrefix) ? key : KeyPrefix + key;
+
         public static Settings Instance
         {
             get
@@ -51,13 +58,13 @@ namespace MissionPlanner.Utilities
             get
             {
                 string value = null;
-                config.TryGetValue(key, out value);
+                config.TryGetValue(PrefixKey(key), out value);
                 return value;
             }
 
             set
             {
-                config[key] = value;
+                config[PrefixKey(key)] = value;
             }
         }
 
@@ -80,7 +87,7 @@ namespace MissionPlanner.Utilities
 
         public bool ContainsKey(string key)
         {
-            return config.ContainsKey(key);
+            return config.ContainsKey(PrefixKey(key));
         }
 
         public string UserAgent { get; set; } = "MissionPlanner";
@@ -101,7 +108,7 @@ namespace MissionPlanner.Utilities
         {
             string result = @default;
             string value;
-            if (config.TryGetValue(key, out value))
+            if (config.TryGetValue(PrefixKey(key), out value))
             {
                 result = value;
             }
@@ -163,8 +170,9 @@ namespace MissionPlanner.Utilities
 
         public IEnumerable<string> GetList(string key)
         {
-            if (config.ContainsKey(key))
-                return config[key].Split(';').Select(a => System.Net.WebUtility.UrlDecode(a)).Distinct();
+            var prefixedKey = PrefixKey(key);
+            if (config.ContainsKey(prefixedKey))
+                return config[prefixedKey].Split(';').Select(a => System.Net.WebUtility.UrlDecode(a)).Distinct();
             return new string[0];
         }
 
@@ -172,7 +180,7 @@ namespace MissionPlanner.Utilities
         {
             if (list == null || list.Count() == 0)
                 return;
-            config[key] = list.Distinct().Select(a => System.Net.WebUtility.UrlEncode(a)).Distinct().Aggregate((s, s1) => s + ';' + s1);
+            config[PrefixKey(key)] = list.Distinct().Select(a => System.Net.WebUtility.UrlEncode(a)).Distinct().Aggregate((s, s1) => s + ';' + s1);
         }
 
         public void AppendList(string key, string item)
@@ -185,11 +193,12 @@ namespace MissionPlanner.Utilities
         public void RemoveList(string key, string item)
         {
             var list = GetList(key).ToList().Where(a => a != item);
+            var prefixedKey = PrefixKey(key);
             //if the list is empty remove the key
             if (list == null || list.Count() == 0)
             {
-                if (config.ContainsKey(key))
-                    config.Remove(key);
+                if (config.ContainsKey(prefixedKey))
+                    config.Remove(prefixedKey);
                 return;
             }
             else
@@ -202,7 +211,7 @@ namespace MissionPlanner.Utilities
         {
             int result;
             string value;
-            if (config.TryGetValue(key, out value) && int.TryParse(value, out result))
+            if (config.TryGetValue(PrefixKey(key), out value) && int.TryParse(value, out result))
             {
                 return result;
             }
@@ -213,7 +222,7 @@ namespace MissionPlanner.Utilities
         {
             DisplayView result;
             string value;
-            if (config.TryGetValue(key, out value) && DisplayViewExtensions.TryParse(value, out result))
+            if (config.TryGetValue(PrefixKey(key), out value) && DisplayViewExtensions.TryParse(value, out result))
             {
                 return result;
             }
@@ -224,7 +233,7 @@ namespace MissionPlanner.Utilities
         {
             bool result;
             string value;
-            if (config.TryGetValue(key, out value) && bool.TryParse(value, out result))
+            if (config.TryGetValue(PrefixKey(key), out value) && bool.TryParse(value, out result))
             {
                 return result;
             }
@@ -235,7 +244,7 @@ namespace MissionPlanner.Utilities
         {
             float result;
             string value;
-            if (config.TryGetValue(key, out value) && float.TryParse(value, out result))
+            if (config.TryGetValue(PrefixKey(key), out value) && float.TryParse(value, out result))
             {
                 return result;
             }
@@ -246,7 +255,7 @@ namespace MissionPlanner.Utilities
         {
             double result;
             string value;
-            if (config.TryGetValue(key, out value) && double.TryParse(value, out result))
+            if (config.TryGetValue(PrefixKey(key), out value) && double.TryParse(value, out result))
             {
                 return result;
             }
@@ -257,7 +266,7 @@ namespace MissionPlanner.Utilities
         {
             decimal result;
             string value;
-            if (config.TryGetValue(key, out value) && decimal.TryParse(value, out result))
+            if (config.TryGetValue(PrefixKey(key), out value) && decimal.TryParse(value, out result))
             {
                 return result;
             }
@@ -268,7 +277,7 @@ namespace MissionPlanner.Utilities
         {
             byte result;
             string value;
-            if (config.TryGetValue(key, out value) && byte.TryParse(value, out result))
+            if (config.TryGetValue(PrefixKey(key), out value) && byte.TryParse(value, out result))
             {
                 return result;
             }
@@ -551,9 +560,10 @@ namespace MissionPlanner.Utilities
 
         public void Remove(string key)
         {
-            if (config.ContainsKey(key))
+            var prefixedKey = PrefixKey(key);
+            if (config.ContainsKey(prefixedKey))
             {
-                config.Remove(key);
+                config.Remove(prefixedKey);
             }
         }
 

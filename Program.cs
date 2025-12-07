@@ -35,8 +35,11 @@ using GMap.NET.Core.GMap.NET.Projections;
 
 namespace MissionPlanner
 {
+
     public static class Program
     {
+
+        public static readonly string TD_SETTINGS_PREFIX = "td_";
         private static readonly ILog log = LogManager.GetLogger(typeof(Program));
 
         public static DateTime starttime = DateTime.Now;
@@ -125,6 +128,11 @@ namespace MissionPlanner
         public static void Start(string[] args)
         {
             Program.args = args;
+
+            // Prefix all settings keys with "td_" to namespace Titan settings
+            // This allows a future implementation of multiple config profiles or version controlled Settings
+            Settings.KeyPrefix = TD_SETTINGS_PREFIX;
+
             Console.WriteLine(
                 "If your error is about Microsoft.DirectX.DirectInput, please install the latest directx redist from here http://www.microsoft.com/en-us/download/details.aspx?id=35 \n\n");
             Console.WriteLine("Debug under mono    MONO_LOG_LEVEL=debug mono MissionPlanner.exe");
