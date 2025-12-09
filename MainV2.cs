@@ -2160,7 +2160,7 @@ namespace MissionPlanner
             Warnings.WarningEngine.Stop();
 
             log.Info("stop GStreamer");
-            GCSViews.FlightData.hudGStreamer.Stop();
+            GCSViews.FlightData.StopHudGStreamer();
 
             log.Info("closing vlcrender");
             try
@@ -3569,7 +3569,7 @@ namespace MissionPlanner
                             }
                         }
 
-                        GCSViews.FlightData.hudGStreamer.Start(gststring);
+                        GCSViews.FlightData.StartHudGStreamer(gststring);
                     }
                     catch (Exception ex)
                     {
@@ -3615,6 +3615,9 @@ namespace MissionPlanner
                         GCSViews.FlightData.myhud.bgimage = null;
                         return;
                     }
+
+                    // On first frame, clear bgimage to reset aspect ratio
+                    GCSViews.FlightData.OnHudGStreamerNewFrame();
 
                     var old = GCSViews.FlightData.myhud.bgimage;
                     GCSViews.FlightData.myhud.bgimage = new Bitmap(image.Width, image.Height, 4 * image.Width,
@@ -3987,7 +3990,7 @@ namespace MissionPlanner
                                 {
                                     try
                                     {
-                                        var st = GCSViews.FlightData.hudGStreamer.Start(cmds["gstream"]);
+                                        var st = GCSViews.FlightData.StartHudGStreamer(cmds["gstream"]);
                                         if (st == null)
                                         {
                                             // prevent spam

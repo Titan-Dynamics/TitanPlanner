@@ -43,6 +43,109 @@ namespace MissionPlanner.GCSViews
         public static GMapOverlay kmlpolygons;
         public static HUD myhud;
         public static readonly GStreamer hudGStreamer = new GStreamer();
+        private static System.Threading.Thread _hudGStreamerThread = null;
+        private static bool _hudGStreamerFirstFrame = false;
+
+        /// <summary>
+        /// Starts the HUD GStreamer with the given pipeline, showing a loading indicator.
+        /// Ignores calls if GStreamer is already starting or running.
+        /// </summary>
+        /// <returns>The GStreamer background thread, or null if already starting/running</returns>
+        public static System.Threading.Thread StartHudGStreamer(string pipeline)
+        {
+            // Ignore if already starting or running
+            if (_hudGStreamerThread != null && _hudGStreamerThread.IsAlive)
+                return null;
+
+            // Show loading state on HUD immediately, fitted to the current aspect ratio
+            myhud.bgimage = CreateFittedNoVideoImage();
+            _hudGStreamerFirstFrame = true;
+
+            _hudGStreamerThread = hudGStreamer.Start(pipeline);
+            return _hudGStreamerThread;
+        }
+
+        /// <summary>
+        /// Called when a new frame arrives. On first frame, triggers resize to fix aspect ratio.
+        /// </summary>
+        public static void OnHudGStreamerNewFrame()
+        {
+            if (_hudGStreamerFirstFrame)
+            {
+                _hudGStreamerFirstFrame = false;
+                myhud.doResize();
+            }
+        }
+
+        /// <summary>
+        /// Creates a no_video image fitted to the HUD's current aspect ratio.
+        /// </summary>
+        private static System.Drawing.Image CreateFittedNoVideoImage()
+        {
+            var source = global::MissionPlanner.Properties.Resources.no_video;
+
+            // Determine target aspect ratio based on HUD setting
+            float targetAspect = myhud.SixteenXNine ? 16f / 9f : 4f / 3f;
+
+            // Use HUD width as base, calculate height for target aspect ratio
+            int targetWidth = myhud.Width > 0 ? myhud.Width : 640;
+            int targetHeight = (int)(targetWidth / targetAspect);
+
+            var result = new System.Drawing.Bitmap(targetWidth, targetHeight);
+            using (var g = System.Drawing.Graphics.FromImage(result))
+            {
+                // Fill with black background
+                g.Clear(System.Drawing.Color.Black);
+
+                // Calculate zoom-crop-fit (cover) dimensions
+                float sourceAspect = (float)source.Width / source.Height;
+                int drawWidth, drawHeight, drawX, drawY;
+
+                if (sourceAspect > targetAspect)
+                {
+                    // Source is wider - fit height, crop width
+                    drawHeight = targetHeight;
+                    drawWidth = (int)(targetHeight * sourceAspect);
+                    drawX = (targetWidth - drawWidth) / 2;
+                    drawY = 0;
+                }
+                else
+                {
+                    // Source is taller - fit width, crop height
+                    drawWidth = targetWidth;
+                    drawHeight = (int)(targetWidth / sourceAspect);
+                    drawX = 0;
+                    drawY = (targetHeight - drawHeight) / 2;
+                }
+
+                g.DrawImage(source, drawX, drawY, drawWidth, drawHeight);
+            }
+
+            return result;
+        }
+
+        /// <summary>
+        /// Returns true if HUD GStreamer is currently starting or running.
+        /// </summary>
+        public static bool IsHudGStreamerRunning => _hudGStreamerThread != null && _hudGStreamerThread.IsAlive;
+
+        /// <summary>
+        /// Stops the HUD GStreamer and clears the background image.
+        /// </summary>
+        public static void StopHudGStreamer()
+        {
+            _hudGStreamerFirstFrame = false;
+            myhud.bgimage = null;
+
+            // Stop in background to avoid blocking UI if GStreamer is slow to respond
+            var thread = _hudGStreamerThread;
+            _hudGStreamerThread = null;
+
+            System.Threading.Tasks.Task.Run(() =>
+            {
+                hudGStreamer.Stop();
+            });
+        }
         public static myGMAP mymap;
         public static bool threadrun;
         public SplitContainer MainHcopy;
@@ -3895,7 +3998,7 @@ namespace MissionPlanner.GCSViews
 
         private void GStreamerStopToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            hudGStreamer.Stop();
+            StopHudGStreamer();
         }
 
         private void HereLinkVideoToolStripMenuItem_Click(object sender, EventArgs e)
@@ -3925,7 +4028,7 @@ namespace MissionPlanner.GCSViews
                 }
             }
 
-            GCSViews.FlightData.hudGStreamer.Start(url);
+            StartHudGStreamer(url);
         }
 
         private void hud_UserItem(object sender, EventArgs e)
@@ -5572,7 +5675,7 @@ namespace MissionPlanner.GCSViews
 
                 try
                 {
-                    hudGStreamer.Start(url);
+                    StartHudGStreamer(url);
                 }
                 catch (Exception ex)
                 {
@@ -5581,7 +5684,7 @@ namespace MissionPlanner.GCSViews
             }
             else
             {
-                hudGStreamer.Stop();
+                StopHudGStreamer();
             }
         }
 

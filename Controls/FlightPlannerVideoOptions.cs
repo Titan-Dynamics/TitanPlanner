@@ -260,6 +260,9 @@ namespace MissionPlanner.Controls
                 btnVideoStart.Enabled = true;
             }
 
+            // Setup GStreamer start button state
+            btnGStreamerStart.Enabled = !GCSViews.FlightData.IsHudGStreamerRunning;
+
             // Try to load saved video device
             try
             {
@@ -428,9 +431,15 @@ namespace MissionPlanner.Controls
 
         private void BtnGStreamerStart_Click(object sender, EventArgs e)
         {
+            // Disable immediately to prevent spam clicking
+            btnGStreamerStart.Enabled = false;
+
             var url = txtGStreamerSource.Text;
             if (string.IsNullOrWhiteSpace(url))
+            {
+                btnGStreamerStart.Enabled = true;
                 return;
+            }
 
             Settings.Instance["gstreamer_url"] = url;
 
@@ -442,23 +451,29 @@ namespace MissionPlanner.Controls
 
                 if (!GStreamer.GstLaunchExists)
                 {
+                    btnGStreamerStart.Enabled = true;
                     return;
                 }
             }
 
             try
             {
-                GCSViews.FlightData.hudGStreamer.Start(url);
+                // Apply HUD overlay setting
+                GCSViews.FlightData.myhud.hudon = chkHudShow.Checked;
+
+                GCSViews.FlightData.StartHudGStreamer(url);
             }
             catch (Exception ex)
             {
+                btnGStreamerStart.Enabled = true;
                 CustomMessageBox.Show(ex.ToString(), Strings.ERROR);
             }
         }
 
         private void BtnGStreamerStop_Click(object sender, EventArgs e)
         {
-            GCSViews.FlightData.hudGStreamer.Stop();
+            GCSViews.FlightData.StopHudGStreamer();
+            btnGStreamerStart.Enabled = true;
         }
 
         private void CmbOsdColor_SelectedIndexChanged(object sender, EventArgs e)
