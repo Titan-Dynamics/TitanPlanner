@@ -4,9 +4,6 @@ on:
     branches:
       - development
       - master
-    tags:
-      - 'beta'
-      - 'MissionPlanner-*'
   workflow_dispatch:
 
 jobs:
@@ -14,10 +11,10 @@ jobs:
     name: Build Release
     runs-on: windows-latest
     env:
-      IS_BETA: ${{ github.ref == 'refs/tags/beta' }}
-      IS_STABLE: ${{ startsWith(github.ref, 'refs/tags/MissionPlanner-') }}
-      MSI_NAME: ${{ startsWith(github.ref, 'refs/tags/MissionPlanner-') && github.ref_name || 'MissionPlanner-beta' }}.msi
-      ZIP_NAME: ${{ startsWith(github.ref, 'refs/tags/MissionPlanner-') && 'MissionPlanner-latest' || 'MissionPlanner-beta' }}.zip
+      IS_DEV: ${{ github.ref == 'refs/heads/development' }}
+      IS_MASTER: ${{ github.ref == 'refs/heads/master' }}
+      MSI_NAME: TitanPlanner.msi
+      ZIP_NAME: TitanPlanner.zip
 
     steps:
       - uses: actions/checkout@v4
@@ -63,11 +60,23 @@ jobs:
           name: MSI
           path: ${{ env.MSI_NAME }}
 
+      - name: Get version from AssemblyInfo
+        id: version
+        if: ${{ env.IS_MASTER == 'true' }}
+        shell: pwsh
+        run: |
+          $content = Get-Content "Properties\AssemblyInfo.cs" -Raw
+          if ($content -match 'AssemblyFileVersion\("([^"]+)"\)') {
+            $version = $matches[1]
+            echo "VERSION=$version" >> $env:GITHUB_OUTPUT
+            echo "Found version: $version"
+          }
+
       - uses: "marvinpinto/action-automatic-releases@v1.2.1"
-        if: ${{ github.ref == 'refs/heads/development' }}
+        if: ${{ env.IS_DEV == 'true' }}
         with:
           repo_token: "${{ secrets.GITHUB_TOKEN }}"
-          automatic_release_tag: "development"
+          automatic_release_tag: "development-build"
           prerelease: true
           title: "Development Build"
           files: |
@@ -78,26 +87,12 @@ jobs:
             ChangeLog.txt
 
       - uses: "marvinpinto/action-automatic-releases@v1.2.1"
-        if: ${{ env.IS_BETA == 'true' }}
+        if: ${{ env.IS_MASTER == 'true' }}
         with:
           repo_token: "${{ secrets.GITHUB_TOKEN }}"
-          automatic_release_tag: "betarelease"
-          prerelease: true
-          title: "Beta Build"
-          files: |
-            ${{ env.ZIP_NAME }}
-            ${{ env.MSI_NAME }}
-            checksums.txt
-            version.txt
-            ChangeLog.txt
-
-      - uses: marvinpinto/action-automatic-releases@v1.2.1
-        if: ${{ env.IS_STABLE == 'true' }}
-        with:
-          repo_token: ${{ secrets.GITHUB_TOKEN }}
-          automatic_release_tag: ${{ github.ref_name }}
+          automatic_release_tag: "TitanPlanner-${{ steps.version.outputs.VERSION }}"
           prerelease: false
-          title: "${{ github.ref_name }}"
+          title: "TitanPlanner ${{ steps.version.outputs.VERSION }}"
           files: |
             ${{ env.ZIP_NAME }}
             ${{ env.MSI_NAME }}
