@@ -86,6 +86,7 @@ namespace MissionPlanner.GCSViews.ConfigurationView
             layoutRoot.Controls.Add(CreateTelemetryGroup());
             layoutRoot.Controls.Add(CreateUnitsGroup());
             layoutRoot.Controls.Add(CreateSpeechAndAudioGroup());
+            layoutRoot.Controls.Add(CreateUpdatesGroup());
 
             Controls.Clear();
             Controls.Add(layoutRoot);
@@ -270,6 +271,66 @@ namespace MissionPlanner.GCSViews.ConfigurationView
 
             group.Controls.Add(table);
             return group;
+        }
+
+        private Control CreateUpdatesGroup()
+        {
+            var group = CreateGroupBox("Updates");
+            var table = CreateTableLayout(1);
+
+            var btnCheckUpdate = new MyButton
+            {
+                Text = "Check for Updates",
+                AutoSize = true
+            };
+            btnCheckUpdate.Click += BtnCheckUpdate_Click;
+            table.Controls.Add(btnCheckUpdate, 0, 0);
+
+            var btnBetaUpdate = new MyButton
+            {
+                Text = "Update to Dev",
+                AutoSize = true
+            };
+            btnBetaUpdate.Click += BtnBetaUpdate_Click;
+            table.Controls.Add(btnBetaUpdate, 0, 1);
+
+            group.Controls.Add(table);
+            return group;
+        }
+
+        private void BtnCheckUpdate_Click(object sender, EventArgs e)
+        {
+            try
+            {
+                if (Program.WindowsStoreApp)
+                {
+                    return;
+                }
+                Utilities.Update.CheckForUpdate(true);
+            }
+            catch (Exception ex)
+            {
+                CustomMessageBox.Show(ex.ToString(), Strings.ERROR);
+            }
+        }
+
+        private void BtnBetaUpdate_Click(object sender, EventArgs e)
+        {
+            try
+            {
+                Utilities.Update.dobeta = true;
+                if (Control.ModifierKeys == Keys.Control)
+                {
+                    Utilities.Update.domaster = true;
+                    CustomMessageBox.Show("This will update to MASTER release");
+                }
+
+                Utilities.Update.DoUpdate();
+            }
+            catch (Exception ex)
+            {
+                CustomMessageBox.Show(ex.ToString(), Strings.ERROR);
+            }
         }
 
         private Control CreateTelemetryGroup()
