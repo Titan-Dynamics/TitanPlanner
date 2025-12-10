@@ -155,14 +155,23 @@ namespace MissionPlanner.Utilities
                         {
                             using (StreamReader sr = new StreamReader(fs))
                             {
-                                LocalVersion = new Version(sr.ReadLine());
+                                var localVersionString = sr.ReadLine()?.Trim();
+                                if (!string.IsNullOrEmpty(localVersionString))
+                                    Version.TryParse(localVersionString, out LocalVersion);
                             }
                         }
                     }
 
                     using (StreamReader sr = new StreamReader(response.Content.ReadAsStreamAsync().GetAwaiter().GetResult()))
                     {
-                        WebVersion = new Version(sr.ReadLine());
+                        var versionString = sr.ReadLine()?.Trim();
+                        if (string.IsNullOrEmpty(versionString) || !Version.TryParse(versionString, out WebVersion))
+                        {
+                            log.Warn("Invalid version string from server: " + (versionString ?? "(null)"));
+                            if (NotifyNoUpdate)
+                                CustomMessageBox.Show("Unable to check for updates: Invalid version information from server.");
+                            return;
+                        }
                     }
 
                     log.Info("New file Check: local " + LocalVersion + " vs Remote " + WebVersion);
