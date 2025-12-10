@@ -183,9 +183,6 @@
   <data name="CB_tuning.ToolTip" xml:space="preserve">
     <value>Tampilkan grafik tunning, chowing sikap sasaran vs aktual</value>
   </data>
-  <data name="russianHudToolStripMenuItem.Text" xml:space="preserve">
-    <value>Russian Hud</value>
-  </data>
   <data name="lbl_hdop.Text" xml:space="preserve">
     <value>hdop: 0</value>
   </data>

@@ -160,8 +160,6 @@ namespace MissionPlanner.Controls
 
         public bool HoldInvalidation = false;
 
-        public bool Russian { get; set; }
-
         private class character
         {
             public GraphicsPath pth;
@@ -1993,16 +1991,8 @@ namespace MissionPlanner.Controls
 
                 graphicsObject.TranslateTransform(this.Width / 2, this.Height / 2);
 
-                if (!Russian)
-                {
-                    // horizon
-                    graphicsObject.RotateTransform(-_roll);
-                }
-                else
-                {
-                    _roll *= -1;
-                }
-
+                // horizon
+                graphicsObject.RotateTransform(-_roll);
 
                 int fontsize = this.Height / 30; // = 10
                 int fontoffset = fontsize - 10;
@@ -2172,10 +2162,6 @@ namespace MissionPlanner.Controls
                     //draw centre / current att
 
                     graphicsObject.TranslateTransform(this.Width / 2, this.Height / 2); //  +this.Height / 14);
-
-                    // plane wings
-                    if (Russian)
-                        graphicsObject.RotateTransform(-_roll);
 
                     Rectangle centercircle = new Rectangle(-halfwidth / 2, -halfwidth / 2, halfwidth, halfwidth);
 

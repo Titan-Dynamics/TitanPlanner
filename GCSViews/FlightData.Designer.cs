@@ -24,7 +24,6 @@ namespace MissionPlanner.GCSViews
             this.gStreamerStopToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.setAspectRatioToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.userItemsToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            this.russianHudToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.swapWithMapToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.groundColorToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.setBatteryCellCountToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
@@ -441,7 +440,6 @@ namespace MissionPlanner.GCSViews
             this.hud1.pitch = 0F;
             this.hud1.prearmstatus = false;
             this.hud1.roll = 0F;
-            this.hud1.Russian = false;
             this.hud1.safetyactive = false;
             this.hud1.skyColor1 = System.Drawing.Color.Blue;
             this.hud1.skyColor2 = System.Drawing.Color.LightBlue;
@@ -472,7 +470,6 @@ namespace MissionPlanner.GCSViews
             this.videoToolStripMenuItem,
             this.setAspectRatioToolStripMenuItem,
             this.userItemsToolStripMenuItem,
-            this.russianHudToolStripMenuItem,
             this.swapWithMapToolStripMenuItem,
             this.groundColorToolStripMenuItem,
             this.setBatteryCellCountToolStripMenuItem,
@@ -546,13 +543,7 @@ namespace MissionPlanner.GCSViews
             this.userItemsToolStripMenuItem.Name = "userItemsToolStripMenuItem";
             resources.ApplyResources(this.userItemsToolStripMenuItem, "userItemsToolStripMenuItem");
             this.userItemsToolStripMenuItem.Click += new System.EventHandler(this.hud_UserItem);
-            // 
-            // russianHudToolStripMenuItem
-            // 
-            this.russianHudToolStripMenuItem.Name = "russianHudToolStripMenuItem";
-            resources.ApplyResources(this.russianHudToolStripMenuItem, "russianHudToolStripMenuItem");
-            this.russianHudToolStripMenuItem.Click += new System.EventHandler(this.russianHudToolStripMenuItem_Click);
-            // 
+            //
             // swapWithMapToolStripMenuItem
             // 
             this.swapWithMapToolStripMenuItem.Name = "swapWithMapToolStripMenuItem";
@@ -3221,7 +3212,6 @@ namespace MissionPlanner.GCSViews
         private System.Windows.Forms.OpenFileDialog openScriptDialog;
         private System.Windows.Forms.Timer scriptChecker;
         private System.Windows.Forms.CheckBox checkBoxRedirectOutput;
-        private System.Windows.Forms.ToolStripMenuItem russianHudToolStripMenuItem;
         public System.Windows.Forms.ContextMenuStrip contextMenuStripMap;
         public System.Windows.Forms.ContextMenuStrip contextMenuStripHud;
         private System.Windows.Forms.BindingSource bindingSourceQuickTab;

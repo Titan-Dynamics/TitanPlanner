@@ -203,12 +203,6 @@
   <data name="userItemsToolStripMenuItem.Text" xml:space="preserve">
     <value>사용자 항목</value>
   </data>
-  <data name="russianHudToolStripMenuItem.Size" type="System.Drawing.Size, System.Drawing">
-    <value>159, 22</value>
-  </data>
-  <data name="russianHudToolStripMenuItem.Text" xml:space="preserve">
-    <value>러시아식 투영 영상</value>
-  </data>
   <data name="swapWithMapToolStripMenuItem.Size" type="System.Drawing.Size, System.Drawing">
     <value>159, 22</value>
   </data>
@@ -4529,12 +4523,6 @@
     <value>userItemsToolStripMenuItem</value>
   </data>
   <data name="&gt;&gt;userItemsToolStripMenuItem.Type" xml:space="preserve">
-    <value>System.Windows.Forms.ToolStripMenuItem, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
-  </data>
-  <data name="&gt;&gt;russianHudToolStripMenuItem.Name" xml:space="preserve">
-    <value>russianHudToolStripMenuItem</value>
-  </data>
-  <data name="&gt;&gt;russianHudToolStripMenuItem.Type" xml:space="preserve">
     <value>System.Windows.Forms.ToolStripMenuItem, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </data>
   <data name="&gt;&gt;swapWithMapToolStripMenuItem.Name" xml:space="preserve">

@@ -148,12 +148,6 @@
   <data name="userItemsToolStripMenuItem.Text" xml:space="preserve">
     <value>使用项目</value>
   </data>
-  <data name="russianHudToolStripMenuItem.Size" type="System.Drawing.Size, System.Drawing">
-    <value>168, 22</value>
-  </data>
-  <data name="russianHudToolStripMenuItem.Text" xml:space="preserve">
-    <value>俄国Hud</value>
-  </data>
   <data name="swapWithMapToolStripMenuItem.Size" type="System.Drawing.Size, System.Drawing">
     <value>168, 22</value>
   </data>

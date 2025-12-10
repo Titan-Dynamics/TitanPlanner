@@ -3597,11 +3597,6 @@ namespace MissionPlanner.GCSViews
                 MainH.SplitterDistance = MainH.Width / 2;
             }
 
-            if (Settings.Instance.ContainsKey("russian_hud"))
-            {
-                hud1.Russian = Settings.Instance.GetBoolean("russian_hud");
-            }
-
             //Remove it later, do not need
             groundColorToolStripMenuItem.Checked = Settings.Instance.GetBoolean("groundColorToolStripMenuItem");
             groundColorToolStripMenuItem_Click(null, null);
@@ -5568,12 +5563,6 @@ namespace MissionPlanner.GCSViews
             scriptstarted.Release();
             script.runScript(selectedscript);
             scriptrunning = false;
-        }
-
-        private void russianHudToolStripMenuItem_Click(object sender, EventArgs e)
-        {
-            hud1.Russian = !hud1.Russian;
-            Settings.Instance["russian_hud"] = hud1.Russian.ToString();
         }
 
         private void saveFileToolStripMenuItem_Click(object sender, EventArgs e)
