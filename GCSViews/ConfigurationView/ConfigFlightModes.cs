@@ -593,6 +593,12 @@ namespace MissionPlanner.GCSViews.ConfigurationView
             _userParamsPanel.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
             _userParamsPanel.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
 
+            // Position and add the panel to the form first, before adding child controls
+            _userParamsPanel.Location = new System.Drawing.Point(
+                tableLayoutPanel1.Location.X,
+                tableLayoutPanel1.Location.Y + tableLayoutPanel1.Height + 10);
+            this.Controls.Add(_userParamsPanel);
+
             // Add header/separator
             var headerLabel = new Label
             {
@@ -641,8 +647,8 @@ namespace MissionPlanner.GCSViews.ConfigurationView
                 else
                 {
                     var cmb = new MavlinkComboBox();
-                    cmb.setup(options, option, MainV2.comPort.MAV.param);
                     _userParamsPanel.Controls.Add(cmb, 1, _userParamsPanel.RowCount - 1);
+                    cmb.setup(options, option, MainV2.comPort.MAV.param);
                 }
             }
 
