@@ -396,6 +396,9 @@ namespace MissionPlanner.Controls
                 MainV2.cam = new Capture(cmbVideoSources.SelectedIndex, bmp.Media);
                 MainV2.cam.Start();
 
+                // Apply HUD overlay setting
+                GCSViews.FlightData.myhud.hudon = chkHudShow.Checked;
+
                 // Hook up the camera image event to display on HUD
                 MainV2.cam.camimage += GCSViews.FlightData.instance.cam_camimage;
 
