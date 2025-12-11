@@ -157,7 +157,6 @@
             this.hud1.opengl = true;
             this.hud1.pitch = 0F;
             this.hud1.roll = 0F;
-            this.hud1.Russian = false;
             this.hud1.Size = new System.Drawing.Size(832, 448);
             this.hud1.status = false;
             
