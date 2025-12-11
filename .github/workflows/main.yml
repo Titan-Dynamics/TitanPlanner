@@ -63,17 +63,15 @@ jobs:
           name: MSI
           path: ${{ env.MSI_NAME }}
 
-      - name: Get version from AssemblyInfo
+      - name: Get version from version.txt
         id: version
         if: ${{ env.IS_MASTER == 'true' }}
         shell: pwsh
         run: |
-          $content = Get-Content "Properties\AssemblyInfo.cs" -Raw
-          if ($content -match 'AssemblyFileVersion\("([^"]+)"\)') {
-            $version = $matches[1]
-            echo "VERSION=$version" >> $env:GITHUB_OUTPUT
-            echo "Found version: $version"
-          }
+          $version = Get-Content "version.txt" -Raw
+          $version = $version.Trim()
+          echo "VERSION=$version" >> $env:GITHUB_OUTPUT
+          echo "Found version: $version"
 
       - uses: "marvinpinto/action-automatic-releases@v1.2.1"
         if: ${{ env.IS_DEV == 'true' }}
