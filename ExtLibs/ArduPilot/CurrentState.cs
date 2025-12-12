@@ -50,6 +50,7 @@ namespace MissionPlanner
 
         public static int KIndexstatic = -1;
         private float _airspeed;
+        private float _accel_air;
 
         private float _alt;
         private float _alt_error;
@@ -121,6 +122,8 @@ namespace MissionPlanner
         internal double imutime;
 
         private DateTime lastalt = DateTime.MinValue;
+        private DateTime lastairspeedupdate = DateTime.MinValue;
+        private float oldairspeed;
 
         public int lastautowp = -1;
 
@@ -513,7 +516,29 @@ namespace MissionPlanner
         public float airspeed
         {
             get => _airspeed * multiplierspeed;
-            set => _airspeed = value;
+            set
+            {
+                _airspeed = value;
+
+                // Calculate airspeed acceleration (rate of change)
+                if ((datetime - lastairspeedupdate).TotalSeconds >= 0.2 && oldairspeed != airspeed || lastairspeedupdate > datetime)
+                {
+                    _accel_air = (airspeed - oldairspeed) / (float)(datetime - lastairspeedupdate).TotalSeconds;
+                    if (float.IsInfinity(_accel_air))
+                        _accel_air = 0;
+                    lastairspeedupdate = datetime;
+                    oldairspeed = airspeed;
+                }
+            }
+        }
+
+        [DisplayFieldName("accel_air.Field")]
+        [DisplayText("Airspeed Accel (speed/s)")]
+        [GroupText("Sensor")]
+        public float accel_air
+        {
+            get => _accel_air;
+            set => _accel_air = value;
         }
 
         [DisplayFieldName("targetairspeed.Field")]

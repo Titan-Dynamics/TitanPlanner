@@ -88,6 +88,7 @@
             this.hud1.DataBindings.Add(new System.Windows.Forms.Binding("targetspeed", this.bindingSource1, "targetairspeed", true));
             this.hud1.DataBindings.Add(new System.Windows.Forms.Binding("turnrate", this.bindingSource1, "turnrate", true));
             this.hud1.DataBindings.Add(new System.Windows.Forms.Binding("verticalspeed", this.bindingSource1, "verticalspeed", true));
+            this.hud1.DataBindings.Add(new System.Windows.Forms.Binding("accel_air", this.bindingSource1, "accel_air", true));
             this.hud1.DataBindings.Add(new System.Windows.Forms.Binding("wpno", this.bindingSource1, "wpno", true));
             this.hud1.DataBindings.Add(new System.Windows.Forms.Binding("xtrack_error", this.bindingSource1, "xtrack_error", true));
             this.hud1.datetime = new System.DateTime(((long)(0)));
@@ -115,6 +116,7 @@
             this.hud1.targetspeed = 0F;
             this.hud1.turnrate = 0F;
             this.hud1.verticalspeed = 0F;
+            this.hud1.accel_air = 0F;
             this.hud1.VSync = false;
             this.hud1.wpno = 0;
             this.hud1.xtrack_error = 0F;

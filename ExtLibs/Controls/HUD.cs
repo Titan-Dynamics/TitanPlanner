@@ -322,6 +322,7 @@ namespace MissionPlanner.Controls
         private float _xtrack_error = 0;
         private float _turnrate = 0;
         private float _verticalspeed = 0;
+        private float _accel_air = 0;
         private float _linkqualitygcs = 0;
         private DateTime _datetime;
         private string _mode = "Manual";
@@ -790,6 +791,21 @@ namespace MissionPlanner.Controls
                 }
             }
         }
+
+        [System.ComponentModel.Browsable(true), System.ComponentModel.Category("Values")]
+        public float accel_air
+        {
+            get { return _accel_air; }
+            set
+            {
+                if (_accel_air != Math.Round(value, 1))
+                {
+                    _accel_air = (float) Math.Round(value, 1);
+                    this.Invalidate();
+                }
+            }
+        }
+
 
         [System.ComponentModel.Browsable(true), System.ComponentModel.Category("Values")]
         public float linkqualitygcs
@@ -1994,7 +2010,7 @@ namespace MissionPlanner.Controls
                 // horizon
                 graphicsObject.RotateTransform(-_roll);
 
-                int fontsize = this.Height / 30; // = 10
+                int fontsize = this.Height / 40;
                 int fontoffset = fontsize - 10;
 
                 float every5deg = -this.Height / 65;
@@ -2152,8 +2168,6 @@ namespace MissionPlanner.Controls
                     // draw roll ind
                     RectangleF arcrect = new RectangleF(-lengthlong * 3 - extra, -lengthlong * 3 - extra,
                         (extra + lengthlong * 3) * 2f, (extra + lengthlong * 3) * 2f);
-
-                    //DrawRectangle(Pens.Beige, arcrect);
 
                     graphicsObject.DrawArc(this._whitePen, arcrect, 180 + 30 + -_roll, 120); // 120
 
@@ -2528,6 +2542,65 @@ namespace MissionPlanner.Controls
                     {
                         drawstring(HUDT.GS + _groundspeed.ToString("0.0") + speedunit, font, fontsize, _whiteBrush,
                             1, scrollbg.Bottom + fontsize + 2 + 10);
+                    }
+
+                    //airspeed rate of change
+
+                    graphicsObject.ResetTransform();
+
+                    viewrange = 12;
+
+                    _accel_air = Math.Min(viewrange / 2f, _accel_air);
+                    _accel_air = Math.Max(viewrange / -2f, _accel_air);
+
+                    float scaledvalue = _accel_air / -viewrange * (scrollbg.Bottom - scrollbg.Top);
+
+                    float linespace = (float)1 / -viewrange * (scrollbg.Bottom - scrollbg.Top);
+
+                    PointF[] poly = new PointF[4];
+
+                    poly[0] = new PointF(scrollbg.Right, scrollbg.Top);
+                    poly[1] = new PointF(scrollbg.Right + scrollbg.Width / 4, scrollbg.Top + scrollbg.Width / 4);
+                    poly[2] = new PointF(scrollbg.Right + scrollbg.Width / 4, scrollbg.Bottom - scrollbg.Width / 4);
+                    poly[3] = new PointF(scrollbg.Right, scrollbg.Bottom);
+
+                    PointF[] polyn = new PointF[4];
+
+                    polyn[0] = new PointF(scrollbg.Right, scrollbg.Top + (scrollbg.Bottom - scrollbg.Top) / 2);
+                    polyn[1] = new PointF(scrollbg.Right + scrollbg.Width / 4,
+                        scrollbg.Top + (scrollbg.Bottom - scrollbg.Top) / 2);
+                    polyn[2] = polyn[1];
+                    float peak = 0;
+                    if (scaledvalue > 0)
+                    {
+                        peak = -scrollbg.Width / 4;
+                        if (scrollbg.Top + (scrollbg.Bottom - scrollbg.Top) / 2 + scaledvalue + peak <
+                            scrollbg.Top + (scrollbg.Bottom - scrollbg.Top) / 2)
+                            peak = -scaledvalue;
+                    }
+                    else if (scaledvalue < 0)
+                    {
+                        peak = +scrollbg.Width / 4;
+                        if (scrollbg.Top + (scrollbg.Bottom - scrollbg.Top) / 2 + scaledvalue + peak >
+                            scrollbg.Top + (scrollbg.Bottom - scrollbg.Top) / 2)
+                            peak = -scaledvalue;
+                    }
+
+                    polyn[2] = new PointF(scrollbg.Right + scrollbg.Width / 4,
+                        scrollbg.Top + (scrollbg.Bottom - scrollbg.Top) / 2 + scaledvalue + peak);
+                    polyn[3] = new PointF(scrollbg.Right,
+                        scrollbg.Top + (scrollbg.Bottom - scrollbg.Top) / 2 + scaledvalue);
+
+                    graphicsObject.FillPolygon(Brushes.Blue, polyn);
+
+                    // draw outsidebox
+                    graphicsObject.DrawPolygon(this._whitePen, poly);
+
+                    for (int a = 1; a < viewrange; a++)
+                    {
+                        graphicsObject.DrawLine(this._whitePen, scrollbg.Right + scrollbg.Width / 4,
+                            scrollbg.Top - linespace * a, scrollbg.Right + scrollbg.Width / 8,
+                            scrollbg.Top - linespace * a);
                     }
                 }
 
