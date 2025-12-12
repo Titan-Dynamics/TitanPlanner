@@ -6408,6 +6408,18 @@ namespace MissionPlanner.GCSViews
                 catch (Exception ex)
                 {
                     CustomMessageBox.Show("Camera Fail: " + ex.ToString(), Strings.ERROR);
+
+                    // Clean up the partially initialized camera to prevent crashes
+                    // from the background thread trying to access invalid resources
+                    if (MainV2.cam != null)
+                    {
+                        try
+                        {
+                            MainV2.cam.Dispose();
+                        }
+                        catch { }
+                        MainV2.cam = null;
+                    }
                 }
             }
         }
