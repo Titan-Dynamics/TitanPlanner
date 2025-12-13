@@ -2269,55 +2269,55 @@ namespace MissionPlanner.Controls
                             {
                                 drawstring(HUDT.N.PadLeft(2), font, fontsize, _whiteBrush,
                                     headbg.Left - 5 + space * (a - start) - fontoffset,
-                                    headbg.Bottom - 24 - (int) (fontoffset * 1.7));
+                                    3);
                             }
                             else if (disp == 45)
                             {
                                 drawstring(HUDT.NE.PadLeft(2), font, fontsize, _whiteBrush,
                                     headbg.Left - 5 + space * (a - start) - fontoffset,
-                                    headbg.Bottom - 24 - (int) (fontoffset * 1.7));
+                                    3);
                             }
                             else if (disp == 90)
                             {
                                 drawstring(HUDT.E.PadLeft(2), font, fontsize, _whiteBrush,
                                     headbg.Left - 5 + space * (a - start) - fontoffset,
-                                    headbg.Bottom - 24 - (int) (fontoffset * 1.7));
+                                    3);
                             }
                             else if (disp == 135)
                             {
                                 drawstring(HUDT.SE.PadLeft(2), font, fontsize, _whiteBrush,
                                     headbg.Left - 5 + space * (a - start) - fontoffset,
-                                    headbg.Bottom - 24 - (int) (fontoffset * 1.7));
+                                    3);
                             }
                             else if (disp == 180)
                             {
                                 drawstring(HUDT.S.PadLeft(2), font, fontsize, _whiteBrush,
                                     headbg.Left - 5 + space * (a - start) - fontoffset,
-                                    headbg.Bottom - 24 - (int) (fontoffset * 1.7));
+                                    3);
                             }
                             else if (disp == 225)
                             {
                                 drawstring(HUDT.SW.PadLeft(2), font, fontsize, _whiteBrush,
                                     headbg.Left - 5 + space * (a - start) - fontoffset,
-                                    headbg.Bottom - 24 - (int) (fontoffset * 1.7));
+                                    3);
                             }
                             else if (disp == 270)
                             {
                                 drawstring(HUDT.W.PadLeft(2), font, fontsize, _whiteBrush,
                                     headbg.Left - 5 + space * (a - start) - fontoffset,
-                                    headbg.Bottom - 24 - (int) (fontoffset * 1.7));
+                                    3);
                             }
                             else if (disp == 315)
                             {
                                 drawstring(HUDT.NW.PadLeft(2), font, fontsize, _whiteBrush,
                                     headbg.Left - 5 + space * (a - start) - fontoffset,
-                                    headbg.Bottom - 24 - (int) (fontoffset * 1.7));
+                                    3);
                             }
                             else
                             {
                                 drawstring(String.Format("{0,3}", (int) (disp % 360)), font, angleFontSize,
                                     _whiteBrush, headbg.Left - 8 + space * (a - start) - fontoffset,
-                                    headbg.Bottom - 24 - (int) (fontoffset * 1.7));
+                                    3);
                             }
                         }
                         else if ((int) a % 5 == 0)
@@ -2343,7 +2343,7 @@ namespace MissionPlanner.Controls
                         {
                             float homeX = headbg.Left + 5 + space * (homeDiff + 60);
                             drawstring("H", font, fontsize, (SolidBrush)Brushes.Cyan, homeX - fontoffset,
-                                headbg.Bottom - 24 - (int)(fontoffset * 1.7));
+                                3);
                         }
                     }
 
@@ -2376,13 +2376,13 @@ namespace MissionPlanner.Controls
                     {
                         drawstring(String.Format("{0,3}", (int) (heading % 360)), font, fontsize,
                             _whiteBrush, headbg.Width / 2 - (fontsize * 1f),
-                            headbg.Bottom - 24 - (int) (fontoffset * 1.7));
+                            3);
                     }
                     else
                     {
                         drawstring(String.Format("{0,3}", (int) (heading % 360)), font, fontsize,
                             _whiteBrush, headbg.Width / 2 - (fontsize * 1f),
-                            headbg.Bottom - 24 - (int) (fontoffset * 1.7));
+                            3);
                     }
 
                 }
