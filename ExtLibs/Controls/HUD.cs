@@ -2819,6 +2819,7 @@ namespace MissionPlanner.Controls
 
                 if (displayconninfo)
                 {
+                    graphicsObject.TranslateTransform(35, fontsize);
                     if (_linkqualitygcs > 80)
                         graphicsObject.DrawLine(this._greenPen, scrollbg.Left - 5,
                         scrollbg.Top - (int) (fontsize * 2.2) - 2 - 20, scrollbg.Left - 5,
@@ -2834,6 +2835,7 @@ namespace MissionPlanner.Controls
 
                     drawstring(_linkqualitygcs.ToString("0") + "%", font, fontsize, _whiteBrush,
                         scrollbg.Left, scrollbg.Top - (int) (fontsize * 2.2) - 2 - 20);
+
                     if (_linkqualitygcs == 0)
                     {
                         graphicsObject.DrawLine(this._redPen, scrollbg.Left,
@@ -2843,9 +2845,7 @@ namespace MissionPlanner.Controls
                         graphicsObject.DrawLine(this._redPen, scrollbg.Left, scrollbg.Top - (int) (fontsize * 2.2) - 2,
                             scrollbg.Left + 50, scrollbg.Top - (int) (fontsize * 2.2) - 2 - 20);
                     }
-
-                    drawstring(_datetime.ToString("HH:mm:ss"), font, fontsize, _whiteBrush,
-                        scrollbg.Left - 3, scrollbg.Top - fontsize - 2 - 20);
+                    graphicsObject.TranslateTransform(-35, -fontsize);
                 }
 
                 // AOA
