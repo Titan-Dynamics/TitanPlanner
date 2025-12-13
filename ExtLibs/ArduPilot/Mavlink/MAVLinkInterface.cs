@@ -2101,9 +2101,28 @@ Mission Planner waits for 2 valid heartbeat packets before connecting
             generatePacket((byte)MAVLINK_MSG_ID.PARAM_REQUEST_LIST, req);
 
             short tenbytenindex = 0;
+            DateTime overallTimeout = DateTime.Now.AddMinutes(5); // 5 minute overall timeout
 
             do
             {
+                // Check overall timeout to prevent infinite loop
+                if (DateTime.Now > overallTimeout)
+                {
+                    log.Warn("getParamListAsync: Overall timeout reached after 5 minutes");
+                    if (frmProgressReporter != null)
+                        frmProgressReporter.doWorkArgs.ErrorMessage = "Timeout getting parameters";
+                    UnSubscribeToPacketType(sub1);
+                    UnSubscribeToPacketType(sub2);
+                    // Return what we have so far
+                    if (newparamlist.Count > 0)
+                    {
+                        MAVlist[sysid, compid].param.Clear();
+                        MAVlist[sysid, compid].param.TotalReported = param_total;
+                        MAVlist[sysid, compid].param.AddRange(newparamlist);
+                    }
+                    return MAVlist[sysid, compid].param;
+                }
+
                 if (frmProgressReporter != null && frmProgressReporter.doWorkArgs.CancelRequested)
                 {
                     frmProgressReporter.doWorkArgs.CancelAcknowledged = true;
@@ -2212,7 +2231,7 @@ Mission Planner waits for 2 valid heartbeat packets before connecting
                     }
                 }
 
-                await readPacketAsync();
+                await readPacketAsync().ConfigureAwait(false);
 
                 if (logreadmode && logplaybackfile.BaseStream.Position >= logplaybackfile.BaseStream.Length)
                 {
