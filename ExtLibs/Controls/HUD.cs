@@ -2342,15 +2342,14 @@ namespace MissionPlanner.Controls
                         if (homeDiff >= -60 && homeDiff <= 60)
                         {
                             float homeX = headbg.Left + 5 + space * (homeDiff + 60);
-                            drawstring("H", font, fontsize, (SolidBrush)Brushes.Cyan, homeX - fontoffset,
-                                3);
+                            drawstring("H", font, fontsize, (SolidBrush) Brushes.Green, homeX - fontoffset, 3);
                         }
                     }
 
-                    RectangleF rect = new RectangleF(headbg.Width / 2 - (fontsize * 3f) / 2, 0, (fontsize * 3f),
-                        headbg.Height);
+                    RectangleF rect = new RectangleF(headbg.Width / 2 - (fontsize * 3f) / 2, 0, (fontsize * 3f), headbg.Height);
 
                     FillRectangle(SlightlyTransparentBrush, rect);
+
                     this._orangePen.Width = 6;
 
                     // target heading beyond bounds - calculate angular difference normalized to [-180, 180]
@@ -2372,19 +2371,7 @@ namespace MissionPlanner.Controls
                         graphicsObject.DrawLine(this._orangePen, targetHeadingPos - 3, headbg.Bottom, targetHeadingPos - 3, headbg.Top);
                     }
 
-                    if (Math.Abs(_heading - _targetheading) < 4)
-                    {
-                        drawstring(String.Format("{0,3}", (int) (heading % 360)), font, fontsize,
-                            _whiteBrush, headbg.Width / 2 - (fontsize * 1f),
-                            3);
-                    }
-                    else
-                    {
-                        drawstring(String.Format("{0,3}", (int) (heading % 360)), font, fontsize,
-                            _whiteBrush, headbg.Width / 2 - (fontsize * 1f),
-                            3);
-                    }
-
+                    drawstring(String.Format("{0,3}", (int) (heading % 360)), font, fontsize, _whiteBrush, headbg.Width / 2, 3 , true);
                 }
 
                 // xtrack error
