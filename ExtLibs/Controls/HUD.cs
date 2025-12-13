@@ -200,8 +200,8 @@ namespace MissionPlanner.Controls
         [System.ComponentModel.Browsable(true), DefaultValue(true)]
         public bool displaygps { get; set; }
 
-        [System.ComponentModel.Browsable(true), DefaultValue(true)]
-        public bool displayicons { get; set; }
+        [System.ComponentModel.Browsable(false)]
+        public bool displayicons { get { return true; } set { } }
 
         [System.ComponentModel.Browsable(true), DefaultValue(true)]
         public bool bgon { get; set; }
@@ -1936,7 +1936,6 @@ namespace MissionPlanner.Controls
 
         internal void doPaint()
         {
-            //Console.WriteLine("hud paint "+DateTime.Now.Millisecond);
             bool isNaN = false;
             try
             {
@@ -2847,7 +2846,7 @@ namespace MissionPlanner.Controls
                     }
 
                     drawstring(_datetime.ToString("HH:mm:ss"), font, fontsize, _whiteBrush,
-                        scrollbg.Left - 30, scrollbg.Top - fontsize - 2 - 20);
+                        scrollbg.Left - 3, scrollbg.Top - fontsize - 2 - 20);
                 }
 
                 // AOA
@@ -3077,8 +3076,9 @@ namespace MissionPlanner.Controls
 
                 // custom user items
                 graphicsObject.ResetTransform();
-                int height = this.Height - ((fontsize + 2) * 3) - fontoffset - fontsize - 8;
-                foreach (string key in CustomItems.Keys)
+                var drawX = this.Width / 8 + 20;
+                int height = (this.Height / 2) + 5;
+                foreach (string key in CustomItems.Keys.Cast<string>().OrderByDescending(k => k))
                 {
                     try
                     {
@@ -3088,12 +3088,12 @@ namespace MissionPlanner.Controls
                         if (item.Item.Name.Contains("lat") || item.Item.Name.Contains("lng"))
                         {
                             drawstring(item.Header + item.GetValue.ToString("0.#######"), font,
-                                fontsize + 2, _whiteBrush, this.Width / 8, height);
+                                fontsize + 2, _whiteBrush, drawX, height);
                         }
                         else if (item.Item.Name == "battery_usedmah")
                         {
                             drawstring(item.Header + item.GetValue.ToString("0"), font, fontsize + 2,
-                                _whiteBrush, this.Width / 8, height);
+                                _whiteBrush, drawX, height);
                         }
                         else if (item.Item.Name == "timeInAir")
                         {
@@ -3105,24 +3105,21 @@ namespace MissionPlanner.Controls
                             int secs = (int) (stime % 60);
                             drawstring(
                                 item.Header + hrs.ToString("00") + ":" + mins.ToString("00") + ":" +
-                                secs.ToString("00"), font, fontsize + 2, _whiteBrush, this.Width / 8, height);
+                                secs.ToString("00"), font, fontsize + 2, _whiteBrush, drawX, height);
                         }
                         else
                         {
                             drawstring(item.Header + item.GetValue.ToString("0.##"), font, fontsize + 2,
-                                _whiteBrush, this.Width / 8, height);
+                                _whiteBrush, drawX, height);
                         }
 
-                        height -= fontsize + 5;
+                        height += fontsize + 5;
                     }
                     catch
                     {
                     }
 
                 }
-
-
-
 
                 graphicsObject.TranslateTransform(this.Width / 2, this.Height / 2);
 
@@ -3341,8 +3338,6 @@ namespace MissionPlanner.Controls
                     return;
                 }
 
-                //                Console.WriteLine("HUD 1 " + (DateTime.Now - starttime).TotalMilliseconds + " " + DateTime.Now.Millisecond);
-
                 lock (streamlock)
                 {
                     if (streamjpgenable || streamjpg == null) // init image and only update when needed
@@ -3482,6 +3477,7 @@ namespace MissionPlanner.Controls
         }
 
         readonly float[] texCoords = { 0.0f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f, 0.0f };
+        readonly float[] _vertices = new float[8]; // reusable vertices array
 
         void drawstring(string text, Font font, float fontsize, SolidBrush brush, float x, float y)
         {
@@ -3491,7 +3487,7 @@ namespace MissionPlanner.Controls
                 return;
             }
 
-            if (text == null || text == "")
+            if (string.IsNullOrEmpty(text))
                 return;
 
             GL.Enable(EnableCap.Texture2D);
@@ -3500,79 +3496,60 @@ namespace MissionPlanner.Controls
 
             GL.TexCoordPointer(2, TexCoordPointerType.Float, 0, texCoords);
             GL.EnableClientState(ArrayCap.TextureCoordArray);
-
             GL.EnableClientState(ArrayCap.VertexArray);
 
-            float maxy = 1;
+            int brushColorArgb = brush.Color.ToArgb();
+            int fontsizeKey = (int)(fontsize * 1000);
+            float spaceWidth = this.Width / 150f;
 
             foreach (char cha in text)
             {
-                int charno = (int)cha;
+                int charid = (int)cha ^ fontsizeKey ^ brushColorArgb;
 
-                int charid = charno ^ (int)(fontsize * 1000) ^ brush.Color.ToArgb();
-
-                if (!charDict.ContainsKey(charid))
+                if (!charDict.TryGetValue(charid, out character charData))
                 {
-                    //charbitmaptexid
-
-                    float maxx = this.Width / 150; // for space
+                    float maxx = spaceWidth;
+                    float maxy = 1;
 
                     var pth = new GraphicsPath();
-
-                    if (text != null)
-                        pth.AddString(cha + "", font.FontFamily, 0, fontsize + 5, new Point((int)0, (int)0),
-                            StringFormat.GenericTypographic);
+                    pth.AddString(cha.ToString(), font.FontFamily, 0, fontsize + 5, Point.Empty,
+                        StringFormat.GenericTypographic);
 
                     if (pth.PointCount > 0)
                     {
-                        foreach (PointF pnt in pth.PathPoints)
-                        {
-                            if (pnt.X > maxx)
-                                maxx = pnt.X;
-
-                            if (pnt.Y > maxy)
-                                maxy = pnt.Y;
-                        }
+                        var bounds = pth.GetBounds();
+                        maxx = Math.Max(maxx, bounds.Right);
+                        maxy = Math.Max(maxy, bounds.Bottom);
                     }
 
-                    var larger = maxx > maxy ? (int)maxx + 1 : (int)maxy + 1;
+                    int larger = (int)Math.Max(maxx, maxy) + 1;
 
-                    charDict[charid] = new character()
+                    charData = new character()
                     {
                         bitmap = new Bitmap(NextPowerOf2(larger), NextPowerOf2(larger),
                             System.Drawing.Imaging.PixelFormat.Format32bppArgb),
                         size = (int)fontsize,
-                        pth = pth
+                        pth = pth,
+                        width = (int)(maxx + 2)
                     };
 
-                    charDict[charid].bitmap.MakeTransparent(Color.Transparent);
+                    charData.bitmap.MakeTransparent(Color.Transparent);
 
-                    // create bitmap
-                    using (var gfx = Graphics.FromImage(charDict[charid].bitmap))
+                    using (var gfx = Graphics.FromImage(charData.bitmap))
                     {
                         gfx.SmoothingMode = SmoothingMode.AntiAlias;
-                        // border
                         gfx.DrawPath(this._p, pth);
-                        // text
                         gfx.FillPath(brush, pth);
                     }
 
-                    charDict[charid].width = (int)(maxx + 2);
-
-                    //charbitmaps[charid] = charbitmaps[charid].Clone(new RectangleF(0, 0, maxx + 2, maxy + 2), charbitmaps[charid].PixelFormat);
-
-                    //charbitmaps[charno * (int)fontsize].Save(charno + " " + (int)fontsize + ".png");
-
                     // create texture
-                    int textureId;
                     GL.TexEnv(TextureEnvTarget.TextureEnv, TextureEnvParameter.TextureEnvMode,
-                        (float)TextureEnvModeCombine.Replace); //Important, or wrong color on some computers
+                        (float)TextureEnvModeCombine.Replace);
 
-                    Bitmap bitmap = charDict[charid].bitmap;
-                    GL.GenTextures(1, out textureId);
+                    GL.GenTextures(1, out int textureId);
                     GL.BindTexture(TextureTarget.Texture2D, textureId);
 
-                    BitmapData data = bitmap.LockBits(new System.Drawing.Rectangle(0, 0, bitmap.Width, bitmap.Height),
+                    BitmapData data = charData.bitmap.LockBits(new System.Drawing.Rectangle(0, 0, charData.bitmap.Width, charData.bitmap.Height),
                         ImageLockMode.ReadOnly, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
 
                     GL.TexImage2D(TextureTarget.Texture2D, 0, PixelInternalFormat.Rgba, data.Width, data.Height, 0,
@@ -3583,34 +3560,29 @@ namespace MissionPlanner.Controls
                     GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMagFilter,
                         (int)TextureMagFilter.Linear);
 
-                    //    GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMagFilter, (int)All.Nearest);
-                    //GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMinFilter, (int)All.Nearest);
-                    GL.Flush();
-                    bitmap.UnlockBits(data);
+                    charData.bitmap.UnlockBits(data);
+                    charData.gltextureid = textureId;
+                    charDict[charid] = charData;
 
-                    charDict[charid].gltextureid = textureId;
-
-                    // tweak here for font generation
                     huddrawtime = 0;
                 }
-
-                float scale = 1.0f;
 
                 // dont draw spaces
                 if (cha != ' ')
                 {
-                    float[] vertices = {
-                        x, y+ charDict[charid].bitmap.Height * scale ,
-                        x + charDict[charid].bitmap.Width * scale, y+ charDict[charid].bitmap.Height * scale,
-                        x + charDict[charid].bitmap.Width * scale, y,
-                        x, y  }; 
+                    float w = charData.bitmap.Width;
+                    float h = charData.bitmap.Height;
+                    _vertices[0] = x;     _vertices[1] = y + h;
+                    _vertices[2] = x + w; _vertices[3] = y + h;
+                    _vertices[4] = x + w; _vertices[5] = y;
+                    _vertices[6] = x;     _vertices[7] = y;
 
-                    GL.BindTexture(TextureTarget.Texture2D, charDict[charid].gltextureid);
-                    GL.VertexPointer(2, VertexPointerType.Float, 0, vertices);
+                    GL.BindTexture(TextureTarget.Texture2D, charData.gltextureid);
+                    GL.VertexPointer(2, VertexPointerType.Float, 0, _vertices);
                     GL.DrawArrays(PrimitiveType.Quads, 0, 4);
                 }
 
-                x += charDict[charid].width * scale;
+                x += charData.width;
             }
             GL.DisableClientState(ArrayCap.TextureCoordArray);
             GL.DisableClientState(ArrayCap.VertexArray);
@@ -3620,94 +3592,64 @@ namespace MissionPlanner.Controls
 
         void drawstringGDI(string text, Font font, float fontsize, SolidBrush brush, float x, float y)
         {
-            if (text == null || text == "")
+            if (string.IsNullOrEmpty(text))
                 return;
 
-            float maxy = 0;
+            int brushColorArgb = brush.Color.ToArgb();
+            int fontsizeKey = (int)(fontsize * 1000);
+            float spaceWidth = this.Width / 150f;
 
             foreach (char cha in text)
             {
-                int charno = (int) cha;
+                int charid = (int)cha ^ fontsizeKey ^ brushColorArgb;
 
-                int charid = charno ^ (int) (fontsize * 1000) ^ brush.Color.ToArgb();
-
-                if (!charDict.ContainsKey(charid))
+                if (!charDict.TryGetValue(charid, out character charData))
                 {
-                    //charbitmaptexid
-
-                    float maxx = this.Width / 150; // for space
+                    float maxx = spaceWidth;
+                    float maxy = 1;
 
                     var pth = new GraphicsPath();
-
-                    if (text != null)
-                        pth.AddString(cha + "", font.FontFamily, 0, fontsize + 5, new Point((int) 0, (int) 0),
-                            StringFormat.GenericTypographic);
+                    pth.AddString(cha.ToString(), font.FontFamily, 0, fontsize + 5, Point.Empty,
+                        StringFormat.GenericTypographic);
 
                     if (pth.PointCount > 0)
                     {
-                        foreach (PointF pnt in pth.PathPoints)
-                        {
-                            if (pnt.X > maxx)
-                                maxx = pnt.X;
-
-                            if (pnt.Y > maxy)
-                                maxy = pnt.Y;
-                        }
+                        var bounds = pth.GetBounds();
+                        maxx = Math.Max(maxx, bounds.Right);
+                        maxy = Math.Max(maxy, bounds.Bottom);
                     }
 
-                    var larger = maxx > maxy ? (int) maxx + 1 : (int) maxy + 1;
+                    int larger = (int)Math.Max(maxx, maxy) + 1;
 
-                    charDict[charid] = new character()
+                    charData = new character()
                     {
                         bitmap = new Bitmap(NextPowerOf2(larger), NextPowerOf2(larger),
                             System.Drawing.Imaging.PixelFormat.Format32bppArgb),
-                        size = (int) fontsize,
-                        pth = pth
+                        size = (int)fontsize,
+                        pth = pth,
+                        width = (int)(maxx + 2)
                     };
 
-                    charDict[charid].bitmap.MakeTransparent(Color.Transparent);
+                    charData.bitmap.MakeTransparent(Color.Transparent);
 
-                    // create bitmap
-                    using (var gfx = Graphics.FromImage(charDict[charid].bitmap))
+                    using (var gfx = Graphics.FromImage(charData.bitmap))
                     {
-                        gfx.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
-
+                        gfx.SmoothingMode = SmoothingMode.AntiAlias;
                         gfx.DrawPath(this._p, pth);
-
-                        //Draw the face
-
                         gfx.FillPath(brush, pth);
                     }
 
-                    charDict[charid].width = (int) (maxx + 2);
+                    charDict[charid] = charData;
                 }
 
-                // draw it
-
-                float scale = 1.0f;
                 // dont draw spaces
                 if (cha != ' ')
                 {
-                    DrawImage(charDict[charid].bitmap, (int) x, (int) y, charDict[charid].bitmap.Width, charDict[charid].bitmap.Height, charDict[charid].gltextureid);
-                    /*
-                    graphicsObjectGDIP.TranslateTransform(x,y);
-                    graphicsObjectGDIP.DrawPath(this._p, charDict[charid].pth);
-
-                    //Draw the face
-
-                    graphicsObjectGDIP.FillPath(brush, charDict[charid].pth);
-
-                    graphicsObjectGDIP.TranslateTransform(-x, -y);
-                    */
-                }
-                else
-                {
-
+                    DrawImage(charData.bitmap, (int)x, (int)y, charData.bitmap.Width, charData.bitmap.Height, charData.gltextureid);
                 }
 
-                x += charDict[charid].width * scale;
+                x += charData.width;
             }
-
         }
 
         protected override void OnHandleCreated(EventArgs e)

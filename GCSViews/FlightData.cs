@@ -7833,21 +7833,6 @@ namespace MissionPlanner.GCSViews
             MainV2.comPort.MAV.cs.xpdr_status_pending = false;
         }
 
-        private void showIconsToolStripMenuItem_Click(object sender, EventArgs e)
-        {
-            myhud.displayicons = !myhud.displayicons;
-            Settings.Instance["HUD_showicons"] = myhud.displayicons.ToString();
-            if (myhud.displayicons)
-            {
-                showIconsToolStripMenuItem.Text = "Show text";
-            }
-            else
-            {
-                showIconsToolStripMenuItem.Text = "Show icons";
-            }
-        }
-
-
         private void jumpToTagToolStripMenuItem_Click(object sender, EventArgs e)
         {
             string tag_str = "";

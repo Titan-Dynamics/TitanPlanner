@@ -27,7 +27,6 @@ namespace MissionPlanner.GCSViews
             this.swapWithMapToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.groundColorToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.setBatteryCellCountToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            this.showIconsToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.bindingSourceHud = new System.Windows.Forms.BindingSource(this.components);
             this.contextMenuStripactionstab = new System.Windows.Forms.ContextMenuStrip(this.components);
             this.customizeToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
@@ -476,8 +475,7 @@ namespace MissionPlanner.GCSViews
             this.userItemsToolStripMenuItem,
             this.swapWithMapToolStripMenuItem,
             this.groundColorToolStripMenuItem,
-            this.setBatteryCellCountToolStripMenuItem,
-            this.showIconsToolStripMenuItem});
+            this.setBatteryCellCountToolStripMenuItem});
             this.contextMenuStripHud.Name = "contextMenuStrip2";
             resources.ApplyResources(this.contextMenuStripHud, "contextMenuStripHud");
             // 
@@ -566,13 +564,7 @@ namespace MissionPlanner.GCSViews
             this.setBatteryCellCountToolStripMenuItem.Name = "setBatteryCellCountToolStripMenuItem";
             resources.ApplyResources(this.setBatteryCellCountToolStripMenuItem, "setBatteryCellCountToolStripMenuItem");
             this.setBatteryCellCountToolStripMenuItem.Click += new System.EventHandler(this.setBatteryCellCountToolStripMenuItem_Click);
-            // 
-            // showIconsToolStripMenuItem
-            // 
-            this.showIconsToolStripMenuItem.Name = "showIconsToolStripMenuItem";
-            resources.ApplyResources(this.showIconsToolStripMenuItem, "showIconsToolStripMenuItem");
-            this.showIconsToolStripMenuItem.Click += new System.EventHandler(this.showIconsToolStripMenuItem_Click);
-            // 
+            //
             // bindingSourceHud
             // 
             this.bindingSourceHud.DataSource = typeof(MissionPlanner.CurrentState);
@@ -3322,7 +3314,6 @@ namespace MissionPlanner.GCSViews
         private System.Windows.Forms.Label NIC_lbl;
         private System.Windows.Forms.TextBox NACp_tb;
         private System.Windows.Forms.TextBox NIC_tb;
-        private ToolStripMenuItem showIconsToolStripMenuItem;
         private Controls.MyButton BUT_SendMSG;
         public Panel panel_persistent;
         public System.Windows.Forms.TabPage tabAuxFunction;
