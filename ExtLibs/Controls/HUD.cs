@@ -2795,13 +2795,13 @@ namespace MissionPlanner.Controls
                 var wPerLetter = fontsize * 0.7f;
                 var textSizeHalf = ((length * wPerLetter) / 2);
                 var mode_text_x = mode_x - textSizeHalf;
-                var mode_height = (fontsize * 3);
+                var mode_height = (fontsize * 2.25f);
 
                 PointF[] polyM = new PointF[4];
-                polyM[0] = new PointF(mode_x - textSizeHalf - mode_height, graphicsObject.Bottom);
+                polyM[0] = new PointF(mode_x - textSizeHalf - (mode_height), graphicsObject.Bottom);
                 polyM[1] = new PointF(mode_x - textSizeHalf - (mode_height / 2f), graphicsObject.Bottom - mode_height);
                 polyM[2] = new PointF(mode_x + textSizeHalf + (mode_height / 2f), graphicsObject.Bottom - mode_height);
-                polyM[3] = new PointF(mode_x + textSizeHalf + mode_height, graphicsObject.Bottom);
+                polyM[3] = new PointF(mode_x + textSizeHalf + (mode_height), graphicsObject.Bottom);
 
                 graphicsObject.FillPolygon(SlightlyTransparentBrush, polyM);
                 graphicsObject.DrawPolygon(_whitePen, polyM);
@@ -2811,8 +2811,7 @@ namespace MissionPlanner.Controls
                 {
                     modeBrush = _redBrush;
                 }
-                drawstring(_mode, font, fontsize, _whiteBrush, mode_x, graphicsObject.Height - (fontsize * 2.2f), true);
-
+                drawstring(_mode, font, fontsize, _whiteBrush, mode_x, graphicsObject.Height - (fontsize * 1.625f), true);
 
                 if (displayconninfo)
                 {
