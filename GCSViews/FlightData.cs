@@ -6397,6 +6397,18 @@ namespace MissionPlanner.GCSViews
                 catch (Exception ex)
                 {
                     CustomMessageBox.Show("Camera Fail: " + ex.ToString(), Strings.ERROR);
+
+                    // Clean up the partially initialized camera to prevent crashes
+                    // from the background thread trying to access invalid resources
+                    if (MainV2.cam != null)
+                    {
+                        try
+                        {
+                            MainV2.cam.Dispose();
+                        }
+                        catch { }
+                        MainV2.cam = null;
+                    }
                 }
             }
         }
@@ -6424,21 +6436,61 @@ namespace MissionPlanner.GCSViews
                 return;
 
             MainH.Panel2.SuspendLayout();
+            SubMainLeft.Panel1.SuspendLayout();
 
             if (this.SubMainLeft.Panel1.Controls.Contains(hud1))
             {
                 Settings.Instance["HudSwap"] = "true";
+                // Move HUD to the larger panel (MainH.Panel2)
+                hud1.Dock = DockStyle.None;
+                hud1.Anchor = AnchorStyles.None;
                 MainH.Panel2.Controls.Add(hud1);
                 SubMainLeft.Panel1.Controls.Add(tableMap);
+                // Center the HUD in the panel
+                CenterHudInPanel(MainH.Panel2);
+                MainH.Panel2.Resize += MainHPanel2_Resize;
             }
             else
             {
                 Settings.Instance["HudSwap"] = "false";
+                // Move HUD back to the smaller panel (SubMainLeft.Panel1)
+                MainH.Panel2.Resize -= MainHPanel2_Resize;
+                hud1.Dock = DockStyle.Fill;
                 MainH.Panel2.Controls.Add(tableMap);
                 SubMainLeft.Panel1.Controls.Add(hud1);
             }
 
+            SubMainLeft.Panel1.ResumeLayout();
             MainH.Panel2.ResumeLayout();
+        }
+
+        private void MainHPanel2_Resize(object sender, EventArgs e)
+        {
+            if (MainH.Panel2.Controls.Contains(hud1))
+            {
+                CenterHudInPanel(MainH.Panel2);
+            }
+        }
+
+        private void CenterHudInPanel(Panel panel)
+        {
+            // Calculate the HUD size maintaining aspect ratio
+            float aspectRatio = hud1.SixteenXNine ? 1.777f : 1.333f;
+            int hudWidth = panel.Width;
+            int hudHeight = (int)(hudWidth / aspectRatio);
+
+            // If calculated height exceeds panel height, calculate from height instead
+            if (hudHeight > panel.Height)
+            {
+                hudHeight = panel.Height;
+                hudWidth = (int)(hudHeight * aspectRatio);
+            }
+
+            hud1.Size = new System.Drawing.Size(hudWidth, hudHeight);
+            hud1.Location = new System.Drawing.Point(
+                (panel.Width - hudWidth) / 2,
+                (panel.Height - hudHeight) / 2
+            );
         }
 
         private void swapWithMapToolStripMenuItem_Click(object sender, EventArgs e)

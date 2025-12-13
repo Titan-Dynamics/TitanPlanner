@@ -58,8 +58,8 @@ namespace MissionPlanner.GCSViews.ConfigurationView
             this.txt_meascurrent = new System.Windows.Forms.TextBox();
             this.label3 = new System.Windows.Forms.Label();
             this.groupBoxCalibrate = new System.Windows.Forms.GroupBox();
-            this.btnCalcCurrent = new System.Windows.Forms.Button();
-            this.btnCalcVoltage = new System.Windows.Forms.Button();
+            this.btnCalcCurrent = new MissionPlanner.Controls.MyButton();
+            this.btnCalcVoltage = new MissionPlanner.Controls.MyButton();
             this.groupBox4.SuspendLayout();
             this.groupBoxCalibrate.SuspendLayout();
             this.SuspendLayout();
@@ -252,15 +252,19 @@ namespace MissionPlanner.GCSViews.ConfigurationView
             this.groupBoxCalibrate.TabStop = false;
             // 
             // btnCalcCurrent
-            // 
+            //
             resources.ApplyResources(this.btnCalcCurrent, "btnCalcCurrent");
             this.btnCalcCurrent.Name = "btnCalcCurrent";
+            this.btnCalcCurrent.TextColorNotEnabled = System.Drawing.Color.FromArgb(((int)(((byte)(64)))), ((int)(((byte)(87)))), ((int)(((byte)(4)))));
+            this.btnCalcCurrent.UseVisualStyleBackColor = true;
             this.btnCalcCurrent.Click += new System.EventHandler(this.btnCalcCurrent_Click);
-            // 
+            //
             // btnCalcVoltage
-            // 
+            //
             resources.ApplyResources(this.btnCalcVoltage, "btnCalcVoltage");
             this.btnCalcVoltage.Name = "btnCalcVoltage";
+            this.btnCalcVoltage.TextColorNotEnabled = System.Drawing.Color.FromArgb(((int)(((byte)(64)))), ((int)(((byte)(87)))), ((int)(((byte)(4)))));
+            this.btnCalcVoltage.UseVisualStyleBackColor = true;
             this.btnCalcVoltage.Click += new System.EventHandler(this.btnCalcVoltage_Click);
             // 
             // ConfigBatteryMonitoring
@@ -316,7 +320,7 @@ namespace MissionPlanner.GCSViews.ConfigurationView
         private System.Windows.Forms.TextBox txt_meascurrent;
         private System.Windows.Forms.Label label3;
         private System.Windows.Forms.GroupBox groupBoxCalibrate;
-        private System.Windows.Forms.Button btnCalcVoltage;
-        private System.Windows.Forms.Button btnCalcCurrent;
+        private MissionPlanner.Controls.MyButton btnCalcVoltage;
+        private MissionPlanner.Controls.MyButton btnCalcCurrent;
     }
 }
