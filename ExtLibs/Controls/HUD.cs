@@ -3077,7 +3077,7 @@ namespace MissionPlanner.Controls
                 graphicsObject.ResetTransform();
                 var drawX = this.Width / 8 + 20;
                 int height = (this.Height / 2) + 5;
-                foreach (string key in CustomItems.Keys.Cast<string>().OrderByDescending(k => k))
+                foreach (string key in CustomItems.Keys.Cast<string>().OrderBy(k => k))
                 {
                     try
                     {
