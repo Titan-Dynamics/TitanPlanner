@@ -326,6 +326,8 @@ namespace MissionPlanner.Controls
         private string _mode = "Manual";
         private DateTime _modechanged = DateTime.MinValue;
         private int _wpno = 0;
+        private float _distToHome = 0;
+        private float _AZToMav = 0;
 
         float _AOA = 0;
         float _SSA = 0;
@@ -729,6 +731,34 @@ namespace MissionPlanner.Controls
                 if (_wpno != value)
                 {
                     _wpno = value;
+                    this.Invalidate();
+                }
+            }
+        }
+
+        [System.ComponentModel.Browsable(true), System.ComponentModel.Category("Values")]
+        public float distToHome
+        {
+            get { return _distToHome; }
+            set
+            {
+                if (_distToHome != value)
+                {
+                    _distToHome = value;
+                    this.Invalidate();
+                }
+            }
+        }
+
+        [System.ComponentModel.Browsable(true), System.ComponentModel.Category("Values")]
+        public float AZToMav
+        {
+            get { return _AZToMav; }
+            set
+            {
+                if (_AZToMav != value)
+                {
+                    _AZToMav = value;
                     this.Invalidate();
                 }
             }
@@ -2006,7 +2036,7 @@ namespace MissionPlanner.Controls
                 graphicsObject.RotateTransform(-_roll);
 
                 int fontsize = this.Height / 40;
-                int fontoffset = fontsize - 10;
+                int fontoffset = fontsize - 6;
 
                 float every5deg = -this.Height / 65;
 
@@ -2202,7 +2232,7 @@ namespace MissionPlanner.Controls
 
                 }
 
-                //draw heading ind
+                //draw heading bar
                 Rectangle headbg = new Rectangle(0, 0, this.Width, fontsize + 20);
 
                 graphicsObject.ResetTransform();
@@ -2294,6 +2324,26 @@ namespace MissionPlanner.Controls
                         {
                             graphicsObject.DrawLine(this._whitePen, headbg.Left + 5 + space * (a - start),
                                 headbg.Bottom - 5, headbg.Left + 5 + space * (a - start), headbg.Bottom - 10);
+                        }
+                    }
+
+                    // Draw "H" for home direction if within ±60 degrees and distToHome > 0
+                    if (_distToHome > 0)
+                    {
+                        // Calculate bearing TO home (opposite of AZToMav which is FROM home TO aircraft)
+                        float homeHeading = (_AZToMav + 180) % 360;
+
+                        // Calculate difference from current heading, normalized to [-180, 180]
+                        float homeDiff = homeHeading - _heading;
+                        while (homeDiff > 180) homeDiff -= 360;
+                        while (homeDiff < -180) homeDiff += 360;
+
+                        // If home is within ±60 degrees of heading, draw "H"
+                        if (homeDiff >= -60 && homeDiff <= 60)
+                        {
+                            float homeX = headbg.Left + 5 + space * (homeDiff + 60);
+                            drawstring("H", font, fontsize, (SolidBrush)Brushes.Cyan, homeX - fontoffset,
+                                headbg.Bottom - 24 - (int)(fontoffset * 1.7));
                         }
                     }
 
@@ -2612,10 +2662,10 @@ namespace MissionPlanner.Controls
                         newdist = (int)newdist;
                     }
 
-                    var wpPrefix = "WP ⤏ ";
+                    var wpPrefix = "WP ↞ ";
                     if (_wpno > 0 && mode == "Auto")
                     {
-                        wpPrefix = "WP " + _wpno + " ⤏ ";
+                        wpPrefix = "WP " + _wpno + " ↞ ";
                     }
                     if (mode == "Loiter")
                     {
@@ -2623,16 +2673,13 @@ namespace MissionPlanner.Controls
                     }
                     if (mode == "RTL")
                     {
-                        wpPrefix = "H ⤏ ";
+                        wpPrefix = "H ↞ ";
                     }
                     if (mode == "Guided")
                     {
-                        wpPrefix = "G ⤏ ";
+                        wpPrefix = "G ↞ ";
                     }
-                    if (mode != "Cruise")
-                    {
-                        drawstring(wpPrefix + newdist + newdistunit, font, fontsize, _whiteBrush, scrollbg.Left + 5, scrollbg.Bottom + fontsize - 8);
-                    }
+                    drawstring(wpPrefix + newdist + newdistunit, font, fontsize, _whiteBrush, scrollbg.Left + (fontsize / 2f), scrollbg.Bottom + (fontsize / 2f));
                 }
 
                 // right scroller
