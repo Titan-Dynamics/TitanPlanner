@@ -2327,25 +2327,6 @@ namespace MissionPlanner.Controls
                         }
                     }
 
-                    // Draw "H" for home direction if within ±60 degrees and distToHome > 0
-                    if (_distToHome > 0)
-                    {
-                        // Calculate bearing TO home (opposite of AZToMav which is FROM home TO aircraft)
-                        float homeHeading = (_AZToMav + 180) % 360;
-
-                        // Calculate difference from current heading, normalized to [-180, 180]
-                        float homeDiff = homeHeading - _heading;
-                        while (homeDiff > 180) homeDiff -= 360;
-                        while (homeDiff < -180) homeDiff += 360;
-
-                        // If home is within ±60 degrees of heading, draw "H"
-                        if (homeDiff >= -60 && homeDiff <= 60)
-                        {
-                            float homeX = headbg.Left + 5 + space * (homeDiff + 60);
-                            drawstring("H", font, fontsize, (SolidBrush) Brushes.Green, homeX - fontoffset, 3);
-                        }
-                    }
-
                     RectangleF rect = new RectangleF(headbg.Width / 2 - (fontsize * 3f) / 2, 0, (fontsize * 3f), headbg.Height);
 
                     FillRectangle(SlightlyTransparentBrush, rect);
@@ -2369,6 +2350,25 @@ namespace MissionPlanner.Controls
                     {
                         var targetHeadingPos = headbg.Left + 5 + space * (headingDiff + 60);
                         graphicsObject.DrawLine(this._orangePen, targetHeadingPos - 3, headbg.Bottom, targetHeadingPos - 3, headbg.Top);
+                    }
+
+                    // Draw "H" for home direction if within ±60 degrees and distToHome > 0
+                    if (_distToHome > 0)
+                    {
+                        // Calculate bearing TO home (opposite of AZToMav which is FROM home TO aircraft)
+                        float homeHeading = (_AZToMav + 180) % 360;
+
+                        // Calculate difference from current heading, normalized to [-180, 180]
+                        float homeDiff = homeHeading - _heading;
+                        while (homeDiff > 180) homeDiff -= 360;
+                        while (homeDiff < -180) homeDiff += 360;
+
+                        // If home is within ±60 degrees of heading, draw "H"
+                        if (homeDiff >= -60 && homeDiff <= 60)
+                        {
+                            float homeX = headbg.Left + 5 + space * (homeDiff + 60);
+                            drawstring("H", font, fontsize, (SolidBrush) Brushes.Green, homeX - fontoffset, 3);
+                        }
                     }
 
                     drawstring(String.Format("{0,3}", (int) (heading % 360)), font, fontsize, _whiteBrush, headbg.Width / 2, 3 , true);
@@ -2649,22 +2649,22 @@ namespace MissionPlanner.Controls
                         newdist = (int)newdist;
                     }
 
-                    var wpPrefix = "WP ↞ ";
+                    var wpPrefix = "WP ◀ ";
                     if (_wpno > 0 && mode == "Auto")
                     {
-                        wpPrefix = "WP " + _wpno + " ↞ ";
+                        wpPrefix = "WP " + _wpno + " ◀ ";
                     }
                     if (mode == "Loiter")
                     {
-                        wpPrefix = "⤿ ";
+                        wpPrefix = "↻ ";
                     }
                     if (mode == "RTL")
                     {
-                        wpPrefix = "H ↞ ";
+                        wpPrefix = "H ◀ ";
                     }
                     if (mode == "Guided")
                     {
-                        wpPrefix = "G ↞ ";
+                        wpPrefix = "G ◀ ";
                     }
                     drawstring(wpPrefix + newdist + newdistunit, font, fontsize, _whiteBrush, scrollbg.Left + (fontsize / 2f), scrollbg.Bottom + (fontsize / 2f));
                 }
