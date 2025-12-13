@@ -250,9 +250,7 @@ namespace MissionPlanner.Controls
                                     displayalt =
                                         displayconninfo =
                                             displayxtrack =
-                                                displayrollpitch = displaygps = bgon = hudon = batteryon = batteryon2 = true;
-
-            displayAOASSA = false;
+                                                displayrollpitch = displaygps = displayAOASSA = bgon = hudon = batteryon = batteryon2 = true;
 
             this.Name = "Hud";
 
@@ -889,7 +887,6 @@ namespace MissionPlanner.Controls
                 if (_AOA != value)
                 {
                     _AOA = value;
-                    displayAOASSA = true;
                     this.Invalidate();
                 }
             }
@@ -918,7 +915,6 @@ namespace MissionPlanner.Controls
                 if (_SSA != value)
                 {
                     _SSA = value;
-                    displayAOASSA = true;
                     this.Invalidate();
                 }
             }
@@ -2199,20 +2195,16 @@ namespace MissionPlanner.Controls
                 // Flight Path vector
                 if (displayAOASSA)
                 {
-                    graphicsObject.DrawEllipse(this._redPen,
-                        new Rectangle((int) (-halfwidth / 40 - _SSA * every5deg),
-                            (int) (-halfwidth / 40 - _AOA * every5deg), halfwidth / 20, halfwidth / 20));
-                    graphicsObject.DrawLine(this._redPen, -halfwidth / 20 - _SSA * every5deg, 0 - _AOA * every5deg,
-                        -halfwidth / 40 - _SSA * every5deg, 0 - _AOA * every5deg);
-                    graphicsObject.DrawLine(this._redPen, halfwidth / 20 - _SSA * every5deg, 0 - _AOA * every5deg,
                         halfwidth / 40 - _SSA * every5deg, 0 - _AOA * every5deg);
-                    graphicsObject.DrawLine(this._redPen, 0 - _SSA * every5deg, -halfwidth / 20 - _AOA * every5deg,
-                        0 - _SSA * every5deg, -halfwidth / 40 - _AOA * every5deg);
+                    graphicsObject.DrawEllipse(this._redPen, new Rectangle((int) (-halfwidth / 40 - _SSA * every5deg), (int) (-halfwidth / 40 - _AOA * every5deg), halfwidth / 20, halfwidth / 20));
+                    graphicsObject.DrawLine(this._redPen, -halfwidth / 20 - _SSA * every5deg, 0 - _AOA * every5deg, -halfwidth / 40 - _SSA * every5deg, 0 - _AOA * every5deg);
+                    graphicsObject.DrawLine(this._redPen, halfwidth / 20 - _SSA * every5deg, 0 - _AOA * every5deg, halfwidth / 40 - _SSA * every5deg, 0 - _AOA * every5deg);
+                    graphicsObject.DrawLine(this._redPen, 0 - _SSA * every5deg, -halfwidth / 20 - _AOA * every5deg, 0 - _SSA * every5deg, -halfwidth / 40 - _AOA * every5deg);
 
                 }
 
                 //draw heading ind
-                Rectangle headbg = new Rectangle(0, 0, this.Width - 0, fontsize + 20);
+                Rectangle headbg = new Rectangle(0, 0, this.Width, fontsize + 20);
 
                 graphicsObject.ResetTransform();
                 graphicsObject.ResetClip();
@@ -3044,16 +3036,18 @@ namespace MissionPlanner.Controls
                         //If displayicons is true then we display image icons instead of text on GPS staus
                         if (displayicons)
                         {
-                            //this position calculation is ugly but seems to work even when resizing the HUD
-                            var hor_pos = 0;
-                            if (a == 0 && _gpsfix2 == 0) hor_pos = this.Width - (((fontsize + 8) * 3)) - 3;
-                            else hor_pos = this.Width - (((fontsize + 8) * 3) * 2) - 5;
+                            var width = (fontsize + 8) * 3;
+                            var gap = 5;
+                            var rightMargin = 3;
+                            // GPS2 is slot 1 (rightmost), GPS1 is slot 2 when dual or slot 1 when single
+                            int slot;
+                            if (_gpsfix2 > 0)
+                                slot = (a == 0) ? 2 : 1; // GPS1 at slot 2, GPS2 at slot 1
+                            else
+                                slot = 1; // Single GPS at slot 1
 
-                            if (a == 1) hor_pos = this.Width - (((fontsize + 8) * 3)) - 3;
-
-                            //DrawImage(icon, hor_pos, this.Height - ((fontsize + 2) * 3) - fontoffset + 2, (fontsize + 8) * 3, fontsize + 8);
-                            DrawImage(icon, hor_pos, this.Height - (fontsize + 13), (fontsize + 8) * 3, fontsize + 8);
-
+                            var hor_pos = this.Width - rightMargin - slot * width - (slot - 1) * gap;
+                            DrawImage(icon, hor_pos, this.Height - (fontsize + 13) + 2, width, fontsize + 8);
                         }
                         else
                         {
@@ -3191,8 +3185,11 @@ namespace MissionPlanner.Controls
                     if (displayicons)
                     {
                         var width = (fontsize + 8) * 3;
-                        vibehitzone = new Rectangle(this.Width - (width * 4) + width / 2 - 5, this.Height - (fontsize + 13), (fontsize + 8) * 3, fontsize + 8);
-
+                        var gap = 5;
+                        var rightMargin = 3;
+                        int gpsCount = (_gpsfix2 > 0) ? 2 : 1;
+                        int slot = gpsCount + 1; // Vibe is after GPS icons
+                        vibehitzone = new Rectangle(this.Width - rightMargin - slot * width - (slot - 1) * gap, this.Height - (fontsize + 13), width, fontsize + 8);
                     }
                     else
                     {
@@ -3247,11 +3244,15 @@ namespace MissionPlanner.Controls
                     if (displayicons)
                     {
                         var width = (fontsize + 8) * 3;
-                        ekfhitzone = new Rectangle(this.Width - width * 5 + width / 2 - 10 , this.Height - (fontsize + 13), (fontsize + 8) * 3, fontsize + 8);
+                        var gap = 5;
+                        var rightMargin = 3;
+                        int gpsCount = (_gpsfix2 > 0) ? 2 : 1;
+                        int slot = gpsCount + 2; // EKF is after GPS icons and Vibe
+                        ekfhitzone = new Rectangle(this.Width - rightMargin - slot * width - (slot - 1) * gap, this.Height - (fontsize + 13), width, fontsize + 8);
                     }
                     else
                     {
-                        ekfhitzone = new Rectangle(this.Width - 23 * fontsize,yPos[1], 40, fontsize * 2);
+                        ekfhitzone = new Rectangle(this.Width - 23 * fontsize, yPos[1], 40, fontsize * 2);
                     }
 
                     if (ekfstatus > 0.5)
