@@ -2652,30 +2652,40 @@ namespace MissionPlanner.Controls
         {
             _settingsLoaded = true;
 
-            if (!Context.IsCurrent)
-                Context.MakeCurrent(this.WindowInfo);
-
-            _imageloaderThread = new Thread(imageLoader)
+            // Defer initialization until control is fully created
+            BeginInvoke((Action)(() =>
             {
-                IsBackground = true,
-                Name = "gl imageLoader"
-            };
-            _imageloaderThread.Start();
+                if (IsDisposed || Disposing || Context == null)
+                    return;
 
-            // Request driver-side anti-aliasing (works when the context was created with samples).
-            GL.Enable(EnableCap.DepthTest);
-            GL.Enable(EnableCap.Lighting);
-            GL.Enable(EnableCap.Light0);
-            GL.Enable(EnableCap.ColorMaterial);
-            GL.Enable(EnableCap.Normalize);
-            //GL.Enable(EnableCap.LineSmooth);
-            //GL.Enable(EnableCap.PointSmooth);
-            //GL.Enable(EnableCap.PolygonSmooth);
-            //GL.ShadeModel(ShadingModel.Smooth);
-            GL.Enable(EnableCap.CullFace);
-            GL.Enable(EnableCap.Texture2D);
-            var preload = tileInfo.Program;
-            test_Resize(null, null);
+                try
+                {
+                    if (!Context.IsCurrent)
+                        Context.MakeCurrent(this.WindowInfo);
+
+                    _imageloaderThread = new Thread(imageLoader)
+                    {
+                        IsBackground = true,
+                        Name = "gl imageLoader"
+                    };
+                    _imageloaderThread.Start();
+
+                    // Request driver-side anti-aliasing (works when the context was created with samples).
+                    GL.Enable(EnableCap.DepthTest);
+                    GL.Enable(EnableCap.Lighting);
+                    GL.Enable(EnableCap.Light0);
+                    GL.Enable(EnableCap.ColorMaterial);
+                    GL.Enable(EnableCap.Normalize);
+                    GL.Enable(EnableCap.CullFace);
+                    GL.Enable(EnableCap.Texture2D);
+                    var preload = tileInfo.Program;
+                    test_Resize(null, null);
+                }
+                catch (OpenTK.Graphics.GraphicsContextException)
+                {
+                    // Context failed to initialize, will retry on next paint
+                }
+            }));
         }
 
         private void btn_configure_Click(object sender, EventArgs e)
@@ -2934,11 +2944,15 @@ namespace MissionPlanner.Controls
 
         private void test_Resize(object sender, EventArgs e)
         {
+            if (!IsHandleCreated || IsDisposed || Disposing || Context == null)
+                return;
+
             textureSemaphore.Wait();
             try
             {
                 if (!Context.IsCurrent)
                     Context.MakeCurrent(this.WindowInfo);
+
                 GL.Viewport(0, 0, this.Width, this.Height);
                 float renderDistance = _center.Alt > 500 ? 100000f : 50000f;
                 projMatrix = OpenTK.Matrix4.CreatePerspectiveFieldOfView(
