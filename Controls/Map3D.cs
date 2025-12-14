@@ -249,6 +249,8 @@ namespace MissionPlanner.Controls
         private List<double[]> _trailPoints = new List<double[]>();
         private int _trailUtmZone = -999;
         private Lines _trailLine = null;
+        private int _trailStableFrames = 0; // Count frames with stable telemetry before recording
+        private const int TrailStabilityThreshold = 30; // Frames to wait for stable altitude data
         // ADSB aircraft hit testing - stores screen positions and data for tooltip
         private List<ADSBScreenPosition> _adsbScreenPositions = new List<ADSBScreenPosition>();
         private ToolTip _adsbToolTip;
@@ -1798,18 +1800,38 @@ namespace MissionPlanner.Controls
                         double absY = _planeDrawY + utmcenter[1];
                         double absZ = _planeDrawZ;
 
-                        // Clear trail if UTM zone changed
-                        if (_trailUtmZone != utmzone)
+                        // Wait for stable telemetry before recording (avoid 0-altitude initial points)
+                        if (absZ < 0.5)
                         {
-                            _trailPoints.Clear();
-                            _trailUtmZone = utmzone;
+                            // Altitude is essentially 0, reset stability counter
+                            _trailStableFrames = 0;
+                        }
+                        else
+                        {
+                            _trailStableFrames++;
                         }
 
-                        // Add point every frame
-                        int numTrackLength = Settings.Instance.GetInt32("NUM_tracklength", 200) * 15;
-                        if (_trailPoints.Count > numTrackLength)
-                            _trailPoints.RemoveRange(0, _trailPoints.Count - numTrackLength);
-                        _trailPoints.Add(new double[] { absX, absY, absZ });
+                        // Only record trail points after telemetry has stabilized
+                        if (_trailStableFrames >= TrailStabilityThreshold)
+                        {
+                            // Clear trail if UTM zone changed
+                            if (_trailUtmZone != utmzone)
+                            {
+                                _trailPoints.Clear();
+                                _trailUtmZone = utmzone;
+                            }
+
+                            // Add point every frame
+                            int numTrackLength = Settings.Instance.GetInt32("NUM_tracklength", 200) * 15;
+                            if (_trailPoints.Count > numTrackLength)
+                                _trailPoints.RemoveRange(0, _trailPoints.Count - numTrackLength);
+                            _trailPoints.Add(new double[] { absX, absY, absZ });
+                        }
+                    }
+                    else
+                    {
+                        // Reset stability counter when not armed or no valid position
+                        _trailStableFrames = 0;
                     }
 
                     if (_fpvMode)
