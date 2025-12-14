@@ -121,7 +121,7 @@
     <value>ARMED</value>
   </data>
   <data name="AS" xml:space="preserve">
-    <value>AS </value>
+    <value>A:</value>
   </data>
   <data name="Bat" xml:space="preserve">
     <value>Bat</value>
@@ -195,7 +195,7 @@
     <value>GPS: rtk Fixed</value>
   </data>
   <data name="GS" xml:space="preserve">
-    <value>GS </value>
+    <value>G:</value>
   </data>
   <data name="N" xml:space="preserve">
     <value>N</value>

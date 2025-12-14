@@ -79,10 +79,11 @@ namespace MissionPlanner.Controls
             
             try
             {
-                this.Invoke((MethodInvoker)delegate
+                // Use BeginInvoke to avoid deadlock - don't need to wait for refresh
+                this.BeginInvoke((MethodInvoker)delegate
                 {
-            // make sure its drawn
-            this.Refresh();
+                    // make sure its drawn
+                    this.Refresh();
                 });
             }
             catch { Running = false; return; }
@@ -91,7 +92,8 @@ namespace MissionPlanner.Controls
 
             try
             {
-                this.Invoke((MethodInvoker)delegate
+                // Use BeginInvoke to avoid deadlock - don't need to wait for focus
+                this.BeginInvoke((MethodInvoker)delegate
                 {
                     log.Info("in focus invoke");
                      // if this windows isnt the current active windows, popups inherit the wrong parent.
@@ -101,6 +103,8 @@ namespace MissionPlanner.Controls
                         this.Refresh();
                     }
                 });
+                // Small delay to let the UI update
+                Thread.Sleep(50);
             }
             catch { Running = false; return; }
 
@@ -142,13 +146,16 @@ namespace MissionPlanner.Controls
 
             try
             {
-                this.Invoke((MethodInvoker)delegate
+                // Use BeginInvoke with a wait to avoid potential deadlock
+                var result = this.BeginInvoke((MethodInvoker)delegate
                 {
                     timer1_Tick(null, null);
                 });
+                // Wait with timeout to prevent infinite hang
+                result.AsyncWaitHandle.WaitOne(5000);
             }
-            catch { 
-                Running = false; 
+            catch {
+                Running = false;
                 return;
             }
 

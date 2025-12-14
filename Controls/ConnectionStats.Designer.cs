@@ -31,6 +31,7 @@
         /// </summary>
         private void InitializeComponent()
         {
+            this.components = new System.ComponentModel.Container();
             System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(ConnectionStats));
             this.label1 = new System.Windows.Forms.Label();
             this.label2 = new System.Windows.Forms.Label();
@@ -54,6 +55,7 @@
             this.groupBox2 = new System.Windows.Forms.GroupBox();
             this.chk_signing = new System.Windows.Forms.CheckBox();
             this.chk_mavlink2 = new System.Windows.Forms.CheckBox();
+            this.zedGraphBytesPerSec = new ZedGraph.ZedGraphControl();
             this.but_reset = new MissionPlanner.Controls.MyButton();
             this.groupBox1.SuspendLayout();
             this.groupBox2.SuspendLayout();
@@ -211,15 +213,30 @@
             this.chk_mavlink2.UseVisualStyleBackColor = true;
             this.chk_mavlink2.CheckedChanged += new System.EventHandler(this.chk_mavlink2_CheckedChanged);
             // 
+            // zedGraphBytesPerSec
+            // 
+            resources.ApplyResources(this.zedGraphBytesPerSec, "zedGraphBytesPerSec");
+            this.zedGraphBytesPerSec.IsShowContextMenu = false;
+            this.zedGraphBytesPerSec.Name = "zedGraphBytesPerSec";
+            this.zedGraphBytesPerSec.ScrollGrace = 0D;
+            this.zedGraphBytesPerSec.ScrollMaxX = 0D;
+            this.zedGraphBytesPerSec.ScrollMaxY = 0D;
+            this.zedGraphBytesPerSec.ScrollMaxY2 = 0D;
+            this.zedGraphBytesPerSec.ScrollMinX = 0D;
+            this.zedGraphBytesPerSec.ScrollMinY = 0D;
+            this.zedGraphBytesPerSec.ScrollMinY2 = 0D;
+            // 
             // but_reset
             // 
             resources.ApplyResources(this.but_reset, "but_reset");
             this.but_reset.Name = "but_reset";
+            this.but_reset.TextColorNotEnabled = System.Drawing.Color.FromArgb(((int)(((byte)(64)))), ((int)(((byte)(87)))), ((int)(((byte)(4)))));
             this.but_reset.UseVisualStyleBackColor = true;
             this.but_reset.Click += new System.EventHandler(this.but_reset_Click);
             // 
             // ConnectionStats
             // 
+            this.Controls.Add(this.zedGraphBytesPerSec);
             this.Controls.Add(this.but_reset);
             this.Controls.Add(this.chk_mavlink2);
             this.Controls.Add(this.chk_signing);
@@ -261,5 +278,6 @@
         private System.Windows.Forms.CheckBox chk_signing;
         private System.Windows.Forms.CheckBox chk_mavlink2;
         private MyButton but_reset;
+        private ZedGraph.ZedGraphControl zedGraphBytesPerSec;
     }
 }

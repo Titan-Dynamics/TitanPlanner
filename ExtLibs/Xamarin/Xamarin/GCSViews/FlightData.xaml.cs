@@ -927,6 +927,9 @@ namespace Xamarin
                         hud1.targetspeed = MainV2.comPort.MAV.cs.targetairspeed;
                         hud1.turnrate = MainV2.comPort.MAV.cs.turnrate;
                         hud1.verticalspeed = MainV2.comPort.MAV.cs.verticalspeed;
+                        hud1.accel_air = MainV2.comPort.MAV.cs.accel_air;
+                        hud1.lowairspeed = MainV2.comPort.MAV.cs.lowairspeed;
+                        hud1.lowgroundspeed = MainV2.comPort.MAV.cs.lowgroundspeed;
                         hud1.vibex = MainV2.comPort.MAV.cs.vibex;
                         hud1.vibey = MainV2.comPort.MAV.cs.vibey;
                         hud1.vibez = MainV2.comPort.MAV.cs.vibez;

@@ -179,28 +179,55 @@ namespace MissionPlanner.GCSViews.ConfigurationView
                 CHK_lockrollpitch.Checked = false;
             }
 
-            // add tooltips to all controls
+            startup = false;
+
+            // Add tooltips asynchronously to prevent UI freeze
+            var firmwareStr = MainV2.comPort.MAV.cs.firmware.ToString();
+            var controlsToProcess = new System.Collections.Generic.List<(Control control, string paramName)>();
+
             foreach (Control control1 in Controls)
             {
                 foreach (Control control2 in control1.Controls)
                 {
-                    if (control2 is MavlinkNumericUpDown)
+                    if (control2 is MavlinkNumericUpDown nud)
                     {
-                        var ParamName = ((MavlinkNumericUpDown) control2).ParamName;
-                        toolTip1.SetToolTip(control2,
-                            $"{ParamName}:\n{ParameterMetaDataRepository.GetParameterMetaData(ParamName, ParameterMetaDataConstants.Description, MainV2.comPort.MAV.cs.firmware.ToString())}");
+                        controlsToProcess.Add((control2, nud.ParamName));
                     }
-
-                    if (control2 is MavlinkComboBox)
+                    else if (control2 is MavlinkComboBox cmb)
                     {
-                        var ParamName = ((MavlinkComboBox) control2).ParamName;
-                        toolTip1.SetToolTip(control2,
-                            $"{ParamName}:\n{ParameterMetaDataRepository.GetParameterMetaData(ParamName, ParameterMetaDataConstants.Description, MainV2.comPort.MAV.cs.firmware.ToString())}");
+                        controlsToProcess.Add((control2, cmb.ParamName));
                     }
                 }
             }
 
-            startup = false;
+            // Run tooltip generation on background thread
+            System.Threading.Tasks.Task.Run(() =>
+            {
+                var tooltipData = new System.Collections.Generic.List<(Control control, string tooltip)>();
+                foreach (var (control, paramName) in controlsToProcess)
+                {
+                    var description = ParameterMetaDataRepository.GetParameterMetaData(
+                        paramName, ParameterMetaDataConstants.Description, firmwareStr);
+                    tooltipData.Add((control, $"{paramName}:\n{description}"));
+                }
+
+                // Apply tooltips on UI thread
+                try
+                {
+                    this.BeginInvoke((Action)(() =>
+                    {
+                        foreach (var (control, tooltip) in tooltipData)
+                        {
+                            try
+                            {
+                                toolTip1.SetToolTip(control, tooltip);
+                            }
+                            catch { }
+                        }
+                    }));
+                }
+                catch { }
+            });
         }
 
         protected override bool ProcessCmdKey(ref Message msg, Keys keyData)

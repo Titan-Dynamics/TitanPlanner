@@ -50,6 +50,7 @@ namespace MissionPlanner
 
         public static int KIndexstatic = -1;
         private float _airspeed;
+        private float _accel_air;
 
         private float _alt;
         private float _alt_error;
@@ -121,6 +122,8 @@ namespace MissionPlanner
         internal double imutime;
 
         private DateTime lastalt = DateTime.MinValue;
+        private DateTime lastairspeedupdate = DateTime.MinValue;
+        private float oldairspeed;
 
         public int lastautowp = -1;
 
@@ -513,7 +516,39 @@ namespace MissionPlanner
         public float airspeed
         {
             get => _airspeed * multiplierspeed;
-            set => _airspeed = value;
+            set
+            {
+                _airspeed = value;
+
+                // Calculate airspeed acceleration (rate of change)
+                if ((datetime - lastairspeedupdate).TotalSeconds >= 0.2 && oldairspeed != airspeed || lastairspeedupdate > datetime)
+                {
+                    _accel_air = (airspeed - oldairspeed) / (float)(datetime - lastairspeedupdate).TotalSeconds;
+                    if (float.IsInfinity(_accel_air))
+                        _accel_air = 0;
+                    lastairspeedupdate = datetime;
+                    oldairspeed = airspeed;
+                }
+
+                // Check for low airspeed against AIRSPEED_MIN param
+                try
+                {
+                    if (parent?.parent?.MAV.param.ContainsKey("AIRSPEED_MIN") == true)
+                    {
+                        lowairspeed = airspeed < (float)parent.parent.MAV.param["AIRSPEED_MIN"].Value;
+                    }
+                }
+                catch { }
+            }
+        }
+
+        [DisplayFieldName("accel_air.Field")]
+        [DisplayText("Airspeed Accel (speed/s)")]
+        [GroupText("Sensor")]
+        public float accel_air
+        {
+            get => _accel_air;
+            set => _accel_air = value;
         }
 
         [DisplayFieldName("targetairspeed.Field")]
@@ -544,7 +579,20 @@ namespace MissionPlanner
         public float groundspeed
         {
             get => _groundspeed * multiplierspeed;
-            set => _groundspeed = value;
+            set
+            {
+                _groundspeed = value;
+
+                // Check for low groundspeed against AIRSPEED_MIN param
+                try
+                {
+                    if (parent?.parent?.MAV.param.ContainsKey("AIRSPEED_MIN") == true)
+                    {
+                        lowgroundspeed = groundspeed < (float)parent.parent.MAV.param["AIRSPEED_MIN"].Value;
+                    }
+                }
+                catch { }
+            }
         }
 
         // accel

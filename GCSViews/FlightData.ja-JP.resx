@@ -177,9 +177,6 @@
   <data name="CB_tuning.ToolTip" xml:space="preserve">
     <value>チューニング・グラフの表示、ターゲットと実際の方位を示す</value>
   </data>
-  <data name="russianHudToolStripMenuItem.Text" xml:space="preserve">
-    <value>ロシアのHUD</value>
-  </data>
   <data name="lbl_hdop.Text" xml:space="preserve">
     <value>hdop: 0</value>
   </data>

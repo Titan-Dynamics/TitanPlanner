@@ -178,12 +178,6 @@
   <data name="userItemsToolStripMenuItem.Text" xml:space="preserve">
     <value>Елементи користувача</value>
   </data>
-  <data name="russianHudToolStripMenuItem.Size" type="System.Drawing.Size, System.Drawing">
-    <value>268, 22</value>
-  </data>
-  <data name="russianHudToolStripMenuItem.Text" xml:space="preserve">
-    <value>HUD радянського зразку</value>
-  </data>
   <data name="swapWithMapToolStripMenuItem.Size" type="System.Drawing.Size, System.Drawing">
     <value>268, 22</value>
   </data>

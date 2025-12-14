@@ -156,13 +156,12 @@ namespace MissionPlanner.Controls
             int visibleItems = (containerPanel.Height / itemHeight) + 2;
             int scrollOffset = scrollBar.Enabled ? scrollBar.Value : 0;
 
-            // Draw messages from newest (bottom) to oldest (top)
-            // Messages list is oldest first, so we iterate from end
+            // Draw messages from oldest (top) to newest (bottom)
             int y = 0;
-            for (int i = 0; i < visibleItems && i + scrollOffset < messages.Count; i++)
+            for (int i = 0; i < visibleItems && scrollOffset + i < messages.Count; i++)
             {
-                int msgIndex = messages.Count - 1 - scrollOffset - i;
-                if (msgIndex < 0)
+                int msgIndex = scrollOffset + i;
+                if (msgIndex >= messages.Count)
                     break;
 
                 var msg = messages[msgIndex];

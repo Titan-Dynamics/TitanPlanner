@@ -171,9 +171,6 @@
   <data name="CB_tuning.ToolTip" xml:space="preserve">
     <value>Tənzimləmə qrafikini göstərin, hədəf münasibətlərini faktiki olaraq tərtib edin</value>
   </data>
-  <data name="russianHudToolStripMenuItem.Text" xml:space="preserve">
-    <value>Russia Hud</value>
-  </data>
   <data name="label2.Text" xml:space="preserve">
     <value>Sürət</value>
   </data>

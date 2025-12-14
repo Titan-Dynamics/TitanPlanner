@@ -563,9 +563,6 @@ namespace MissionPlanner.Controls
 
         private void UpdatePinnedButtons()
         {
-            _pinnedPanel.Controls.Clear();
-            _pinnedPanel.ColumnStyles.Clear();
-
             // Determine how many pinned buttons to show
             // If _visiblePinnedCount is 0 and we haven't calculated yet, show all
             int maxVisible = _visiblePinnedCount > 0 || _parentMenuStrip != null
@@ -573,7 +570,6 @@ namespace MissionPlanner.Controls
                 : _pinnedModes.Count;
 
             var modesToShow = _pinnedModes.Take(maxVisible).ToList();
-            _pinnedPanel.ColumnCount = modesToShow.Count;
 
             Color textColor, darkBgColor, greenColor;
             try
@@ -594,12 +590,25 @@ namespace MissionPlanner.Controls
                 greenColor = Color.FromArgb(148, 193, 31);
             }
 
+            // Build a completely new panel with all buttons (while old panel stays visible)
+            var newPanel = new TableLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                AutoSize = true,
+                RowCount = 1,
+                ColumnCount = modesToShow.Count,
+                BackColor = Color.Transparent,
+                Margin = new Padding(0),
+                Padding = new Padding(0)
+            };
+            newPanel.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
+
             int col = 0;
             foreach (var mode in modesToShow)
             {
                 string displayName = mode;
                 int btnWidth = TextRenderer.MeasureText(displayName, new Font("Segoe UI", 9F)).Width + 16;
-                _pinnedPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, btnWidth + 4));
+                newPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, btnWidth + 4));
 
                 var btn = new Label
                 {
@@ -625,8 +634,25 @@ namespace MissionPlanner.Controls
                 };
 
                 btn.Click += PinnedButton_Click;
-                _pinnedPanel.Controls.Add(btn, col, 0);
+                newPanel.Controls.Add(btn, col, 0);
                 col++;
+            }
+
+            // Get parent table and swap panels
+            var parentTable = _pinnedPanel.Parent as TableLayoutPanel;
+            if (parentTable != null)
+            {
+                var cellPos = parentTable.GetCellPosition(_pinnedPanel);
+                var oldPanel = _pinnedPanel;
+
+                // Swap: add new, update reference, remove old
+                parentTable.SuspendLayout();
+                parentTable.Controls.Add(newPanel, cellPos.Column, cellPos.Row);
+                _pinnedPanel = newPanel;
+                parentTable.Controls.Remove(oldPanel);
+                parentTable.ResumeLayout(true);
+
+                oldPanel.Dispose();
             }
 
             UpdateContainerWidth();

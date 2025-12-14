@@ -27,6 +27,7 @@ using SkiaSharp;
 
 
 // Control written by Michael Oborne 2011
+// Modified by Mohammad Adib 2026 =)
 // dual opengl and GDI+
 
 namespace MissionPlanner.Controls
@@ -160,8 +161,6 @@ namespace MissionPlanner.Controls
 
         public bool HoldInvalidation = false;
 
-        public bool Russian { get; set; }
-
         private class character
         {
             public GraphicsPath pth;
@@ -202,8 +201,8 @@ namespace MissionPlanner.Controls
         [System.ComponentModel.Browsable(true), DefaultValue(true)]
         public bool displaygps { get; set; }
 
-        [System.ComponentModel.Browsable(true), DefaultValue(true)]
-        public bool displayicons { get; set; }
+        [System.ComponentModel.Browsable(false)]
+        public bool displayicons { get { return true; } set { } }
 
         [System.ComponentModel.Browsable(true), DefaultValue(true)]
         public bool bgon { get; set; }
@@ -252,9 +251,7 @@ namespace MissionPlanner.Controls
                                     displayalt =
                                         displayconninfo =
                                             displayxtrack =
-                                                displayrollpitch = displaygps = bgon = hudon = batteryon = batteryon2 = true;
-
-            displayAOASSA = false;
+                                                displayrollpitch = displaygps = displayAOASSA = bgon = hudon = batteryon = batteryon2 = true;
 
             this.Name = "Hud";
 
@@ -324,11 +321,14 @@ namespace MissionPlanner.Controls
         private float _xtrack_error = 0;
         private float _turnrate = 0;
         private float _verticalspeed = 0;
+        private float _accel_air = 0;
         private float _linkqualitygcs = 0;
         private DateTime _datetime;
         private string _mode = "Manual";
         private DateTime _modechanged = DateTime.MinValue;
         private int _wpno = 0;
+        private float _distToHome = 0;
+        private float _AZToMav = 0;
 
         float _AOA = 0;
         float _SSA = 0;
@@ -738,6 +738,34 @@ namespace MissionPlanner.Controls
         }
 
         [System.ComponentModel.Browsable(true), System.ComponentModel.Category("Values")]
+        public float distToHome
+        {
+            get { return _distToHome; }
+            set
+            {
+                if (_distToHome != value)
+                {
+                    _distToHome = value;
+                    this.Invalidate();
+                }
+            }
+        }
+
+        [System.ComponentModel.Browsable(true), System.ComponentModel.Category("Values")]
+        public float AZToMav
+        {
+            get { return _AZToMav; }
+            set
+            {
+                if (_AZToMav != value)
+                {
+                    _AZToMav = value;
+                    this.Invalidate();
+                }
+            }
+        }
+
+        [System.ComponentModel.Browsable(true), System.ComponentModel.Category("Values")]
         public float groundcourse
         {
             get { return _groundcourse; }
@@ -792,6 +820,21 @@ namespace MissionPlanner.Controls
                 }
             }
         }
+
+        [System.ComponentModel.Browsable(true), System.ComponentModel.Category("Values")]
+        public float accel_air
+        {
+            get { return _accel_air; }
+            set
+            {
+                if (_accel_air != Math.Round(value, 1))
+                {
+                    _accel_air = (float) Math.Round(value, 1);
+                    this.Invalidate();
+                }
+            }
+        }
+
 
         [System.ComponentModel.Browsable(true), System.ComponentModel.Category("Values")]
         public float linkqualitygcs
@@ -875,7 +918,6 @@ namespace MissionPlanner.Controls
                 if (_AOA != value)
                 {
                     _AOA = value;
-                    displayAOASSA = true;
                     this.Invalidate();
                 }
             }
@@ -904,7 +946,6 @@ namespace MissionPlanner.Controls
                 if (_SSA != value)
                 {
                     _SSA = value;
-                    displayAOASSA = true;
                     this.Invalidate();
                 }
             }
@@ -995,10 +1036,9 @@ namespace MissionPlanner.Controls
         private readonly SolidBrush _redBrush = new SolidBrush(Color.Red);
         private readonly SolidBrush _orangeBrush = new SolidBrush(Color.Orange);
 
-        private static readonly SolidBrush SolidBrush = new SolidBrush(Color.FromArgb(0x55, 0xff, 0xff, 0xff));
+        private static readonly SolidBrush SlightlyTransparentBrush = new SolidBrush(Color.FromArgb(40, 0, 0, 0));
 
-        private static readonly SolidBrush SlightlyTransparentWhiteBrush =
-            new SolidBrush(Color.FromArgb(220, 255, 255, 255));
+        private static readonly SolidBrush SlightlyTransparentRedBrush = new SolidBrush(Color.FromArgb(100, 255, 0, 0));
 
         private static readonly SolidBrush AltGroundBrush = new SolidBrush(Color.FromArgb(100, Color.BurlyWood));
 
@@ -1367,31 +1407,30 @@ namespace MissionPlanner.Controls
                 GL.LineWidth(penn.Width);
                 GL.Color4(penn.Color);
 
-                //GL.Begin(PrimitiveType.LineStrip);
-
                 start = 360 - start;
                 start -= 30;
 
-                var vertices = new float[(int)((degrees + 1) * 2)];
+                int numPoints = (int)Math.Abs(degrees) + 1;
+                var vertices = new float[numPoints * 2];
 
-                float x = 0, y = 0;
-                int length = 0;
-                for (float i = start; i <= start + degrees; i++)
+                float centerX = rect.X + rect.Width / 2;
+                float centerY = rect.Y + rect.Height / 2;
+                float radiusX = rect.Width / 2;
+                float radiusY = rect.Height / 2;
+                float step = degrees >= 0 ? 1 : -1;
+
+                for (int j = 0; j < numPoints; j++)
                 {
-                    x = (float) Math.Sin(i * deg2rad) * rect.Width / 2;
-                    y = (float) Math.Cos(i * deg2rad) * rect.Height / 2;
-                    x = x + rect.X + rect.Width / 2;
-                    y = y + rect.Y + rect.Height / 2;
-                    vertices[(int)((i - start) * 2)] = x;
-                    vertices[(int)((i - start) * 2 + 1)] = y;
-                    length += 2;
-                    //GL.Vertex2(x, y);
+                    float angle = start + j * step;
+                    float x = (float)Math.Sin(angle * deg2rad) * radiusX + centerX;
+                    float y = (float)Math.Cos(angle * deg2rad) * radiusY + centerY;
+                    vertices[j * 2] = x;
+                    vertices[j * 2 + 1] = y;
                 }
 
-                //GL.End();                
                 GL.VertexPointer(2, VertexPointerType.Float, 0, vertices);
                 GL.EnableClientState(ArrayCap.VertexArray);
-                GL.DrawArrays(PrimitiveType.LineStrip, 0, length/2);
+                GL.DrawArrays(PrimitiveType.LineStrip, 0, numPoints);
                 GL.DisableClientState(ArrayCap.VertexArray);
             }
             else
@@ -1916,11 +1955,11 @@ namespace MissionPlanner.Controls
 
         private readonly Pen _blackPen = new Pen(Color.Black, 2);
         private readonly Pen _greenPen = new Pen(Color.Green, 2);
+        private readonly Pen _orangePen = new Pen(Color.Orange, 2);
         private readonly Pen _redPen = new Pen(Color.Red, 2);
 
         internal void doPaint()
         {
-            //Console.WriteLine("hud paint "+DateTime.Now.Millisecond);
             bool isNaN = false;
             try
             {
@@ -1993,19 +2032,10 @@ namespace MissionPlanner.Controls
 
                 graphicsObject.TranslateTransform(this.Width / 2, this.Height / 2);
 
-                if (!Russian)
-                {
-                    // horizon
-                    graphicsObject.RotateTransform(-_roll);
-                }
-                else
-                {
-                    _roll *= -1;
-                }
+                // horizon
+                graphicsObject.RotateTransform(-_roll);
 
-
-                int fontsize = this.Height / 30; // = 10
-                int fontoffset = fontsize - 10;
+                int fontsize = this.Height / 28;
 
                 float every5deg = -this.Height / 65;
 
@@ -2019,6 +2049,7 @@ namespace MissionPlanner.Controls
                 // Reset pens
                 this._blackPen.Width = 2;
                 this._greenPen.Width = 2;
+                this._orangePen.Width = 2;
                 this._redPen.Width = 2;
 
                 if (!connected)
@@ -2076,14 +2107,13 @@ namespace MissionPlanner.Controls
 
                     graphicsObject.RotateTransform(-_roll);
 
-                    //draw pitch
+                    // draw pitch
 
                     int lengthshort = this.Width / 14;
                     int lengthlong = this.Width / 10;
 
                     for (int a = -90; a <= 90; a += 5)
                     {
-                        // limit to 40 degrees
                         if (a >= _pitch - 29 && a <= _pitch + 20)
                         {
                             if (a % 10 == 0)
@@ -2102,15 +2132,14 @@ namespace MissionPlanner.Controls
                                 }
 
                                 drawstring(a.ToString(), font, fontsize + 2, _whiteBrush,
-                                    this.Width / 2 - lengthlong - 30 - halfwidth - (int) (fontoffset * 1.7),
-                                    pitchoffset + a * every5deg - 8 - fontoffset);
+                                    this.Width / 2 - lengthlong - halfwidth - (fontsize / 4f),
+                                    pitchoffset + a * every5deg - (fontsize / 1.5f));
                             }
                             else
                             {
                                 graphicsObject.DrawLine(this._whitePen, this.Width / 2 - lengthshort - halfwidth,
                                     pitchoffset + a * every5deg, this.Width / 2 + lengthshort - halfwidth,
                                     pitchoffset + a * every5deg);
-                                //drawstring(e,a.ToString(), new Font("Arial", 10), whiteBrush, this.Width / 2 - lengthshort - 20 - halfwidth, this.Height / 2 + pitchoffset + a * every5deg - 8);
                             }
                         }
                     }
@@ -2143,17 +2172,23 @@ namespace MissionPlanner.Controls
 
                     this._redPen.Width = 2;
 
-                    int[] array = new int[] {-60, -45, -30, -20, -10, 0, 10, 20, 30, 45, 60};
+                    int[] array = new int[] {-60, -45, -30, -15, 0, 15, 30, 45, 60};
 
                     foreach (int a in array)
                     {
                         graphicsObject.ResetTransform();
                         graphicsObject.TranslateTransform(this.Width / 2, this.Height / 2);
                         graphicsObject.RotateTransform(a - _roll);
-                        drawstring(String.Format("{0,2}", Math.Abs(a)), font, fontsize, _whiteBrush,
-                            0 - 6 - fontoffset, -lengthlong * 8 - extra);
+
+                        // Draw tick mark
                         graphicsObject.DrawLine(this._whitePen, 0, -lengthlong * 3 - extra, 0,
                             -lengthlong * 3 - extra - lengthlong);
+
+                        // Draw label rotated to match arc
+                        string label = Math.Abs(a).ToString();
+                        float labelY = -lengthlong * 4 - extra - fontsize - 4;
+                        float labelX = -fontsize * label.Length / 4f;
+                        drawstring(label, font, fontsize, _whiteBrush, labelX, labelY);
                     }
 
                     graphicsObject.ResetTransform();
@@ -2163,8 +2198,6 @@ namespace MissionPlanner.Controls
                     RectangleF arcrect = new RectangleF(-lengthlong * 3 - extra, -lengthlong * 3 - extra,
                         (extra + lengthlong * 3) * 2f, (extra + lengthlong * 3) * 2f);
 
-                    //DrawRectangle(Pens.Beige, arcrect);
-
                     graphicsObject.DrawArc(this._whitePen, arcrect, 180 + 30 + -_roll, 120); // 120
 
                     graphicsObject.ResetTransform();
@@ -2172,10 +2205,6 @@ namespace MissionPlanner.Controls
                     //draw centre / current att
 
                     graphicsObject.TranslateTransform(this.Width / 2, this.Height / 2); //  +this.Height / 14);
-
-                    // plane wings
-                    if (Russian)
-                        graphicsObject.RotateTransform(-_roll);
 
                     Rectangle centercircle = new Rectangle(-halfwidth / 2, -halfwidth / 2, halfwidth, halfwidth);
 
@@ -2199,173 +2228,122 @@ namespace MissionPlanner.Controls
                 // Flight Path vector
                 if (displayAOASSA)
                 {
-                    graphicsObject.DrawEllipse(this._redPen,
-                        new Rectangle((int) (-halfwidth / 40 - _SSA * every5deg),
-                            (int) (-halfwidth / 40 - _AOA * every5deg), halfwidth / 20, halfwidth / 20));
-                    graphicsObject.DrawLine(this._redPen, -halfwidth / 20 - _SSA * every5deg, 0 - _AOA * every5deg,
-                        -halfwidth / 40 - _SSA * every5deg, 0 - _AOA * every5deg);
-                    graphicsObject.DrawLine(this._redPen, halfwidth / 20 - _SSA * every5deg, 0 - _AOA * every5deg,
-                        halfwidth / 40 - _SSA * every5deg, 0 - _AOA * every5deg);
-                    graphicsObject.DrawLine(this._redPen, 0 - _SSA * every5deg, -halfwidth / 20 - _AOA * every5deg,
-                        0 - _SSA * every5deg, -halfwidth / 40 - _AOA * every5deg);
+                    graphicsObject.DrawEllipse(this._redPen, new Rectangle((int) (-halfwidth / 40 - _SSA * every5deg), (int) (-halfwidth / 40 - _AOA * every5deg), halfwidth / 20, halfwidth / 20));
+                    graphicsObject.DrawLine(this._redPen, -halfwidth / 20 - _SSA * every5deg, 0 - _AOA * every5deg, -halfwidth / 40 - _SSA * every5deg, 0 - _AOA * every5deg);
+                    graphicsObject.DrawLine(this._redPen, halfwidth / 20 - _SSA * every5deg, 0 - _AOA * every5deg, halfwidth / 40 - _SSA * every5deg, 0 - _AOA * every5deg);
+                    graphicsObject.DrawLine(this._redPen, 0 - _SSA * every5deg, -halfwidth / 20 - _AOA * every5deg, 0 - _SSA * every5deg, -halfwidth / 40 - _AOA * every5deg);
 
                 }
 
-                //draw heading ind
-                Rectangle headbg = new Rectangle(0, 0, this.Width - 0, this.Height / 14);
+                //draw heading bar
+                Rectangle headbg = new Rectangle(0, 0, this.Width, (int)(fontsize * 1.75f));
 
                 graphicsObject.ResetTransform();
                 graphicsObject.ResetClip();
 
                 if (displayheading)
                 {
-                    graphicsObject.DrawRectangle(this._blackPen, headbg);
+                    var topMargin = fontsize / 5;
+                    graphicsObject.FillRectangle(SlightlyTransparentBrush, headbg);
+                    graphicsObject.DrawLine(_blackPen, 0, headbg.Bottom, headbg.Right, headbg.Bottom);
 
-
-                    graphicsObject.FillRectangle(SolidBrush, headbg);
-
-                    // center
-                    //   graphicsObject.DrawLine(redPen, headbg.Width / 2, headbg.Bottom, headbg.Width / 2, headbg.Top);
-
-                    //bottom line
-                    graphicsObject.DrawLine(this._whitePen, headbg.Left + 5, headbg.Bottom - 5, headbg.Width - 5,
-                        headbg.Bottom - 5);
-
-                    float space = (headbg.Width - 10) / 120.0f;
+                    float space = headbg.Width / 120.0f;
                     int start = (int) Math.Round((_heading - 60), 1);
-
-                    // draw for outside the 60 deg
-                    if (_targetheading < start)
+                    
+                    for (int a = start; a <= start + 120; a += 1)
                     {
-                        this._greenPen.Width = 6;
-                        graphicsObject.DrawLine(this._greenPen, headbg.Left + 5 + space * 0, headbg.Bottom,
-                            headbg.Left + 5 + space * (0), headbg.Top);
-                    }
-
-                    if (_targetheading > _heading + 60)
-                    {
-                        this._greenPen.Width = 6;
-                        graphicsObject.DrawLine(this._greenPen, headbg.Left + 5 + space * 60, headbg.Bottom,
-                            headbg.Left + 5 + space * (60), headbg.Top);
-                    }
-
-                    for (int a = start; a <= _heading + 60; a += 1)
-                    {
-                        // target heading
-                        if (((int) (a + 360) % 360) == (int) _targetheading)
-                        {
-                            this._greenPen.Width = 6;
-                            graphicsObject.DrawLine(this._greenPen, headbg.Left + 5 + space * (a - start),
-                                headbg.Bottom, headbg.Left + 5 + space * (a - start), headbg.Top);
-                        }
-
                         if (((int) (a + 360) % 360) == (int) _groundcourse)
                         {
                             this._blackPen.Width = 6;
-                            graphicsObject.DrawLine(this._blackPen, headbg.Left + 5 + space * (a - start),
-                                headbg.Bottom, headbg.Left + 5 + space * (a - start), headbg.Top);
+                            graphicsObject.DrawLine(this._blackPen, headbg.Left + space * (a - start),
+                                headbg.Bottom, headbg.Left + space * (a - start), headbg.Top);
                             this._blackPen.Width = 2;
                         }
 
                         if ((int) a % 15 == 0)
                         {
-                            //Console.WriteLine(a + " " + Math.Round(a, 1, MidpointRounding.AwayFromZero));
-                            //Console.WriteLine(space +" " + a +" "+ (headbg.Left + 5 + space * (a - start)));
-                            graphicsObject.DrawLine(this._whitePen, headbg.Left + 5 + space * (a - start),
-                                headbg.Bottom - 5, headbg.Left + 5 + space * (a - start), headbg.Bottom - 10);
+                            graphicsObject.DrawLine(this._whitePen, headbg.Left + space * (a - start),
+                                headbg.Bottom - 5, headbg.Left + space * (a - start), headbg.Bottom - 10);
                             int disp = (int) a;
                             if (disp < 0)
                                 disp += 360;
                             disp = disp % 360;
-                            if (disp == 0)
+                            string label;
+                            int size;
+                            switch (disp)
                             {
-                                drawstring(HUDT.N.PadLeft(2), font, fontsize + 4, _whiteBrush,
-                                    headbg.Left - 5 + space * (a - start) - fontoffset,
-                                    headbg.Bottom - 24 - (int) (fontoffset * 1.7));
+                                case 0:   label = HUDT.N;  size = fontsize; break;
+                                case 45:  label = HUDT.NE; size = fontsize; break;
+                                case 90:  label = HUDT.E;  size = fontsize; break;
+                                case 135: label = HUDT.SE; size = fontsize; break;
+                                case 180: label = HUDT.S;  size = fontsize; break;
+                                case 225: label = HUDT.SW; size = fontsize; break;
+                                case 270: label = HUDT.W;  size = fontsize; break;
+                                case 315: label = HUDT.NW; size = fontsize; break;
+                                default:  label = disp.ToString(); size = fontsize - 2; break;
                             }
-                            else if (disp == 45)
-                            {
-                                drawstring(HUDT.NE.PadLeft(2), font, fontsize + 4, _whiteBrush,
-                                    headbg.Left - 5 + space * (a - start) - fontoffset,
-                                    headbg.Bottom - 24 - (int) (fontoffset * 1.7));
-                            }
-                            else if (disp == 90)
-                            {
-                                drawstring(HUDT.E.PadLeft(2), font, fontsize + 4, _whiteBrush,
-                                    headbg.Left - 5 + space * (a - start) - fontoffset,
-                                    headbg.Bottom - 24 - (int) (fontoffset * 1.7));
-                            }
-                            else if (disp == 135)
-                            {
-                                drawstring(HUDT.SE.PadLeft(2), font, fontsize + 4, _whiteBrush,
-                                    headbg.Left - 5 + space * (a - start) - fontoffset,
-                                    headbg.Bottom - 24 - (int) (fontoffset * 1.7));
-                            }
-                            else if (disp == 180)
-                            {
-                                drawstring(HUDT.S.PadLeft(2), font, fontsize + 4, _whiteBrush,
-                                    headbg.Left - 5 + space * (a - start) - fontoffset,
-                                    headbg.Bottom - 24 - (int) (fontoffset * 1.7));
-                            }
-                            else if (disp == 225)
-                            {
-                                drawstring(HUDT.SW.PadLeft(2), font, fontsize + 4, _whiteBrush,
-                                    headbg.Left - 5 + space * (a - start) - fontoffset,
-                                    headbg.Bottom - 24 - (int) (fontoffset * 1.7));
-                            }
-                            else if (disp == 270)
-                            {
-                                drawstring(HUDT.W.PadLeft(2), font, fontsize + 4, _whiteBrush,
-                                    headbg.Left - 5 + space * (a - start) - fontoffset,
-                                    headbg.Bottom - 24 - (int) (fontoffset * 1.7));
-                            }
-                            else if (disp == 315)
-                            {
-                                drawstring(HUDT.NW.PadLeft(2), font, fontsize + 4, _whiteBrush,
-                                    headbg.Left - 5 + space * (a - start) - fontoffset,
-                                    headbg.Bottom - 24 - (int) (fontoffset * 1.7));
-                            }
-                            else
-                            {
-                                drawstring(String.Format("{0,3}", (int) (disp % 360)), font, fontsize,
-                                    _whiteBrush, headbg.Left - 5 + space * (a - start) - fontoffset,
-                                    headbg.Bottom - 24 - (int) (fontoffset * 1.7));
-                            }
+                            drawstring(label, font, size, _whiteBrush, headbg.Left + space * (a - start), topMargin, true);
                         }
                         else if ((int) a % 5 == 0)
                         {
-                            graphicsObject.DrawLine(this._whitePen, headbg.Left + 5 + space * (a - start),
-                                headbg.Bottom - 5, headbg.Left + 5 + space * (a - start), headbg.Bottom - 10);
+                            graphicsObject.DrawLine(this._whitePen, headbg.Left + space * (a - start),
+                                headbg.Bottom - 5, headbg.Left + space * (a - start), headbg.Bottom - 10);
                         }
                     }
 
-                    RectangleF rect = new RectangleF(headbg.Width / 2 - (fontsize * 2.4f) / 2, 0, (fontsize * 2.4f),
-                        headbg.Height);
+                    RectangleF rect = new RectangleF(headbg.Width / 2 - (fontsize * 3f) / 2, 0, (fontsize * 3f), headbg.Height);
 
-                    //DrawRectangle(whitePen, rect);
-                    FillRectangle(SlightlyTransparentWhiteBrush, rect);
+                    FillRectangle(SlightlyTransparentBrush, rect);
 
-                    if (Math.Abs(_heading - _targetheading) < 4)
+                    this._orangePen.Width = 6;
+
+                    // target heading beyond bounds - calculate angular difference normalized to [-180, 180]
+                    float headingDiff = _targetheading - _heading;
+                    while (headingDiff > 180) headingDiff -= 360;
+                    while (headingDiff < -180) headingDiff += 360;
+
+                    if (headingDiff < -60)
                     {
-                        drawstring(String.Format("{0,3}", (int) (heading % 360)), font, fontsize,
-                            _whiteBrush, headbg.Width / 2 - (fontsize * 1f),
-                            headbg.Bottom - 24 - (int) (fontoffset * 1.7));
+                        graphicsObject.DrawLine(this._orangePen, headbg.Left + 3, headbg.Bottom, headbg.Left + 3, headbg.Top);
+                    }
+                    else if (headingDiff > 60)
+                    {
+                        graphicsObject.DrawLine(this._orangePen, headbg.Right - 3, headbg.Bottom, headbg.Right - 3, headbg.Top);
                     }
                     else
                     {
-                        drawstring(String.Format("{0,3}", (int) (heading % 360)), font, fontsize,
-                            _whiteBrush, headbg.Width / 2 - (fontsize * 1f),
-                            headbg.Bottom - 24 - (int) (fontoffset * 1.7));
+                        var targetHeadingPos = headbg.Left + 5 + space * (headingDiff + 60);
+                        graphicsObject.DrawLine(this._orangePen, targetHeadingPos - 3, headbg.Bottom, targetHeadingPos - 3, headbg.Top);
                     }
 
+                    // Draw "H" for home direction if within ±60 degrees and distToHome > 0
+                    if (_distToHome > 0)
+                    {
+                        // Calculate bearing TO home (opposite of AZToMav which is FROM home TO aircraft)
+                        float homeHeading = (_AZToMav + 180) % 360;
+
+                        // Calculate difference from current heading, normalized to [-180, 180]
+                        float homeDiff = homeHeading - _heading;
+                        while (homeDiff > 180) homeDiff -= 360;
+                        while (homeDiff < -180) homeDiff += 360;
+
+                        // If home is within ±60 degrees of heading, draw "H"
+                        if (homeDiff >= -60 && homeDiff <= 60)
+                        {
+                            float homeX = headbg.Left + 5 + space * (homeDiff + 60);
+                            drawstring("H", font, fontsize, (SolidBrush) Brushes.Green, homeX, topMargin, true);
+                        }
+                    }
+
+                    drawstring(String.Format("{0,3}", (int) (heading % 360)), font, fontsize, _whiteBrush, headbg.Width / 2, topMargin, true);
                 }
-                //                Console.WriteLine("HUD 0 " + (DateTime.Now - starttime).TotalMilliseconds + " " + DateTime.Now.Millisecond);
 
                 // xtrack error
                 // center
 
                 if (displayxtrack)
                 {
+                    graphicsObject.TranslateTransform(0, 5);
                     float xtspace = this.Width / 10.0f / 3.0f;
                     int pad = 10;
 
@@ -2446,6 +2424,7 @@ namespace MissionPlanner.Controls
                     this._greenPen.Color = Color.FromArgb(255, this._greenPen.Color);
 
                     this._whitePen.Width = 2;
+                    graphicsObject.TranslateTransform(0, -5);
                 }
 
                 // left scroller
@@ -2455,15 +2434,23 @@ namespace MissionPlanner.Controls
                 {
                     graphicsObject.DrawRectangle(this._whitePen, scrollbg);
 
-                    graphicsObject.FillRectangle(SolidBrush, scrollbg);
+                    var rectBrush = SlightlyTransparentBrush;
+                    if (_lowairspeed && status)
+                    {
+                        rectBrush = SlightlyTransparentRedBrush;
+                    }
+                    graphicsObject.FillRectangle(rectBrush, scrollbg);
 
                     Point[] arrow = new Point[5];
 
-                    arrow[0] = new Point(0, -10);
-                    arrow[1] = new Point(scrollbg.Width - 10, -10);
-                    arrow[2] = new Point(scrollbg.Width - 5, 0);
-                    arrow[3] = new Point(scrollbg.Width - 10, 10);
-                    arrow[4] = new Point(0, 10);
+                    int arrowHalf = (int)(fontsize * 0.625f);
+                    int notchIndent = scrollbg.Width / 6;
+                    int tipOffset = scrollbg.Width / 10;
+                    arrow[0] = new Point(0, -arrowHalf);
+                    arrow[1] = new Point(scrollbg.Width - notchIndent, -arrowHalf);
+                    arrow[2] = new Point(scrollbg.Width - tipOffset, 0);
+                    arrow[3] = new Point(scrollbg.Width - notchIndent, arrowHalf);
+                    arrow[4] = new Point(0, arrowHalf);
 
                     graphicsObject.TranslateTransform(0, this.Height / 2);
 
@@ -2506,64 +2493,163 @@ namespace MissionPlanner.Controls
 
                         if (a % 5 == 0)
                         {
-                            //Console.WriteLine(a + " " + scrollbg.Right + " " + (scrollbg.Top - space * (a - start)) + " " + (scrollbg.Right - 20) + " " + (scrollbg.Top - space * (a - start)));
-                            graphicsObject.DrawLine(this._whitePen, scrollbg.Right, scrollbg.Top - space * (a - start),
-                                scrollbg.Right - 10, scrollbg.Top - space * (a - start));
-                            drawstring(String.Format("{0,5}", a), font, fontsize, _whiteBrush, 0,
-                                (float) (scrollbg.Top - space * (a - start) - 6 - fontoffset));
+                            var ticklen = scrollbg.Width / 5;
+                            graphicsObject.DrawLine(this._whitePen, scrollbg.Right, scrollbg.Top - space * (a - start), scrollbg.Right - ticklen, scrollbg.Top - space * (a - start));
+                            drawstring(String.Format("{0,5}", a), font, fontsize, _whiteBrush, scrollbg.Right - ticklen - (fontsize * 2.25f), (float) (scrollbg.Top - space * (a - start) - (fontsize / 1.5f)));
                         }
                     }
 
                     graphicsObject.DrawPolygon(this._blackPen, arrow);
                     graphicsObject.FillPolygon(Brushes.Black, arrow);
-                    drawstring((speed).ToString("0") + speedunit, font, 10, (SolidBrush) Brushes.AliceBlue, 0, -9);
+                    var airspeedBrush = (SolidBrush) Brushes.White;
+                    if (_lowairspeed && status)
+                    {
+                        airspeedBrush = (SolidBrush) Brushes.Red;
+                    }
+
+                    arrow[0] = new Point(0, -arrowHalf);
+                    arrow[1] = new Point(scrollbg.Width - notchIndent, -arrowHalf);
+                    arrow[2] = new Point(scrollbg.Width - tipOffset, 0);
+                    arrow[3] = new Point(scrollbg.Width - notchIndent, arrowHalf + (int)(fontsize * 1.25f));
+                    arrow[4] = new Point(0, arrowHalf + (int)(fontsize * 1.25f));
+
+                    graphicsObject.DrawPolygon(this._blackPen, arrow);
+                    graphicsObject.FillPolygon(new SolidBrush(Color.FromArgb(150, 0, 0, 0)), arrow);
+
+                    drawstring(HUDT.AS + (speed).ToString("0") + speedunit, font, (fontsize * 0.75f), (SolidBrush) airspeedBrush, notchIndent / 3f, ((fontsize * 0.8f) / -2f) - 2);
+
+                    // extra text data
+                    var brush = (SolidBrush) Brushes.White;
+                    if (_lowgroundspeed)
+                    {
+                        brush = (SolidBrush) Brushes.Red;
+                    }
+                    drawstring(HUDT.GS + _groundspeed.ToString("0") + speedunit, font, (fontsize * 0.75f), (SolidBrush) airspeedBrush, notchIndent / 3f, arrowHalf + (fontsize * 0.125f));
 
                     graphicsObject.ResetTransform();
 
-                    // extra text data
+                    //airspeed rate of change
 
-                    if (_lowairspeed)
+                    graphicsObject.ResetTransform();
+
+                    viewrange = 12;
+
+                    _accel_air = Math.Min(viewrange / 2f, _accel_air);
+                    _accel_air = Math.Max(viewrange / -2f, _accel_air);
+
+                    float scaledvalue = _accel_air / -viewrange * (scrollbg.Bottom - scrollbg.Top);
+
+                    float linespace = (float)1 / -viewrange * (scrollbg.Bottom - scrollbg.Top);
+
+                    PointF[] poly = new PointF[4];
+
+                    poly[0] = new PointF(scrollbg.Right, scrollbg.Top);
+                    poly[1] = new PointF(scrollbg.Right + scrollbg.Width / 4, scrollbg.Top + scrollbg.Width / 4);
+                    poly[2] = new PointF(scrollbg.Right + scrollbg.Width / 4, scrollbg.Bottom - scrollbg.Width / 4);
+                    poly[3] = new PointF(scrollbg.Right, scrollbg.Bottom);
+
+                    PointF[] polyn = new PointF[4];
+
+                    polyn[0] = new PointF(scrollbg.Right, scrollbg.Top + (scrollbg.Bottom - scrollbg.Top) / 2);
+                    polyn[1] = new PointF(scrollbg.Right + scrollbg.Width / 4,
+                        scrollbg.Top + (scrollbg.Bottom - scrollbg.Top) / 2);
+                    polyn[2] = polyn[1];
+                    float peak = 0;
+                    if (scaledvalue > 0)
                     {
-                        drawstring(HUDT.AS + _airspeed.ToString("0.0") + speedunit, font, fontsize,
-                            (SolidBrush) Brushes.Red, 1, scrollbg.Bottom + 5);
+                        peak = -scrollbg.Width / 4;
+                        if (scrollbg.Top + (scrollbg.Bottom - scrollbg.Top) / 2 + scaledvalue + peak <
+                            scrollbg.Top + (scrollbg.Bottom - scrollbg.Top) / 2)
+                            peak = -scaledvalue;
+                    }
+                    else if (scaledvalue < 0)
+                    {
+                        peak = +scrollbg.Width / 4;
+                        if (scrollbg.Top + (scrollbg.Bottom - scrollbg.Top) / 2 + scaledvalue + peak >
+                            scrollbg.Top + (scrollbg.Bottom - scrollbg.Top) / 2)
+                            peak = -scaledvalue;
+                    }
+
+                    polyn[2] = new PointF(scrollbg.Right + scrollbg.Width / 4,
+                        scrollbg.Top + (scrollbg.Bottom - scrollbg.Top) / 2 + scaledvalue + peak);
+                    polyn[3] = new PointF(scrollbg.Right,
+                        scrollbg.Top + (scrollbg.Bottom - scrollbg.Top) / 2 + scaledvalue);
+
+                    if (status)
+                    {
+                        graphicsObject.FillPolygon(Brushes.Blue, polyn);
+                    }
+
+                    // draw outsidebox
+                    graphicsObject.DrawPolygon(this._whitePen, poly);
+
+                    for (int a = 1; a < viewrange; a++)
+                    {
+                        graphicsObject.DrawLine(this._whitePen, scrollbg.Right + scrollbg.Width / 4,
+                            scrollbg.Top - linespace * a, scrollbg.Right + scrollbg.Width / 8,
+                            scrollbg.Top - linespace * a);
+                    }
+
+                    // wp distance
+                    var newdist = _disttowp;
+                    var newdistunit = distunit;
+                    if (newdist >= 1000)
+                    {
+                        if (distunit == "m")
+                        {
+                            newdistunit = "km";
+                            newdist = (float)Math.Round(newdist / 1000.0, 1);
+                        }
+                        else
+                        {
+                            newdistunit = "mi";
+                            newdist = (float)Math.Round(newdist / 5280.0, 1);
+                        }
                     }
                     else
                     {
-                        drawstring(HUDT.AS + _airspeed.ToString("0.0") + speedunit, font, fontsize, _whiteBrush, 1,
-                            scrollbg.Bottom + 5);
+                        newdist = (int)newdist;
                     }
 
-                    if (_lowgroundspeed)
+                    var wpPrefix = "WP ◀ ";
+                    if (_wpno > 0 && mode == "Auto")
                     {
-                        drawstring(HUDT.GS + _groundspeed.ToString("0.0") + speedunit, font, fontsize,
-                            (SolidBrush) Brushes.Red, 1, scrollbg.Bottom + fontsize + 2 + 10);
+                        wpPrefix = "WP " + _wpno + " ◀ ";
                     }
-                    else
+                    if (mode == "Loiter")
                     {
-                        drawstring(HUDT.GS + _groundspeed.ToString("0.0") + speedunit, font, fontsize, _whiteBrush,
-                            1, scrollbg.Bottom + fontsize + 2 + 10);
+                        wpPrefix = "↻ ";
                     }
+                    if (mode == "RTL")
+                    {
+                        wpPrefix = "H ◀ ";
+                    }
+                    if (mode == "Guided")
+                    {
+                        wpPrefix = "G ◀ ";
+                    }
+                    drawstring(wpPrefix + newdist + newdistunit, font, fontsize, _whiteBrush, scrollbg.Left + (fontsize / 2f), scrollbg.Bottom + (fontsize / 2f));
                 }
 
-                //drawstring(e,, new Font("Arial", fontsize + 2), whiteBrush, 1, scrollbg.Bottom + fontsize + 2 + 10);
-
                 // right scroller
-                scrollbg = new Rectangle(this.Width - this.Width / 10, halfheight - halfheight / 2, this.Width / 10,
-                    this.Height / 2);
+                scrollbg = new Rectangle(this.Width - this.Width / 10, halfheight - halfheight / 2, this.Width / 10, this.Height / 2);
 
                 if (displayalt)
                 {
                     graphicsObject.DrawRectangle(this._whitePen, scrollbg);
 
-                    graphicsObject.FillRectangle(SolidBrush, scrollbg);
+                    graphicsObject.FillRectangle(SlightlyTransparentBrush, scrollbg);
 
                     Point[] arrow = new Point[5];
 
-                    arrow[0] = new Point(0, -10);
-                    arrow[1] = new Point(scrollbg.Width - 10, -10);
-                    arrow[2] = new Point(scrollbg.Width - 5, 0);
-                    arrow[3] = new Point(scrollbg.Width - 10, 10);
-                    arrow[4] = new Point(0, 10);
+                    int arrowHalf = (int)(fontsize * 0.625f);
+                    int notchIndent = scrollbg.Width / 6;
+                    int tipOffset = scrollbg.Width / 10;
+                    arrow[0] = new Point(0, -arrowHalf);
+                    arrow[1] = new Point(scrollbg.Width - notchIndent, -arrowHalf);
+                    arrow[2] = new Point(scrollbg.Width - tipOffset, 0);
+                    arrow[3] = new Point(scrollbg.Width - notchIndent, arrowHalf);
+                    arrow[4] = new Point(0, arrowHalf);
 
                     graphicsObject.TranslateTransform(0, this.Height / 2);
 
@@ -2612,12 +2698,9 @@ namespace MissionPlanner.Controls
 
                         if (a % 5 == 0)
                         {
-                            //Console.WriteLine(a + " " + scrollbg.Left + " " + (scrollbg.Top - space * (a - start)) + " " + (scrollbg.Left + 20) + " " + (scrollbg.Top - space * (a - start)));
-                            graphicsObject.DrawLine(this._whitePen, scrollbg.Left, scrollbg.Top - space * (a - start),
-                                scrollbg.Left + 10, scrollbg.Top - space * (a - start));
-                            drawstring(String.Format("{0,5}", a), font, fontsize, _whiteBrush,
-                                scrollbg.Left + 0 + (int) (0 * fontoffset),
-                                scrollbg.Top - space * (a - start) - 6 - fontoffset);
+                            var ticklen = scrollbg.Width / 5;
+                            graphicsObject.DrawLine(this._whitePen, scrollbg.Left, scrollbg.Top - space * (a - start), scrollbg.Left + ticklen, scrollbg.Top - space * (a - start));
+                            drawstring(a.ToString(), font, fontsize, _whiteBrush, scrollbg.Left + (ticklen * 1.75f), (float) (scrollbg.Top - space * (a - start) - (fontsize / 1.5f)));
                         }
 
                     }
@@ -2635,7 +2718,7 @@ namespace MissionPlanner.Controls
                     poly[2] = new PointF(scrollbg.Left - scrollbg.Width / 4, scrollbg.Bottom - scrollbg.Width / 4);
                     poly[3] = new PointF(scrollbg.Left, scrollbg.Bottom);
 
-                    //verticalspeed
+                    //vertical speed
 
                     viewrange = 12;
 
@@ -2697,116 +2780,126 @@ namespace MissionPlanner.Controls
                     graphicsObject.ResetTransform();
                     graphicsObject.TranslateTransform(0, this.Height / 2);
 
-                    drawstring(((int) _alt).ToString("0 ") + altunit, font, 10, (SolidBrush) Brushes.AliceBlue,
-                        scrollbg.Left + 10, -9);
+                    drawstring(((int) _alt).ToString("0") + altunit, font, (fontsize * 0.75f), (SolidBrush) Brushes.White, scrollbg.Left + (notchIndent * 1.25f), ((fontsize * 0.8f) / -2f) - 2);
                     graphicsObject.ResetTransform();
-
-                    // mode and wp dist and wp
-                    if (_modechanged.AddSeconds(2) > datetime)
-                    {
-                        drawstring(_mode, font, fontsize, _redBrush, scrollbg.Left - 30,
-                            scrollbg.Bottom + 5);
-                    }
-                    else
-                    {
-                        drawstring(_mode, font, fontsize, _whiteBrush, scrollbg.Left - 30,
-                            scrollbg.Bottom + 5);
-                    }
-
-                    var newdist = _disttowp;
-                    var newdistunit = distunit;
-                    if (newdist >= 1000)
-                    {
-                        if (distunit == "m")
-                        {
-                            newdistunit = "k";
-                            newdist = (float)Math.Round(newdist / 1000.0, 1);
-                        }
-                        else
-                        {
-                            newdistunit = "mi";
-                            newdist = (float)Math.Round(newdist / 5280.0, 1);
-                        }
-                    }
-                    else
-                    {
-                        newdist = (int) newdist;
-                    }
-
-                    drawstring(newdist + newdistunit + ">" + _wpno, font, fontsize, _whiteBrush,
-                        scrollbg.Left - 30, scrollbg.Bottom + fontsize + 2 + 10);
                 }
+
+                // draw mode
+                var mode_x = graphicsObject.Width / 2;
+
+                var length = mode.ToCharArray().Length;
+                var wPerLetter = fontsize * 0.35f;
+                var textSizeHalf = ((length * wPerLetter) / 2);
+                var mode_text_x = mode_x - textSizeHalf;
+                var mode_height = fontsize * 2f;
+
+                PointF[] polyM = new PointF[4];
+                polyM[0] = new PointF(mode_x - textSizeHalf - (mode_height), graphicsObject.Bottom);
+                polyM[1] = new PointF(mode_x - textSizeHalf - (mode_height / 2f), graphicsObject.Bottom - mode_height);
+                polyM[2] = new PointF(mode_x + textSizeHalf + (mode_height / 2f), graphicsObject.Bottom - mode_height);
+                polyM[3] = new PointF(mode_x + textSizeHalf + (mode_height), graphicsObject.Bottom);
+
+                graphicsObject.FillPolygon(SlightlyTransparentBrush, polyM);
+                graphicsObject.DrawPolygon(_whitePen, polyM);
+
+                var modeBrush = new SolidBrush(Color.White);
+                if (_modechanged.AddSeconds(2) > datetime)
+                {
+                    modeBrush = _redBrush;
+                }
+                drawstring(_mode, font, fontsize, _whiteBrush, mode_x, graphicsObject.Bottom - (fontsize * 1.5f), true);
 
                 if (displayconninfo)
                 {
-                    if (_linkqualitygcs > 80)
-                        graphicsObject.DrawLine(this._greenPen, scrollbg.Left - 5,
-                        scrollbg.Top - (int) (fontsize * 2.2) - 2 - 20, scrollbg.Left - 5,
-                        scrollbg.Top - (int) (fontsize) - 2 - 20);
-                    if (_linkqualitygcs > 50)
-                        graphicsObject.DrawLine(this._greenPen, scrollbg.Left - 10,
-                            scrollbg.Top - (int) (fontsize * 2.2) - 2 - 15, scrollbg.Left - 10,
-                            scrollbg.Top - (int) (fontsize) - 2 - 20);
-                    if (_linkqualitygcs > 20)
-                        graphicsObject.DrawLine(this._greenPen, scrollbg.Left - 15,
-                            scrollbg.Top - (int) (fontsize * 2.2) - 2 - 10, scrollbg.Left - 15,
-                            scrollbg.Top - (int) (fontsize) - 2 - 20);
+                    // Signal strength indicator positioned above scrollbg
+                    float barSpacing = fontsize * 0.35f;
+                    float barWidth = fontsize * 0.2f;
+                    float maxBarHeight = fontsize;
+                    float barBaseY = scrollbg.Top - fontsize * 0.3f;
+                    float barsStartX = scrollbg.Left + fontsize * 0.2f;
 
-                    drawstring(_linkqualitygcs.ToString("0") + "%", font, fontsize, _whiteBrush,
-                        scrollbg.Left, scrollbg.Top - (int) (fontsize * 2.2) - 2 - 20);
-                    if (_linkqualitygcs == 0)
+                    // Draw 3 signal bars (height increases left to right)
+                    float[] barHeights = { maxBarHeight * 0.4f, maxBarHeight * 0.7f, maxBarHeight };
+                    int[] thresholds = { 20, 50, 80 };
+
+                    this._greenPen.Width = barWidth;
+                    this._redPen.Width = barWidth;
+
+                    for (int i = 0; i < 3; i++)
                     {
-                        graphicsObject.DrawLine(this._redPen, scrollbg.Left,
-                            scrollbg.Top - (int) (fontsize * 2.2) - 2 - 20, scrollbg.Left + 50,
-                            scrollbg.Top - (int) (fontsize * 2.2) - 2);
-
-                        graphicsObject.DrawLine(this._redPen, scrollbg.Left, scrollbg.Top - (int) (fontsize * 2.2) - 2,
-                            scrollbg.Left + 50, scrollbg.Top - (int) (fontsize * 2.2) - 2 - 20);
+                        float barX = barsStartX + i * barSpacing;
+                        float barTop = barBaseY - barHeights[i];
+                        var pen = _linkqualitygcs > thresholds[i] ? this._greenPen : this._redPen;
+                        graphicsObject.DrawLine(pen, barX, barBaseY, barX, barTop);
                     }
 
-                    drawstring(_datetime.ToString("HH:mm:ss"), font, fontsize, _whiteBrush,
-                        scrollbg.Left - 30, scrollbg.Top - fontsize - 2 - 20);
+                    this._greenPen.Width = 2;
+                    this._redPen.Width = 2;
+
+                    // Draw percentage text to the right of bars
+                    string qualityText = _linkqualitygcs.ToString("0") + "%";
+                    float textX = barsStartX + 3 * barSpacing + fontsize * 0.2f;
+                    float textY = barBaseY - maxBarHeight;
+                    drawstring(qualityText, font, fontsize - 2, _whiteBrush, textX, textY);
+
+                    // Draw X if disconnected
+                    if (_linkqualitygcs == 0)
+                    {
+                        float crossSize = fontsize * 0.7f;
+                        float crossX = barsStartX;
+                        float crossY = barBaseY - maxBarHeight;
+                        graphicsObject.DrawLine(this._redPen, crossX, crossY, crossX + crossSize, crossY + crossSize);
+                        graphicsObject.DrawLine(this._redPen, crossX, crossY + crossSize, crossX + crossSize, crossY);
+                    }
                 }
 
-                // AOA
+                // AOA - Angle of Attack indicator
+                // Bottom = 0° (safe/green), Top = critical AOA (danger/red)
+                // Arrow moves UP as AOA increases
                 if (displayAOASSA)
                 {
-                    scrollbg = new Rectangle((int) (this.Width - (double) this.Width / 6), halfheight + halfheight / 10,
-                        this.Width / 25, this.Height / 5);
+                    var v_shift = scrollbg.Width / 4;
+                    var h_shift = scrollbg.Width / 8;
+                    scrollbg = new Rectangle(
+                        (int) (this.Width * 6f / 7f) - h_shift,
+                        halfheight + halfheight / 10 - v_shift,
+                        this.Width / 50,
+                        this.Height / 5);
 
                     graphicsObject.ResetTransform();
 
+                    // Draw color zones: Red (top 15%), Yellow (middle 25%), Green (bottom 60%)
+                    float redZone = 0.15f;
+                    float yellowZone = 0.25f;
+                    float greenZone = 0.60f;
+
+                    // Red zone at top (critical/stall)
                     graphicsObject.FillRectangle(Brushes.Red,
-                        new RectangleF(scrollbg.Left, scrollbg.Top, scrollbg.Width,
-                            scrollbg.Height * (100 - _redSSAp) / 100));
+                        new RectangleF(scrollbg.Left, scrollbg.Top, scrollbg.Width, scrollbg.Height * redZone));
+                    // Yellow zone in middle (warning)
                     graphicsObject.FillRectangle(Brushes.Yellow,
-                        new RectangleF(scrollbg.Left, scrollbg.Top + scrollbg.Height * (100 - _redSSAp) / 100,
-                            scrollbg.Width, scrollbg.Height * (_redSSAp - _yellowSSAp) / 100));
+                        new RectangleF(scrollbg.Left, scrollbg.Top + scrollbg.Height * redZone, scrollbg.Width, scrollbg.Height * yellowZone));
+                    // Green zone at bottom (safe)
                     graphicsObject.FillRectangle(Brushes.Green,
-                        new RectangleF(scrollbg.Left, scrollbg.Top + scrollbg.Height * (100 - _yellowSSAp) / 100,
-                            scrollbg.Width, scrollbg.Height * (_yellowSSAp - _greenSSAp) / 100));
-                    graphicsObject.FillRectangle(Brushes.Blue,
-                        new RectangleF(scrollbg.Left, scrollbg.Top + scrollbg.Height * (100 - _greenSSAp) / 100,
-                            scrollbg.Width, scrollbg.Height * _greenSSAp / 100));
+                        new RectangleF(scrollbg.Left, scrollbg.Top + scrollbg.Height * (redZone + yellowZone), scrollbg.Width, scrollbg.Height * greenZone));
 
                     graphicsObject.DrawRectangle(this._whitePen, scrollbg);
 
-                    float AOA_ind = scrollbg.Height * (100 - _greenSSAp) / 100 -
-                                    (_AOA / _critAOA) * (scrollbg.Height * (_redSSAp - _greenSSAp) / 100);
-                    if (AOA_ind < 0)
-                        AOA_ind = 0;
-                    if (AOA_ind > scrollbg.Height)
-                        AOA_ind = scrollbg.Height;
+                    // Arrow position: 0 AOA = bottom, critAOA = top
+                    float aoaRatio = Math.Max(0, Math.Min(1, _AOA / _critAOA));
+                    float AOA_ind = scrollbg.Height * (1 - aoaRatio); // Invert so higher AOA = higher position
 
+                    // Draw arrow pointing right into the bar
+                    float arrowSize = scrollbg.Width;
+                    float arrowX = scrollbg.Left - (arrowSize * 0.75f);
+                    float arrowY = scrollbg.Top + AOA_ind;
                     PointF[] AOA_arrow = new PointF[3];
-                    AOA_arrow[0] = new PointF(scrollbg.Left + scrollbg.Width / 5, scrollbg.Top + AOA_ind);
-                    AOA_arrow[1] = new PointF(scrollbg.Left - scrollbg.Width / 2 + scrollbg.Width / 5,
-                        scrollbg.Top + scrollbg.Width / 2 + AOA_ind);
-                    AOA_arrow[2] = new PointF(scrollbg.Left - scrollbg.Width / 2 + scrollbg.Width / 5,
-                        scrollbg.Top - scrollbg.Width / 2 + AOA_ind);
+                    AOA_arrow[0] = new PointF(arrowX + arrowSize, arrowY); // Tip pointing right
+                    AOA_arrow[1] = new PointF(arrowX, arrowY - arrowSize / 2); // Top left
+                    AOA_arrow[2] = new PointF(arrowX, arrowY + arrowSize / 2); // Bottom left
 
                     graphicsObject.FillPolygon(Brushes.Black, AOA_arrow);
-                    graphicsObject.DrawPolygon(this._whitePen, AOA_arrow);
+                    graphicsObject.DrawPolygon(_whitePen, AOA_arrow);
                 }
 
 
@@ -2856,14 +2949,48 @@ namespace MissionPlanner.Controls
 
                     if (displayicons)
                     {
-                        var bottomsize = ((fontsize + 2) * 3) + fontoffset - 2;
-                        DrawImage(icon, 3, this.Height - bottomsize, bottomsize / 2, bottomsize);
+                        var bottomsize = ((fontsize + 2) * 3);
+                        var iconWidth = bottomsize / 2;
+                        var textX = iconWidth + 6;
 
-                        text = _batterylevel.ToString("0.00v") + " " + _current.ToString("0.0 A") + " " + (_batteryremaining) + "%";
-                        drawstring(text, font, fontsize + 1, textcolor, bottomsize / 2 + 6, yPos[1]);
-                        if (displayCellVoltage & (_batterycellcount != 0))
-                            drawstring((_batterylevel / _batterycellcount).ToString("0.00v"), font, fontsize, textcolor, bottomsize / 2 + 6, yPos[0]);
+                        // Y positions: % on bottom (6px padding), A above that, V on top
+                        var yPercent = this.Height - 6 - fontsize;
+                        var yCurrent = yPercent - fontsize;
+                        var yVoltage = yCurrent - fontsize;
 
+                        // Battery 1
+                        DrawImage(icon, 3, this.Height - bottomsize, iconWidth, bottomsize);
+                        drawstring(_batterylevel.ToString("0.00v"), font, fontsize, textcolor, textX, yVoltage);
+                        drawstring(_current.ToString("0.0A"), font, fontsize, textcolor, textX, yCurrent);
+                        drawstring(_batteryremaining + "%", font, fontsize, textcolor, textX, yPercent);
+
+                        // Battery 2 (if present)
+                        if (_batterylevel2 > 0 && batteryon2)
+                        {
+                            // Calculate battery 2 position (to the right of battery 1 with Width/16 gap)
+                            var batt1VoltageWidth = calcsize(_batterylevel.ToString("0.00v"), fontsize, textcolor).Width;
+                            var batt1CurrentWidth = calcsize(_current.ToString("0.0A"), fontsize, textcolor).Width;
+                            var batt1PercentWidth = calcsize(_batteryremaining + "%", fontsize, textcolor).Width;
+                            var batt1TextWidth = Math.Max(batt1VoltageWidth, Math.Max(batt1CurrentWidth, batt1PercentWidth));
+                            var batt2X = textX + batt1TextWidth + this.Width / 64;
+
+                            // Select icon for battery 2
+                            Image icon2;
+                            if (_batteryremaining2 > 75)
+                                icon2 = HUDT.batt_4;
+                            else if (_batteryremaining2 > 50)
+                                icon2 = HUDT.batt_3;
+                            else if (_batteryremaining2 > 25)
+                                icon2 = HUDT.batt_2;
+                            else
+                                icon2 = HUDT.batt_1;
+
+                            DrawImage(icon2, (int)batt2X, this.Height - bottomsize, iconWidth, bottomsize);
+                            var text2X = batt2X + iconWidth + 3;
+                            drawstring(_batterylevel2.ToString("0.00v"), font, fontsize, textcolor, text2X, yVoltage);
+                            drawstring(_current2.ToString("0.0A"), font, fontsize, textcolor, text2X, yCurrent);
+                            drawstring(_batteryremaining2 + "%", font, fontsize, textcolor, text2X, yPercent);
+                        }
                     }
                     else
                     {
@@ -2964,16 +3091,18 @@ namespace MissionPlanner.Controls
                         //If displayicons is true then we display image icons instead of text on GPS staus
                         if (displayicons)
                         {
-                            //this position calculation is ugly but seems to work even when resizing the HUD
-                            var hor_pos = 0;
-                            if (a == 0 && _gpsfix2 == 0) hor_pos = this.Width - (((fontsize + 8) * 3)) - 3;
-                            else hor_pos = this.Width - (((fontsize + 8) * 3) * 2) - 5;
+                            var width = (fontsize + 8) * 3;
+                            var gap = 5;
+                            var rightMargin = 3;
+                            // GPS2 is slot 1 (rightmost), GPS1 is slot 2 when dual or slot 1 when single
+                            int slot;
+                            if (_gpsfix2 > 0)
+                                slot = (a == 0) ? 2 : 1; // GPS1 at slot 2, GPS2 at slot 1
+                            else
+                                slot = 1; // Single GPS at slot 1
 
-                            if (a == 1) hor_pos = this.Width - (((fontsize + 8) * 3)) - 3;
-
-                            //DrawImage(icon, hor_pos, this.Height - ((fontsize + 2) * 3) - fontoffset + 2, (fontsize + 8) * 3, fontsize + 8);
-                            DrawImage(icon, hor_pos, this.Height - (fontsize + 13), (fontsize + 8) * 3, fontsize + 8);
-
+                            var hor_pos = this.Width - rightMargin - slot * width - (slot - 1) * gap;
+                            DrawImage(icon, hor_pos, this.Height - (fontsize + 13) + 2, width, fontsize + 8);
                         }
                         else
                         {
@@ -2995,8 +3124,9 @@ namespace MissionPlanner.Controls
 
                 // custom user items
                 graphicsObject.ResetTransform();
-                int height = this.Height - ((fontsize + 2) * 3) - fontoffset - fontsize - 8;
-                foreach (string key in CustomItems.Keys)
+                var drawX = this.Width / 8 + 20;
+                int height = (this.Height / 2) + 5;
+                foreach (string key in CustomItems.Keys.Cast<string>().OrderBy(k => k))
                 {
                     try
                     {
@@ -3006,12 +3136,12 @@ namespace MissionPlanner.Controls
                         if (item.Item.Name.Contains("lat") || item.Item.Name.Contains("lng"))
                         {
                             drawstring(item.Header + item.GetValue.ToString("0.#######"), font,
-                                fontsize + 2, _whiteBrush, this.Width / 8, height);
+                                fontsize - 2, _whiteBrush, drawX, height);
                         }
                         else if (item.Item.Name == "battery_usedmah")
                         {
-                            drawstring(item.Header + item.GetValue.ToString("0"), font, fontsize + 2,
-                                _whiteBrush, this.Width / 8, height);
+                            drawstring(item.Header + item.GetValue.ToString("0"), font, fontsize - 2,
+                                _whiteBrush, drawX, height);
                         }
                         else if (item.Item.Name == "timeInAir")
                         {
@@ -3023,24 +3153,21 @@ namespace MissionPlanner.Controls
                             int secs = (int) (stime % 60);
                             drawstring(
                                 item.Header + hrs.ToString("00") + ":" + mins.ToString("00") + ":" +
-                                secs.ToString("00"), font, fontsize + 2, _whiteBrush, this.Width / 8, height);
+                                secs.ToString("00"), font, fontsize - 2, _whiteBrush, drawX, height);
                         }
                         else
                         {
-                            drawstring(item.Header + item.GetValue.ToString("0.##"), font, fontsize + 2,
-                                _whiteBrush, this.Width / 8, height);
+                            drawstring(item.Header + item.GetValue.ToString("0.##"), font, fontsize - 2,
+                                _whiteBrush, drawX, height);
                         }
 
-                        height -= fontsize + 5;
+                        height += fontsize + 1;
                     }
                     catch
                     {
                     }
 
                 }
-
-
-
 
                 graphicsObject.TranslateTransform(this.Width / 2, this.Height / 2);
 
@@ -3053,57 +3180,41 @@ namespace MissionPlanner.Controls
 
                 if (status == false) // not armed
                 {
-                    //if ((armedtimer.AddSeconds(8) > DateTime.Now))
                     {
-
-                        var size = calcsize(HUDT.DISARMED, fontsize + 10, (SolidBrush)Brushes.Red);
-
-                        drawstring(HUDT.DISARMED, font, fontsize + 10, (SolidBrush) Brushes.Red, size.Width/ -2/* - 85*/,
-                            halfheight / -3);
+                        drawstring(HUDT.DISARMED, font, fontsize + 10, (SolidBrush) Brushes.Red, 0, halfheight / -3, true);
                         statuslast = status;
                     }
                 }
-                else if (status == true) // armed
+                else if (status) // armed
                 {
                     if ((armedtimer.AddSeconds(8) > DateTime.Now))
                     {
-                        var size = calcsize(HUDT.ARMED, fontsize + 20, (SolidBrush)Brushes.Red);
-                        drawstring(HUDT.ARMED, font, fontsize + 20, (SolidBrush) Brushes.Red, size.Width / -2/* - 70*/,
-                            halfheight / -3);
+                        drawstring(HUDT.ARMED, font, fontsize + 20, (SolidBrush) Brushes.Red, 0, halfheight / -3, true);
                         statuslast = status;
                     }
                 }
                 
                 if (safetyactive)
                 {
-                    var size = calcsize(HUDT.SAFE, fontsize + 10, (SolidBrush)Brushes.Red);
-                    drawstring(HUDT.SAFE, font, fontsize + 10, (SolidBrush)Brushes.Red, size.Width / -2, halfheight / -6);
+                    drawstring(HUDT.SAFE, font, fontsize + 10, (SolidBrush)Brushes.Red, 0, halfheight / -2, true);
                     statuslast = status;
                 }
 
-                if (failsafe == true)
+                if (failsafe)
                 {
-                    drawstring(HUDT.FAILSAFE, font, fontsize + 20, (SolidBrush) Brushes.Red, -85,
-                        halfheight / -HUDT.FailsafeH);
+                    drawstring(HUDT.FAILSAFE, font, fontsize + 20, (SolidBrush) Brushes.Red, 0, halfheight / -HUDT.FailsafeH, true);
                     statuslast = status;
                 }
 
                 if (message != null && message != "")
                 {
-                    Brush brush;
+                    Brush brush = _whiteBrush;
                     if (messageSeverity <= MAVLink.MAV_SEVERITY.ERROR)
                         brush = Brushes.Red;
                     else if (messageSeverity <= MAVLink.MAV_SEVERITY.WARNING)
                         brush = Brushes.Yellow;
-                    else
-                        brush = Brushes.White;
 
-                    var newfontsize = calcfontsize(message, font, fontsize + 10, (SolidBrush) brush, Width - 50 - 50);
-
-                    var size = calcsize(message, newfontsize, (SolidBrush) brush);
-
-                    drawstring(message, font, newfontsize, (SolidBrush) brush, size.Width / -2,
-                        halfheight / 3);
+                    drawstring(message, font, fontsize * 1.25f, (SolidBrush) brush, 0, halfheight / 3, true);
                 }
 
                 graphicsObject.ResetTransform();
@@ -3113,8 +3224,11 @@ namespace MissionPlanner.Controls
                     if (displayicons)
                     {
                         var width = (fontsize + 8) * 3;
-                        vibehitzone = new Rectangle(this.Width - (width * 4) + width / 2 - 5, this.Height - (fontsize + 13), (fontsize + 8) * 3, fontsize + 8);
-
+                        var gap = 5;
+                        var rightMargin = 3;
+                        int gpsCount = (_gpsfix2 > 0) ? 2 : 1;
+                        int slot = gpsCount + 1; // Vibe is after GPS icons
+                        vibehitzone = new Rectangle(this.Width - rightMargin - slot * width - (slot - 1) * gap, this.Height - (fontsize + 13), width, fontsize + 8);
                     }
                     else
                     {
@@ -3169,11 +3283,15 @@ namespace MissionPlanner.Controls
                     if (displayicons)
                     {
                         var width = (fontsize + 8) * 3;
-                        ekfhitzone = new Rectangle(this.Width - width * 5 + width / 2 - 10 , this.Height - (fontsize + 13), (fontsize + 8) * 3, fontsize + 8);
+                        var gap = 5;
+                        var rightMargin = 3;
+                        int gpsCount = (_gpsfix2 > 0) ? 2 : 1;
+                        int slot = gpsCount + 2; // EKF is after GPS icons and Vibe
+                        ekfhitzone = new Rectangle(this.Width - rightMargin - slot * width - (slot - 1) * gap, this.Height - (fontsize + 13), width, fontsize + 8);
                     }
                     else
                     {
-                        ekfhitzone = new Rectangle(this.Width - 23 * fontsize,yPos[1], 40, fontsize * 2);
+                        ekfhitzone = new Rectangle(this.Width - 23 * fontsize, yPos[1], 40, fontsize * 2);
                     }
 
                     if (ekfstatus > 0.5)
@@ -3216,40 +3334,33 @@ namespace MissionPlanner.Controls
 
                 if (displayprearm && status == false) // not armed
                 {
-                    if (displayicons)
-                    {
-                        var width = (fontsize + 8) * 3;
-                        prearmhitzone = new Rectangle(this.Width - width * 5 + width / 2 - 7, this.Height - (fontsize*2 + 25), width * 2, fontsize + 8);
-                    }
-                    else
-                    {
-                        int x = this.Width - 24 * fontsize;
-                        if (!prearmstatus) x -= 2 * fontsize;
-                        // Estimate the width of the string for the hit zone
-                        int width = TextRenderer.MeasureText(prearmstatus ? HUDT.ReadyToArm : HUDT.NotReadyToArm, new Font(HUDT.Font, fontsize + 2)).Width;
-                        prearmhitzone = new Rectangle(x, yPos[0] - 4, width, fontsize * 2);
-                    }
+                    // Auto-width based on text, anchored to right, 3px above GPS row
+                    string prearmText = prearmstatus ? HUDT.ReadyToArm : HUDT.NotReadyToArm;
+                    var textSize = TextRenderer.MeasureText(prearmText, new Font(HUDT.Font, fontsize));
+                    int rightMargin = 3;
+                    int prearmY = this.Height - (fontsize + 13) - 3 - textSize.Height; // 3px above GPS row
+                    prearmhitzone = new Rectangle(this.Width - rightMargin - textSize.Width, prearmY, textSize.Width, textSize.Height);
 
                     if (prearmstatus)
                     {
                         if (displayicons)
                         {
-                            DrawImage(HUDT.prearm_green, prearmhitzone.X, prearmhitzone.Y + 2, prearmhitzone.Width, prearmhitzone.Height);
+                            DrawImage(HUDT.prearm_green, prearmhitzone.X, prearmhitzone.Y, prearmhitzone.Width, prearmhitzone.Height);
                         }
                         else
                         {
-                            drawstring(HUDT.ReadyToArm, font, fontsize + 2, _whiteBrush, prearmhitzone.X, prearmhitzone.Y);
+                            drawstring(HUDT.ReadyToArm, font, fontsize, _whiteBrush, prearmhitzone.X, prearmhitzone.Y);
                         }
                     }
                     else
                     {
                         if (displayicons)
                         {
-                            DrawImage(HUDT.prearm_red, prearmhitzone.X, prearmhitzone.Y + 2, prearmhitzone.Width, prearmhitzone.Height);
+                            DrawImage(HUDT.prearm_red, prearmhitzone.X, prearmhitzone.Y, prearmhitzone.Width, prearmhitzone.Height);
                         }
                         else
                         {
-                            drawstring(HUDT.NotReadyToArm, font, fontsize + 2, (SolidBrush)Brushes.Red, prearmhitzone.X, prearmhitzone.Y);
+                            drawstring(HUDT.NotReadyToArm, font, fontsize, (SolidBrush) Brushes.Red, prearmhitzone.X, prearmhitzone.Y);
                         }
                     }
                 }
@@ -3258,8 +3369,6 @@ namespace MissionPlanner.Controls
                 {
                     return;
                 }
-
-                //                Console.WriteLine("HUD 1 " + (DateTime.Now - starttime).TotalMilliseconds + " " + DateTime.Now.Millisecond);
 
                 lock (streamlock)
                 {
@@ -3381,7 +3490,8 @@ namespace MissionPlanner.Controls
                 }
                 else
                 {
-                    size += charDict[charid].width;
+                    // Apply same scale factor as drawstring
+                    size += charDict[charid].width * (fontsize / (fontsize + 5));
                 }
             }
 
@@ -3400,107 +3510,151 @@ namespace MissionPlanner.Controls
         }
 
         readonly float[] texCoords = { 0.0f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f, 0.0f };
+        readonly float[] _vertices = new float[8]; // reusable vertices array
 
-        void drawstring(string text, Font font, float fontsize, SolidBrush brush, float x, float y)
+        void drawstring(string text, Font font, float fontsize, SolidBrush brush, float x, float y, bool center = false)
         {
             if (!opengl)
             {
-                drawstringGDI(text, font, fontsize, brush, x, y);
+                drawstringGDI(text, font, fontsize, brush, x, y, center);
                 return;
             }
 
-            if (text == null || text == "")
+            if (string.IsNullOrEmpty(text))
                 return;
-            /*
-            OpenTK.Graphics.Begin();
-            GL.PushMatrix();
-            GL.Translate(x, y, 0);
-            printer.Print(text, font, c);
-            GL.PopMatrix(); printer.End();
-            */
 
-           
             GL.Enable(EnableCap.Texture2D);
             GL.BlendFunc(BlendingFactor.SrcAlpha, BlendingFactor.OneMinusSrcAlpha);
             GL.Color4(1f, 1, 1, 1);
 
             GL.TexCoordPointer(2, TexCoordPointerType.Float, 0, texCoords);
             GL.EnableClientState(ArrayCap.TextureCoordArray);
-
             GL.EnableClientState(ArrayCap.VertexArray);
 
-            float maxy = 1;
+            int brushColorArgb = brush.Color.ToArgb();
+            int fontsizeKey = (int)(fontsize * 1000);
+            float spaceWidth = this.Width / 150f;
+
+            // Pre-create all characters when centering to ensure accurate width calculation
+            if (center)
+            {
+                foreach (char cha in text)
+                {
+                    int charid = (int)cha ^ fontsizeKey ^ brushColorArgb;
+                    if (!charDict.ContainsKey(charid))
+                    {
+                        float maxx = spaceWidth;
+                        float maxy = 1;
+
+                        var pth = new GraphicsPath();
+                        pth.AddString(cha.ToString(), font.FontFamily, 0, fontsize + 5, Point.Empty,
+                            StringFormat.GenericTypographic);
+
+                        if (pth.PointCount > 0)
+                        {
+                            var bounds = pth.GetBounds();
+                            maxx = Math.Max(maxx, bounds.Right);
+                            maxy = Math.Max(maxy, bounds.Bottom);
+                        }
+
+                        int larger = (int)Math.Max(maxx, maxy) + 1;
+
+                        var charData = new character()
+                        {
+                            bitmap = new Bitmap(NextPowerOf2(larger), NextPowerOf2(larger),
+                                System.Drawing.Imaging.PixelFormat.Format32bppArgb),
+                            size = (int)fontsize,
+                            pth = pth,
+                            width = (int)(maxx + 2)
+                        };
+
+                        charData.bitmap.MakeTransparent(Color.Transparent);
+
+                        using (var gfx = Graphics.FromImage(charData.bitmap))
+                        {
+                            gfx.SmoothingMode = SmoothingMode.AntiAlias;
+                            gfx.DrawPath(this._p, pth);
+                            gfx.FillPath(brush, pth);
+                        }
+
+                        // create texture
+                        GL.TexEnv(TextureEnvTarget.TextureEnv, TextureEnvParameter.TextureEnvMode,
+                            (float)TextureEnvModeCombine.Replace);
+
+                        GL.GenTextures(1, out int textureId);
+                        GL.BindTexture(TextureTarget.Texture2D, textureId);
+
+                        BitmapData data = charData.bitmap.LockBits(new System.Drawing.Rectangle(0, 0, charData.bitmap.Width, charData.bitmap.Height),
+                            ImageLockMode.ReadOnly, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
+
+                        GL.TexImage2D(TextureTarget.Texture2D, 0, PixelInternalFormat.Rgba, data.Width, data.Height, 0,
+                            OpenTK.Graphics.OpenGL.PixelFormat.Bgra, PixelType.UnsignedByte, data.Scan0);
+
+                        GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMinFilter,
+                            (int)TextureMinFilter.Linear);
+                        GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMagFilter,
+                            (int)TextureMagFilter.Linear);
+
+                        charData.bitmap.UnlockBits(data);
+                        charData.gltextureid = textureId;
+                        charDict[charid] = charData;
+
+                        huddrawtime = 0;
+                    }
+                }
+
+                var size = calcsize(text, fontsize, brush);
+                x -= size.Width / 2f;
+            }
 
             foreach (char cha in text)
             {
-                int charno = (int)cha;
+                int charid = (int)cha ^ fontsizeKey ^ brushColorArgb;
 
-                int charid = charno ^ (int)(fontsize * 1000) ^ brush.Color.ToArgb();
-
-                if (!charDict.ContainsKey(charid))
+                if (!charDict.TryGetValue(charid, out character charData))
                 {
-                    //charbitmaptexid
-
-                    float maxx = this.Width / 150; // for space
+                    float maxx = spaceWidth;
+                    float maxy = 1;
 
                     var pth = new GraphicsPath();
-
-                    if (text != null)
-                        pth.AddString(cha + "", font.FontFamily, 0, fontsize + 5, new Point((int)0, (int)0),
-                            StringFormat.GenericTypographic);
+                    pth.AddString(cha.ToString(), font.FontFamily, 0, fontsize + 5, Point.Empty,
+                        StringFormat.GenericTypographic);
 
                     if (pth.PointCount > 0)
                     {
-                        foreach (PointF pnt in pth.PathPoints)
-                        {
-                            if (pnt.X > maxx)
-                                maxx = pnt.X;
-
-                            if (pnt.Y > maxy)
-                                maxy = pnt.Y;
-                        }
+                        var bounds = pth.GetBounds();
+                        maxx = Math.Max(maxx, bounds.Right);
+                        maxy = Math.Max(maxy, bounds.Bottom);
                     }
 
-                    var larger = maxx > maxy ? (int)maxx + 1 : (int)maxy + 1;
+                    int larger = (int)Math.Max(maxx, maxy) + 1;
 
-                    charDict[charid] = new character()
+                    charData = new character()
                     {
                         bitmap = new Bitmap(NextPowerOf2(larger), NextPowerOf2(larger),
                             System.Drawing.Imaging.PixelFormat.Format32bppArgb),
                         size = (int)fontsize,
-                        pth = pth
+                        pth = pth,
+                        width = (int)(maxx + 2)
                     };
 
-                    charDict[charid].bitmap.MakeTransparent(Color.Transparent);
+                    charData.bitmap.MakeTransparent(Color.Transparent);
 
-                    // create bitmap
-                    using (var gfx = Graphics.FromImage(charDict[charid].bitmap))
+                    using (var gfx = Graphics.FromImage(charData.bitmap))
                     {
-                        gfx.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
-
+                        gfx.SmoothingMode = SmoothingMode.AntiAlias;
                         gfx.DrawPath(this._p, pth);
-
-                        //Draw the face
-
                         gfx.FillPath(brush, pth);
                     }
 
-                    charDict[charid].width = (int)(maxx + 2);
-
-                    //charbitmaps[charid] = charbitmaps[charid].Clone(new RectangleF(0, 0, maxx + 2, maxy + 2), charbitmaps[charid].PixelFormat);
-
-                    //charbitmaps[charno * (int)fontsize].Save(charno + " " + (int)fontsize + ".png");
-
                     // create texture
-                    int textureId;
                     GL.TexEnv(TextureEnvTarget.TextureEnv, TextureEnvParameter.TextureEnvMode,
-                        (float)TextureEnvModeCombine.Replace); //Important, or wrong color on some computers
+                        (float)TextureEnvModeCombine.Replace);
 
-                    Bitmap bitmap = charDict[charid].bitmap;
-                    GL.GenTextures(1, out textureId);
+                    GL.GenTextures(1, out int textureId);
                     GL.BindTexture(TextureTarget.Texture2D, textureId);
 
-                    BitmapData data = bitmap.LockBits(new System.Drawing.Rectangle(0, 0, bitmap.Width, bitmap.Height),
+                    BitmapData data = charData.bitmap.LockBits(new System.Drawing.Rectangle(0, 0, charData.bitmap.Width, charData.bitmap.Height),
                         ImageLockMode.ReadOnly, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
 
                     GL.TexImage2D(TextureTarget.Texture2D, 0, PixelInternalFormat.Rgba, data.Width, data.Height, 0,
@@ -3511,34 +3665,31 @@ namespace MissionPlanner.Controls
                     GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMagFilter,
                         (int)TextureMagFilter.Linear);
 
-                    //    GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMagFilter, (int)All.Nearest);
-                    //GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMinFilter, (int)All.Nearest);
-                    GL.Flush();
-                    bitmap.UnlockBits(data);
+                    charData.bitmap.UnlockBits(data);
+                    charData.gltextureid = textureId;
+                    charDict[charid] = charData;
 
-                    charDict[charid].gltextureid = textureId;
-
-                    // tweak here for font generation
                     huddrawtime = 0;
                 }
-
-                float scale = 1.0f;
 
                 // dont draw spaces
                 if (cha != ' ')
                 {
-                    float[] vertices = {
-                        x, y+ charDict[charid].bitmap.Height * scale ,
-                        x + charDict[charid].bitmap.Width * scale, y+ charDict[charid].bitmap.Height * scale,
-                        x + charDict[charid].bitmap.Width * scale, y,
-                        x, y  }; 
+                    // Scale to make rendered height exactly fontsize
+                    float scale = fontsize / (fontsize + 5);
+                    float w = charData.bitmap.Width * scale;
+                    float h = charData.bitmap.Height * scale;
+                    _vertices[0] = x;     _vertices[1] = y + h;
+                    _vertices[2] = x + w; _vertices[3] = y + h;
+                    _vertices[4] = x + w; _vertices[5] = y;
+                    _vertices[6] = x;     _vertices[7] = y;
 
-                    GL.BindTexture(TextureTarget.Texture2D, charDict[charid].gltextureid);
-                    GL.VertexPointer(2, VertexPointerType.Float, 0, vertices);
+                    GL.BindTexture(TextureTarget.Texture2D, charData.gltextureid);
+                    GL.VertexPointer(2, VertexPointerType.Float, 0, _vertices);
                     GL.DrawArrays(PrimitiveType.Quads, 0, 4);
                 }
 
-                x += charDict[charid].width * scale;
+                x += charData.width * (fontsize / (fontsize + 5));
             }
             GL.DisableClientState(ArrayCap.TextureCoordArray);
             GL.DisableClientState(ArrayCap.VertexArray);
@@ -3546,96 +3697,120 @@ namespace MissionPlanner.Controls
             GL.BindTexture(TextureTarget.Texture2D, 0);
         }
 
-        void drawstringGDI(string text, Font font, float fontsize, SolidBrush brush, float x, float y)
+        void drawstringGDI(string text, Font font, float fontsize, SolidBrush brush, float x, float y, bool center = false)
         {
-            if (text == null || text == "")
+            if (string.IsNullOrEmpty(text))
                 return;
 
-            float maxy = 0;
+            int brushColorArgb = brush.Color.ToArgb();
+            int fontsizeKey = (int)(fontsize * 1000);
+            float spaceWidth = this.Width / 150f;
+
+            // Pre-create all characters when centering to ensure accurate width calculation
+            if (center)
+            {
+                foreach (char cha in text)
+                {
+                    int charid = (int)cha ^ fontsizeKey ^ brushColorArgb;
+                    if (!charDict.ContainsKey(charid))
+                    {
+                        float maxx = spaceWidth;
+                        float maxy = 1;
+
+                        var pth = new GraphicsPath();
+                        pth.AddString(cha.ToString(), font.FontFamily, 0, fontsize + 5, Point.Empty,
+                            StringFormat.GenericTypographic);
+
+                        if (pth.PointCount > 0)
+                        {
+                            var bounds = pth.GetBounds();
+                            maxx = Math.Max(maxx, bounds.Right);
+                            maxy = Math.Max(maxy, bounds.Bottom);
+                        }
+
+                        int larger = (int)Math.Max(maxx, maxy) + 1;
+
+                        var charData = new character()
+                        {
+                            bitmap = new Bitmap(NextPowerOf2(larger), NextPowerOf2(larger),
+                                System.Drawing.Imaging.PixelFormat.Format32bppArgb),
+                            size = (int)fontsize,
+                            pth = pth,
+                            width = (int)(maxx + 2)
+                        };
+
+                        charData.bitmap.MakeTransparent(Color.Transparent);
+
+                        using (var gfx = Graphics.FromImage(charData.bitmap))
+                        {
+                            gfx.SmoothingMode = SmoothingMode.AntiAlias;
+                            gfx.DrawPath(this._p, pth);
+                            gfx.FillPath(brush, pth);
+                        }
+
+                        charDict[charid] = charData;
+                    }
+                }
+
+                var size = calcsize(text, fontsize, brush);
+                x -= size.Width / 2f;
+            }
 
             foreach (char cha in text)
             {
-                int charno = (int) cha;
+                int charid = (int)cha ^ fontsizeKey ^ brushColorArgb;
 
-                int charid = charno ^ (int) (fontsize * 1000) ^ brush.Color.ToArgb();
-
-                if (!charDict.ContainsKey(charid))
+                if (!charDict.TryGetValue(charid, out character charData))
                 {
-                    //charbitmaptexid
-
-                    float maxx = this.Width / 150; // for space
+                    float maxx = spaceWidth;
+                    float maxy = 1;
 
                     var pth = new GraphicsPath();
-
-                    if (text != null)
-                        pth.AddString(cha + "", font.FontFamily, 0, fontsize + 5, new Point((int) 0, (int) 0),
-                            StringFormat.GenericTypographic);
+                    pth.AddString(cha.ToString(), font.FontFamily, 0, fontsize + 5, Point.Empty,
+                        StringFormat.GenericTypographic);
 
                     if (pth.PointCount > 0)
                     {
-                        foreach (PointF pnt in pth.PathPoints)
-                        {
-                            if (pnt.X > maxx)
-                                maxx = pnt.X;
-
-                            if (pnt.Y > maxy)
-                                maxy = pnt.Y;
-                        }
+                        var bounds = pth.GetBounds();
+                        maxx = Math.Max(maxx, bounds.Right);
+                        maxy = Math.Max(maxy, bounds.Bottom);
                     }
 
-                    var larger = maxx > maxy ? (int) maxx + 1 : (int) maxy + 1;
+                    int larger = (int)Math.Max(maxx, maxy) + 1;
 
-                    charDict[charid] = new character()
+                    charData = new character()
                     {
                         bitmap = new Bitmap(NextPowerOf2(larger), NextPowerOf2(larger),
                             System.Drawing.Imaging.PixelFormat.Format32bppArgb),
-                        size = (int) fontsize,
-                        pth = pth
+                        size = (int)fontsize,
+                        pth = pth,
+                        width = (int)(maxx + 2)
                     };
 
-                    charDict[charid].bitmap.MakeTransparent(Color.Transparent);
+                    charData.bitmap.MakeTransparent(Color.Transparent);
 
-                    // create bitmap
-                    using (var gfx = Graphics.FromImage(charDict[charid].bitmap))
+                    using (var gfx = Graphics.FromImage(charData.bitmap))
                     {
-                        gfx.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
-
+                        gfx.SmoothingMode = SmoothingMode.AntiAlias;
                         gfx.DrawPath(this._p, pth);
-
-                        //Draw the face
-
                         gfx.FillPath(brush, pth);
                     }
 
-                    charDict[charid].width = (int) (maxx + 2);
+                    charDict[charid] = charData;
                 }
 
-                // draw it
-
-                float scale = 1.0f;
                 // dont draw spaces
                 if (cha != ' ')
                 {
-                    DrawImage(charDict[charid].bitmap, (int) x, (int) y, charDict[charid].bitmap.Width, charDict[charid].bitmap.Height, charDict[charid].gltextureid);
-                    /*
-                    graphicsObjectGDIP.TranslateTransform(x,y);
-                    graphicsObjectGDIP.DrawPath(this._p, charDict[charid].pth);
-
-                    //Draw the face
-
-                    graphicsObjectGDIP.FillPath(brush, charDict[charid].pth);
-
-                    graphicsObjectGDIP.TranslateTransform(-x, -y);
-                    */
-                }
-                else
-                {
-
+                    // Scale to make rendered height exactly fontsize
+                    float scale = fontsize / (fontsize + 5);
+                    int w = (int)(charData.bitmap.Width * scale);
+                    int h = (int)(charData.bitmap.Height * scale);
+                    DrawImage(charData.bitmap, (int)x, (int)y, w, h, charData.gltextureid);
                 }
 
-                x += charDict[charid].width * scale;
+                x += charData.width * (fontsize / (fontsize + 5));
             }
-
         }
 
         protected override void OnHandleCreated(EventArgs e)

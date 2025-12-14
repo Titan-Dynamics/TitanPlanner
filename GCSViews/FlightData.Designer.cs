@@ -24,11 +24,9 @@ namespace MissionPlanner.GCSViews
             this.gStreamerStopToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.setAspectRatioToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.userItemsToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            this.russianHudToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.swapWithMapToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.groundColorToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.setBatteryCellCountToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            this.showIconsToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.bindingSourceHud = new System.Windows.Forms.BindingSource(this.components);
             this.contextMenuStripactionstab = new System.Windows.Forms.ContextMenuStrip(this.components);
             this.customizeToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
@@ -401,16 +399,21 @@ namespace MissionPlanner.GCSViews
             this.hud1.DataBindings.Add(new System.Windows.Forms.Binding("targetspeed", this.bindingSourceHud, "targetairspeed", true));
             this.hud1.DataBindings.Add(new System.Windows.Forms.Binding("turnrate", this.bindingSourceHud, "turnrate", true));
             this.hud1.DataBindings.Add(new System.Windows.Forms.Binding("verticalspeed", this.bindingSourceHud, "verticalspeed", true));
+            this.hud1.DataBindings.Add(new System.Windows.Forms.Binding("accel_air", this.bindingSourceHud, "accel_air", true));
+            this.hud1.DataBindings.Add(new System.Windows.Forms.Binding("lowairspeed", this.bindingSourceHud, "lowairspeed", true));
+            this.hud1.DataBindings.Add(new System.Windows.Forms.Binding("lowgroundspeed", this.bindingSourceHud, "lowgroundspeed", true));
             this.hud1.DataBindings.Add(new System.Windows.Forms.Binding("vibex", this.bindingSourceHud, "vibex", true));
             this.hud1.DataBindings.Add(new System.Windows.Forms.Binding("vibey", this.bindingSourceHud, "vibey", true));
             this.hud1.DataBindings.Add(new System.Windows.Forms.Binding("vibez", this.bindingSourceHud, "vibez", true));
             this.hud1.DataBindings.Add(new System.Windows.Forms.Binding("wpno", this.bindingSourceHud, "wpno", true));
+            this.hud1.DataBindings.Add(new System.Windows.Forms.Binding("distToHome", this.bindingSourceHud, "DistToHome", true));
+            this.hud1.DataBindings.Add(new System.Windows.Forms.Binding("AZToMav", this.bindingSourceHud, "AZToMAV", true));
             this.hud1.DataBindings.Add(new System.Windows.Forms.Binding("xtrack_error", this.bindingSourceHud, "xtrack_error", true));
             this.hud1.DataBindings.Add(new System.Windows.Forms.Binding("AOA", this.bindingSourceHud, "AOA", true));
             this.hud1.DataBindings.Add(new System.Windows.Forms.Binding("SSA", this.bindingSourceHud, "SSA", true));
             this.hud1.DataBindings.Add(new System.Windows.Forms.Binding("critAOA", this.bindingSourceHud, "crit_AOA", true));
             this.hud1.datetime = new System.DateTime(((long)(0)));
-            this.hud1.displayAOASSA = false;
+            this.hud1.displayAOASSA = true;
             this.hud1.displayCellVoltage = false;
             this.hud1.displayicons = false;
             this.hud1.disttowp = 0F;
@@ -441,7 +444,6 @@ namespace MissionPlanner.GCSViews
             this.hud1.pitch = 0F;
             this.hud1.prearmstatus = false;
             this.hud1.roll = 0F;
-            this.hud1.Russian = false;
             this.hud1.safetyactive = false;
             this.hud1.skyColor1 = System.Drawing.Color.Blue;
             this.hud1.skyColor2 = System.Drawing.Color.LightBlue;
@@ -453,6 +455,7 @@ namespace MissionPlanner.GCSViews
             this.hud1.targetspeed = 0F;
             this.hud1.turnrate = 0F;
             this.hud1.verticalspeed = 0F;
+            this.hud1.accel_air = 0F;
             this.hud1.vibex = 0F;
             this.hud1.vibey = 0F;
             this.hud1.vibez = 0F;
@@ -472,11 +475,9 @@ namespace MissionPlanner.GCSViews
             this.videoToolStripMenuItem,
             this.setAspectRatioToolStripMenuItem,
             this.userItemsToolStripMenuItem,
-            this.russianHudToolStripMenuItem,
             this.swapWithMapToolStripMenuItem,
             this.groundColorToolStripMenuItem,
-            this.setBatteryCellCountToolStripMenuItem,
-            this.showIconsToolStripMenuItem});
+            this.setBatteryCellCountToolStripMenuItem});
             this.contextMenuStripHud.Name = "contextMenuStrip2";
             resources.ApplyResources(this.contextMenuStripHud, "contextMenuStripHud");
             // 
@@ -546,13 +547,7 @@ namespace MissionPlanner.GCSViews
             this.userItemsToolStripMenuItem.Name = "userItemsToolStripMenuItem";
             resources.ApplyResources(this.userItemsToolStripMenuItem, "userItemsToolStripMenuItem");
             this.userItemsToolStripMenuItem.Click += new System.EventHandler(this.hud_UserItem);
-            // 
-            // russianHudToolStripMenuItem
-            // 
-            this.russianHudToolStripMenuItem.Name = "russianHudToolStripMenuItem";
-            resources.ApplyResources(this.russianHudToolStripMenuItem, "russianHudToolStripMenuItem");
-            this.russianHudToolStripMenuItem.Click += new System.EventHandler(this.russianHudToolStripMenuItem_Click);
-            // 
+            //
             // swapWithMapToolStripMenuItem
             // 
             this.swapWithMapToolStripMenuItem.Name = "swapWithMapToolStripMenuItem";
@@ -571,13 +566,7 @@ namespace MissionPlanner.GCSViews
             this.setBatteryCellCountToolStripMenuItem.Name = "setBatteryCellCountToolStripMenuItem";
             resources.ApplyResources(this.setBatteryCellCountToolStripMenuItem, "setBatteryCellCountToolStripMenuItem");
             this.setBatteryCellCountToolStripMenuItem.Click += new System.EventHandler(this.setBatteryCellCountToolStripMenuItem_Click);
-            // 
-            // showIconsToolStripMenuItem
-            // 
-            this.showIconsToolStripMenuItem.Name = "showIconsToolStripMenuItem";
-            resources.ApplyResources(this.showIconsToolStripMenuItem, "showIconsToolStripMenuItem");
-            this.showIconsToolStripMenuItem.Click += new System.EventHandler(this.showIconsToolStripMenuItem_Click);
-            // 
+            //
             // bindingSourceHud
             // 
             this.bindingSourceHud.DataSource = typeof(MissionPlanner.CurrentState);
@@ -3221,7 +3210,6 @@ namespace MissionPlanner.GCSViews
         private System.Windows.Forms.OpenFileDialog openScriptDialog;
         private System.Windows.Forms.Timer scriptChecker;
         private System.Windows.Forms.CheckBox checkBoxRedirectOutput;
-        private System.Windows.Forms.ToolStripMenuItem russianHudToolStripMenuItem;
         public System.Windows.Forms.ContextMenuStrip contextMenuStripMap;
         public System.Windows.Forms.ContextMenuStrip contextMenuStripHud;
         private System.Windows.Forms.BindingSource bindingSourceQuickTab;
@@ -3328,7 +3316,6 @@ namespace MissionPlanner.GCSViews
         private System.Windows.Forms.Label NIC_lbl;
         private System.Windows.Forms.TextBox NACp_tb;
         private System.Windows.Forms.TextBox NIC_tb;
-        private ToolStripMenuItem showIconsToolStripMenuItem;
         private Controls.MyButton BUT_SendMSG;
         public Panel panel_persistent;
         public System.Windows.Forms.TabPage tabAuxFunction;

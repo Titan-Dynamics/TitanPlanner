@@ -95,7 +95,7 @@ namespace MissionPlanner.GCSViews.ConfigurationView
 
             // Reset search box and filter when activating
             txt_search.Text = "";
-            txt_search.Focus();
+            Params.Focus();
         }
 
         public void Deactivate()

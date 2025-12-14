@@ -295,6 +295,12 @@
     <Compile Update="Controls\QuickViewOptions.cs">
       <SubType>UserControl</SubType>
     </Compile>
+    <Compile Update="Controls\DisplayThisForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Update="Controls\DisplayThisForm.Designer.cs">
+      <DependentUpon>DisplayThisForm.cs</DependentUpon>
+    </Compile>
     <Compile Update="Controls\Status.cs">
       <SubType>UserControl</SubType>
     </Compile>
