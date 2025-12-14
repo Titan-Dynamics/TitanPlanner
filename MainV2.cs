@@ -1316,7 +1316,7 @@ namespace MissionPlanner
                 this.connectionStatsForm = new Form
                 {
                     Width = 430,
-                    Height = 180,
+                    Height = 320,
                     MaximizeBox = false,
                     MinimizeBox = false,
                     FormBorderStyle = FormBorderStyle.FixedDialog,
@@ -1329,6 +1329,7 @@ namespace MissionPlanner
                 _connectionStats = new ConnectionStats(comPort);
                 this.connectionStatsForm.Controls.Add(_connectionStats);
                 this.connectionStatsForm.Width = _connectionStats.Width;
+                this.connectionStatsForm.Height = _connectionStats.Height + 40;
             }
 
             this.connectionStatsForm.Show();

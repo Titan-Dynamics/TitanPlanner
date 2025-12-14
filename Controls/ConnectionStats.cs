@@ -1,11 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Drawing;
 using System.Linq;
 using System.Reactive.Disposables;
 using System.Reactive.Linq;
 using System.Reactive.Subjects;
 using System.Threading;
 using System.Windows.Forms;
+using ZedGraph;
 
 namespace MissionPlanner.Controls
 {
@@ -13,6 +15,11 @@ namespace MissionPlanner.Controls
     {
         private readonly MAVLinkInterface _mavlink;
         private CompositeDisposable _subscriptionsDisposable;
+        private RollingPointPairList _rxBytesPerSecList;
+        private RollingPointPairList _txBytesPerSecList;
+        private LineItem _rxCurve;
+        private LineItem _txCurve;
+        private DateTime _graphStartTime;
 
         public ConnectionStats(MAVLinkInterface comPort)
             : this()
@@ -45,6 +52,9 @@ namespace MissionPlanner.Controls
             txt_PacketsLost.Text = "";
             txt_PacketsPerSecond.Text = "";
             txt_PacketsRx.Text = "";
+
+            // Setup the bytes/sec graph
+            SetupBytesPerSecGraph();
 
             var packetsReceivedCount = _mavlink.WhenPacketReceived.Scan(0, (x, y) => x + y);
             var packetsLostCount = _mavlink.WhenPacketLost.Scan(0, (x, y) => x + y);
@@ -130,9 +140,85 @@ namespace MissionPlanner.Controls
                     .Select(ts => ts.Milliseconds)
                     .ObserveOn(SynchronizationContext.Current)
                     .SubscribeForTextUpdates(txt_MaxPacketInterval),
+
+                // Update graph with RX bytes per second
+                bytesReceivedEverySecond
+                    .ObserveOn(SynchronizationContext.Current)
+                    .Subscribe(bytesPerSec => UpdateGraph(_rxBytesPerSecList, bytesPerSec)),
+
+                // Update graph with TX bytes per second
+                bytesSentEverySecond
+                    .ObserveOn(SynchronizationContext.Current)
+                    .Subscribe(bytesPerSec => UpdateGraph(_txBytesPerSecList, bytesPerSec)),
             };
 
             subscriptions.ForEach(d => _subscriptionsDisposable.Add(d));
+        }
+
+        private void SetupBytesPerSecGraph()
+        {
+            _graphStartTime = DateTime.Now;
+            _rxBytesPerSecList = new RollingPointPairList(60); // Keep 60 seconds of data
+            _txBytesPerSecList = new RollingPointPairList(60);
+
+            GraphPane myPane = zedGraphBytesPerSec.GraphPane;
+
+            // Clear any existing curves
+            myPane.CurveList.Clear();
+
+            // Set titles
+            myPane.Title.Text = "Link Bandwidth";
+            myPane.Title.FontSpec.Size = 10;
+            myPane.XAxis.Title.Text = "Time (s)";
+            myPane.XAxis.Title.FontSpec.Size = 9;
+            myPane.YAxis.Title.Text = "Bytes/s";
+            myPane.YAxis.Title.FontSpec.Size = 9;
+
+            // Configure margins for compact display
+            myPane.Margin.All = 0;
+            myPane.Legend.IsVisible = true;
+            myPane.Legend.FontSpec.Size = 8;
+            myPane.Legend.Position = LegendPos.TopCenter;
+
+            // Show grid
+            myPane.XAxis.MajorGrid.IsVisible = true;
+            myPane.YAxis.MajorGrid.IsVisible = true;
+
+            // Set initial scale
+            myPane.XAxis.Scale.Min = 0;
+            myPane.XAxis.Scale.Max = 30;
+            myPane.YAxis.Scale.Min = 0;
+
+            // Add RX curve (green)
+            _rxCurve = myPane.AddCurve("RX", _rxBytesPerSecList, Color.LimeGreen, SymbolType.None);
+            _rxCurve.Line.Width = 2;
+
+            // Add TX curve (orange)
+            _txCurve = myPane.AddCurve("TX", _txBytesPerSecList, Color.Orange, SymbolType.None);
+            _txCurve.Line.Width = 2;
+
+            zedGraphBytesPerSec.AxisChange();
+        }
+
+        private void UpdateGraph(RollingPointPairList list, int bytesPerSec)
+        {
+            if (list == null || zedGraphBytesPerSec == null || zedGraphBytesPerSec.IsDisposed)
+                return;
+
+            double time = (DateTime.Now - _graphStartTime).TotalSeconds;
+            list.Add(time, bytesPerSec);
+
+            // Keep X axis rolling
+            Scale xScale = zedGraphBytesPerSec.GraphPane.XAxis.Scale;
+            if (time > xScale.Max - 5)
+            {
+                xScale.Max = time + 5;
+                xScale.Min = xScale.Max - 30;
+            }
+
+            // Auto-scale Y axis
+            zedGraphBytesPerSec.AxisChange();
+            zedGraphBytesPerSec.Invalidate();
         }
 
         public void StopUpdates()

@@ -55,6 +55,7 @@
             this.chk_signing = new System.Windows.Forms.CheckBox();
             this.chk_mavlink2 = new System.Windows.Forms.CheckBox();
             this.but_reset = new MissionPlanner.Controls.MyButton();
+            this.zedGraphBytesPerSec = new ZedGraph.ZedGraphControl();
             this.groupBox1.SuspendLayout();
             this.groupBox2.SuspendLayout();
             this.SuspendLayout();
@@ -212,14 +213,32 @@
             this.chk_mavlink2.CheckedChanged += new System.EventHandler(this.chk_mavlink2_CheckedChanged);
             // 
             // but_reset
-            // 
+            //
             resources.ApplyResources(this.but_reset, "but_reset");
             this.but_reset.Name = "but_reset";
             this.but_reset.UseVisualStyleBackColor = true;
             this.but_reset.Click += new System.EventHandler(this.but_reset_Click);
-            // 
+            //
+            // zedGraphBytesPerSec
+            //
+            this.zedGraphBytesPerSec.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left) | System.Windows.Forms.AnchorStyles.Right)));
+            this.zedGraphBytesPerSec.Location = new System.Drawing.Point(3, 155);
+            this.zedGraphBytesPerSec.Name = "zedGraphBytesPerSec";
+            this.zedGraphBytesPerSec.ScrollGrace = 0D;
+            this.zedGraphBytesPerSec.ScrollMaxX = 0D;
+            this.zedGraphBytesPerSec.ScrollMaxY = 0D;
+            this.zedGraphBytesPerSec.ScrollMaxY2 = 0D;
+            this.zedGraphBytesPerSec.ScrollMinX = 0D;
+            this.zedGraphBytesPerSec.ScrollMinY = 0D;
+            this.zedGraphBytesPerSec.ScrollMinY2 = 0D;
+            this.zedGraphBytesPerSec.Size = new System.Drawing.Size(404, 240);
+            this.zedGraphBytesPerSec.TabIndex = 20;
+            this.zedGraphBytesPerSec.IsShowPointValues = false;
+            this.zedGraphBytesPerSec.IsShowContextMenu = false;
+            //
             // ConnectionStats
             // 
+            this.Controls.Add(this.zedGraphBytesPerSec);
             this.Controls.Add(this.but_reset);
             this.Controls.Add(this.chk_mavlink2);
             this.Controls.Add(this.chk_signing);
@@ -261,5 +280,6 @@
         private System.Windows.Forms.CheckBox chk_signing;
         private System.Windows.Forms.CheckBox chk_mavlink2;
         private MyButton but_reset;
+        private ZedGraph.ZedGraphControl zedGraphBytesPerSec;
     }
 }
