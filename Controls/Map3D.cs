@@ -33,78 +33,6 @@ namespace MissionPlanner.Controls
         public static Map3D instance;
         private static GraphicsMode _graphicsMode;
 
-        #region Cache Debug Logging
-        private static Form _cacheDebugForm;
-        private static TextBox _cacheDebugTextBox;
-        private static readonly object _debugLogLock = new object();
-        private static int _cacheHits = 0;
-        private static int _cacheMisses = 0;
-        private static int _cacheInvalid = 0;
-
-        private static void ShowCacheDebugWindow()
-        {
-            if (_cacheDebugForm != null && !_cacheDebugForm.IsDisposed)
-                return;
-
-            _cacheDebugForm = new Form
-            {
-                Text = "Map3D Cache Debug",
-                Width = 600,
-                Height = 400,
-                StartPosition = FormStartPosition.Manual,
-                Location = new Point(10, 10),
-                TopMost = true
-            };
-
-            _cacheDebugTextBox = new TextBox
-            {
-                Multiline = true,
-                Dock = DockStyle.Fill,
-                ScrollBars = ScrollBars.Vertical,
-                ReadOnly = true,
-                Font = new Font("Consolas", 9)
-            };
-
-            var clearButton = new Button { Text = "Clear", Dock = DockStyle.Bottom };
-            clearButton.Click += (s, e) => {
-                _cacheDebugTextBox.Clear();
-                _cacheHits = _cacheMisses = _cacheInvalid = 0;
-            };
-
-            _cacheDebugForm.Controls.Add(_cacheDebugTextBox);
-            _cacheDebugForm.Controls.Add(clearButton);
-            _cacheDebugForm.Show();
-        }
-
-        private static void LogCache(string message)
-        {
-            lock (_debugLogLock)
-            {
-                if (_cacheDebugForm == null || _cacheDebugForm.IsDisposed || _cacheDebugTextBox == null)
-                    return;
-
-                try
-                {
-                    if (_cacheDebugForm.InvokeRequired)
-                    {
-                        _cacheDebugForm.BeginInvoke(new Action(() => LogCache(message)));
-                        return;
-                    }
-
-                    var stats = $"[H:{_cacheHits} M:{_cacheMisses} I:{_cacheInvalid}] ";
-                    _cacheDebugTextBox.AppendText(stats + message + Environment.NewLine);
-                    // Keep only last 100 lines
-                    if (_cacheDebugTextBox.Lines.Length > 100)
-                    {
-                        var lines = _cacheDebugTextBox.Lines.Skip(_cacheDebugTextBox.Lines.Length - 50).ToArray();
-                        _cacheDebugTextBox.Lines = lines;
-                    }
-                }
-                catch { }
-            }
-        }
-        #endregion
-
         #region Constants
         private const double HEADING_LINE_LENGTH = 100; // meters
         private const double TURN_RADIUS_ARC_LENGTH = 200; // meters
@@ -1468,8 +1396,6 @@ namespace MissionPlanner.Controls
         private readonly FpsOverlay _fpsOverlay = new FpsOverlay();
         private DateTime _centerTime;
         private List<tileZoomArea> tileArea = new List<tileZoomArea>();
-        private PointLatLngAlt _lastTileAreaCenter = PointLatLngAlt.Zero;
-        private const double TILE_AREA_REBUILD_DISTANCE = 1000; // meters - only rebuild tile areas if moved more than this
 
         // Kalman filters for smooth position and rotation interpolation
         // Lower q = smoother output, higher r = trust measurements less (smoother)
@@ -2154,35 +2080,16 @@ namespace MissionPlanner.Controls
             // Use camera position for tile loading - works for both connected and disconnected states
             var cameraPos = new utmpos(utmcenter[0] + cameraX, utmcenter[1] + cameraY, utmzone).ToLLA();
 
-            // Only rebuild far (low zoom) tile areas if we've moved significantly
-            // Always rebuild close (high zoom) tiles to keep detail under camera
-            double distFromLastRebuild = _lastTileAreaCenter.GetDistance(cameraPos);
-            bool needsFullRebuild = tileArea.Count == 0 || distFromLastRebuild > TILE_AREA_REBUILD_DISTANCE;
-
             lock (tileArea)
             {
-                if (needsFullRebuild)
-                {
-                    _lastTileAreaCenter = cameraPos;
-                    tileArea = new List<tileZoomArea>();
-                }
-                else
-                {
-                    // Remove high zoom tiles (they'll be rebuilt with current camera position)
-                    // Keep low zoom tiles since they cover larger area
-                    tileArea.RemoveAll(ta => ta.zoom >= zoom - 2);
-                }
-
+                tileArea = new List<tileZoomArea>();
                 // Build tile areas from max zoom to min zoom
-                int rebuildFromZoom = needsFullRebuild ? minzoom : (zoom - 2);
-                for (int a = zoom; a >= rebuildFromZoom; a--)
+                for (int a = zoom; a >= minzoom; a--)
                 {
-                    // Skip if we already have this zoom level (partial rebuild)
-                    if (!needsFullRebuild && tileArea.Any(ta => ta.zoom == a))
-                        continue;
-
                     var area2 = new RectLatLng(cameraPos.Lat, cameraPos.Lng, 0, 0);
-                    var distm = MathHelper.map(a, minzoom, zoom, 5000, 1000);
+                    // 50m at max zoom
+                    // step at 0 zoom
+                    var distm = MathHelper.map(a, 0, zoom, 3000, 50);
                     var offset = cameraPos.newpos(45, distm);
                     area2.Inflate(Math.Abs(cameraPos.Lat - offset.Lat), Math.Abs(cameraPos.Lng - offset.Lng));
                     var extratile = 0;
@@ -2194,11 +2101,10 @@ namespace MissionPlanner.Controls
                         points = prj.GetAreaTileList(area2, a, extratile),
                         area = area2
                     };
+                    //Console.WriteLine("tiles z {0} max {1} dist {2} tiles {3} pxper100m {4} - {5}", a, zoom, distm,
+                    //  tiles.points.Count, core.pxRes100m, core.Zoom);
                     tileArea.Add(tiles);
                 }
-
-                // Sort by zoom level (high zoom first)
-                tileArea.Sort((a, b) => b.zoom.CompareTo(a.zoom));
 
                 var allTasks = new List<(LoadTask task, int zoomLevel, double dist)>();
 
@@ -2206,42 +2112,6 @@ namespace MissionPlanner.Controls
                 {
                     foreach (var p in ta.points)
                     {
-                        // Skip if we already have this exact tile
-                        if (textureid.ContainsKey(p))
-                            continue;
-
-                        // Skip if we already have higher zoom tiles covering this area
-                        // A tile at zoom Z is covered by tiles at zoom Z+1 with coordinates (X*2, Y*2) to (X*2+1, Y*2+1)
-                        bool hasBetterTile = false;
-                        for (int higherZoom = ta.zoom + 1; higherZoom <= zoom; higherZoom++)
-                        {
-                            int zoomDiff = higherZoom - ta.zoom;
-                            int scale = 1 << zoomDiff; // 2^zoomDiff
-                            long startX = p.X * scale;
-                            long startY = p.Y * scale;
-
-                            // Check if ALL higher zoom tiles covering this area are loaded
-                            int loadedCount = 0;
-                            int totalNeeded = scale * scale;
-                            for (long hx = startX; hx < startX + scale && loadedCount < totalNeeded; hx++)
-                            {
-                                for (long hy = startY; hy < startY + scale; hy++)
-                                {
-                                    if (textureid.ContainsKey(new GPoint(hx, hy)))
-                                        loadedCount++;
-                                }
-                            }
-
-                            if (loadedCount == totalNeeded)
-                            {
-                                hasBetterTile = true;
-                                break;
-                            }
-                        }
-
-                        if (hasBetterTile)
-                            continue;
-
                         LoadTask task = new LoadTask(p, ta.zoom);
                         if (!core.tileLoadQueue.Contains(task))
                         {
@@ -2260,10 +2130,15 @@ namespace MissionPlanner.Controls
                 }
 
                 // Sort by combined priority: close tiles at high zoom should load first
+                // Priority = distance * zoom_weight, where higher zoom gets lower weight (more important)
+                // This way close high-zoom tiles beat far low-zoom tiles
                 allTasks.Sort((a, b) =>
                 {
+                    // Lower priority = load first. We want close (low dist) + high zoom to win
+                    // Multiply distance by inverse zoom factor so high zoom tiles get priority boost
                     double priorityA = a.dist * (1.0 / (a.zoomLevel + 1));
                     double priorityB = b.dist * (1.0 / (b.zoomLevel + 1));
+                    // For LIFO: higher priority pushed first (processed last)
                     return priorityB.CompareTo(priorityA);
                 });
                 foreach (var t in allTasks)
@@ -2271,12 +2146,11 @@ namespace MissionPlanner.Controls
                     core.tileLoadQueue.Push(t.task);
                 }
 
-                if (needsFullRebuild)
-                {
-                    var totaltiles = 0;
-                    foreach (var a in tileArea) totaltiles += a.points.Count;
-                    Console.Write(DateTime.Now.Millisecond + " Total tiles " + totaltiles + "   \r");
-                }
+                //Minimumtile(tileArea);
+
+                var totaltiles = 0;
+                foreach (var a in tileArea) totaltiles += a.points.Count;
+                Console.Write(DateTime.Now.Millisecond + " Total tiles " + totaltiles + "   \r");
                 if (DateTime.Now.Second % 3 == 1)
                     CleanupOldTextures(tileArea);
             }
@@ -2288,106 +2162,54 @@ namespace MissionPlanner.Controls
             var pxstep = 2;
             //https://wiki.openstreetmap.org/wiki/Zoom_levels
             // zoom 20 = 38m
-
-            // Build a sorted list of all tiles to process: high zoom + close distance first
-            var allTilesToProcess = new List<(GPoint p, int zoom, double dist)>();
+            // get tiles & combine into one
+            tileZoomArea[] talist;
             lock (tileArea)
+                talist = tileArea.ToArray();
+            foreach (var tilearea in talist)
             {
-                foreach (var ta in tileArea)
-                {
-                    foreach (var p in ta.points)
-                    {
-                        // Calculate distance from camera
-                        long tileCenterPxX = (p.X * prj.TileSize.Width) + (prj.TileSize.Width / 2);
-                        long tileCenterPxY = (p.Y * prj.TileSize.Height) + (prj.TileSize.Height / 2);
-                        var tileCenter = prj.FromPixelToLatLng(tileCenterPxX, tileCenterPxY, ta.zoom);
-                        double dLat = tileCenter.Lat - cameraPos.Lat;
-                        double dLng = tileCenter.Lng - cameraPos.Lng;
-                        double dist = dLat * dLat + dLng * dLng;
-                        allTilesToProcess.Add((p, ta.zoom, dist));
-                    }
-                }
-            }
-
-            // Sort: high zoom first, then by distance (close first)
-            allTilesToProcess.Sort((a, b) =>
-            {
-                // Primary sort: higher zoom first
-                int zoomCompare = b.zoom.CompareTo(a.zoom);
-                if (zoomCompare != 0) return zoomCompare;
-                // Secondary sort: closer distance first
-                return a.dist.CompareTo(b.dist);
-            });
-
-            foreach (var tile in allTilesToProcess)
-            {
-                var p = tile.p;
-                var tileZoom = tile.zoom;
-
-                // Skip if we already have this tile loaded
-                if (textureid.ContainsKey(p))
-                    continue;
-
-                // Calculate pxstep for this zoom level
-                stile = C * Math.Cos(cameraPos.Lat) / Math.Pow(2, tileZoom);
+                stile = C * Math.Cos(cameraPos.Lat) / Math.Pow(2, tilearea.zoom);
                 pxstep = (int)(stile / 45);
                 pxstep = FloorPowerOf2(pxstep);
                 if (pxstep == int.MinValue) pxstep = 0;
                 if (pxstep == 0)
                     pxstep = 1;
-
-                long xstart = p.X * prj.TileSize.Width;
-                long ystart = p.Y * prj.TileSize.Width;
-                long xend = (p.X + 1) * prj.TileSize.Width;
-                long yend = (p.Y + 1) * prj.TileSize.Width;
-
-                // Calculate grid dimensions
-                int gridWidth = (int)((xend - xstart) / pxstep) + 1;
-                int gridHeight = (int)((yend - ystart) / pxstep) + 1;
-
-                // Try to load from disk cache first (exact zoom or better resolution)
-                Map3DTileCache.CachedTileData cachedTile = null;
-                if (_diskCacheTiles)
+                foreach (var p in tilearea.points)
                 {
-                    try
+                    // Skip if we already have this tile loaded
+                    if (textureid.ContainsKey(p))
+                        continue;
+
+                    long xstart = p.X * prj.TileSize.Width;
+                    long ystart = p.Y * prj.TileSize.Width;
+                    long xend = (p.X + 1) * prj.TileSize.Width;
+                    long yend = (p.Y + 1) * prj.TileSize.Width;
+
+                    // Calculate grid dimensions
+                    int gridWidth = (int)((xend - xstart) / pxstep) + 1;
+                    int gridHeight = (int)((yend - ystart) / pxstep) + 1;
+
+                    // Try to load from disk cache first (exact zoom or better resolution)
+                    Map3DTileCache.CachedTileData cachedTile = null;
+                    if (_diskCacheTiles)
                     {
-                        cachedTile = Map3DTileCache.LoadTileOrBetter(p.X, p.Y, tileZoom, zoom);
-                        if (cachedTile == null)
+                        try
                         {
-                            _cacheMisses++;
-                            LogCache($"MISS {p.X},{p.Y} z{tileZoom} - not on disk");
+                            cachedTile = Map3DTileCache.LoadTileOrBetter(p.X, p.Y, tilearea.zoom, zoom);
+                        }
+                        catch (Exception ex)
+                        {
+                            Debug.WriteLine($"Failed to load tile from cache: {ex.Message}");
+                            cachedTile = null;
                         }
                     }
-                    catch (Exception ex)
+
+                    if (cachedTile != null && cachedTile.Zoom == tilearea.zoom &&
+                        cachedTile.GridWidth == gridWidth && cachedTile.GridHeight == gridHeight &&
+                        cachedTile.PxStep == pxstep &&
+                        cachedTile.Altitudes != null && cachedTile.Altitudes.Length == gridWidth * gridHeight &&
+                        cachedTile.ImageData != null && cachedTile.ImageData.Length > 0)
                     {
-                        LogCache($"ERROR {p.X},{p.Y}: {ex.Message}");
-                        cachedTile = null;
-                    }
-                }
-
-                // Cache is valid if we have the right zoom level and valid data
-                // We use the cached pxstep/grid dimensions since they contain valid altitude data
-                bool cacheValid = cachedTile != null && cachedTile.Zoom == tileZoom &&
-                        cachedTile.GridWidth > 0 && cachedTile.GridHeight > 0 &&
-                        cachedTile.PxStep > 0 &&
-                        cachedTile.Altitudes != null && cachedTile.Altitudes.Length == cachedTile.GridWidth * cachedTile.GridHeight &&
-                        cachedTile.ImageData != null && cachedTile.ImageData.Length > 0;
-
-                    if (cachedTile != null && !cacheValid)
-                    {
-                        _cacheInvalid++;
-                        LogCache($"INVALID {p.X},{p.Y} z{tileZoom} - data corrupt or incomplete");
-                    }
-
-                    if (cacheValid)
-                    {
-                        _cacheHits++;
-                        // Use the cached tile's pxstep and grid dimensions for consistency
-                        pxstep = cachedTile.PxStep;
-                        gridWidth = cachedTile.GridWidth;
-                        gridHeight = cachedTile.GridHeight;
-                        LogCache($"HIT {p.X},{p.Y} z{tileZoom} (px={pxstep}, gw={gridWidth}, gh={gridHeight})");
-
                         // Load from disk cache - we have matching cached data
                         try
                         {
@@ -2403,7 +2225,7 @@ namespace MissionPlanner.Controls
                             var ti = new tileInfo(Context, this.WindowInfo, textureSemaphore)
                             {
                                 point = p,
-                                zoom = tileZoom,
+                                zoom = tilearea.zoom,
                                 img = cachedImage
                             };
 
@@ -2415,7 +2237,7 @@ namespace MissionPlanner.Controls
                                 for (int gy = 0; gy < gridHeight; gy++)
                                 {
                                     long py = ystart + gy * pxstep;
-                                    latlngGrid[gx, gy] = prj.FromPixelToLatLng(px, py, tileZoom);
+                                    latlngGrid[gx, gy] = prj.FromPixelToLatLng(px, py, tilearea.zoom);
                                 }
                             }
 
@@ -2446,10 +2268,6 @@ namespace MissionPlanner.Controls
                                     var utm3 = utmCache[gx + 1, gy];
                                     var utm4 = utmCache[gx + 1, gy + 1];
 
-                                    // Skip if any UTM coordinate is null or invalid
-                                    if (utm1 == null || utm2 == null || utm3 == null || utm4 == null)
-                                        continue;
-
                                     var imgx = MathHelper.map(xnext, xstart, xend, 0, 1);
                                     var imgy = MathHelper.map(ynext, ystart, yend, 0, 1);
                                     ti.vertex.Add(new Vertex(utm4[0], utm4[1], utm4[2] - zindexmod, 1, 0, 0, 1, imgx, imgy));
@@ -2471,28 +2289,14 @@ namespace MissionPlanner.Controls
                                 }
                             }
 
-                            // Skip if no geometry was built
-                            if (ti.vertex.Count == 0 || ti.indices.Count == 0)
-                            {
-                                ti.Cleanup();
-                                continue;
-                            }
-
                             // Initialize GPU buffers
                             try
                             {
                                 var temp2 = ti.idEBO;
                                 var temp3 = ti.idVBO;
-                                // Only add if buffers were successfully created
-                                if (temp2 == 0 || temp3 == 0)
-                                {
-                                    ti.Cleanup();
-                                    continue;
-                                }
                             }
                             catch
                             {
-                                ti?.Cleanup();
                                 continue;
                             }
 
@@ -2511,7 +2315,7 @@ namespace MissionPlanner.Controls
                     core.Matrix.EnterReadLock();
                     try
                     {
-                        GMap.NET.Internals.Tile t = core.Matrix.GetTileWithNoLock(tileZoom, p);
+                        GMap.NET.Internals.Tile t = core.Matrix.GetTileWithNoLock(tilearea.zoom, p);
                         if (t.NotEmpty)
                         {
                             foreach (var imgPI in t.Overlays)
@@ -2524,7 +2328,7 @@ namespace MissionPlanner.Controls
                                         var ti = new tileInfo(Context, this.WindowInfo, textureSemaphore)
                                         {
                                             point = p,
-                                            zoom = tileZoom,
+                                            zoom = tilearea.zoom,
                                             img = (Image) img.Img.Clone()
                                         };
 
@@ -2541,7 +2345,7 @@ namespace MissionPlanner.Controls
                                             for (int gy = 0; gy < gridHeight; gy++)
                                             {
                                                 long py = ystart + gy * pxstep;
-                                                latlngGrid[gx, gy] = prj.FromPixelToLatLng(px, py, tileZoom);
+                                                latlngGrid[gx, gy] = prj.FromPixelToLatLng(px, py, tilearea.zoom);
                                             }
                                         }
 
@@ -2586,10 +2390,6 @@ namespace MissionPlanner.Controls
                                                     var utm3 = utmCache[gx + 1, gy];   // br
                                                     var utm4 = utmCache[gx + 1, gy + 1]; // tr
 
-                                                    // Skip if any UTM coordinate is null or invalid
-                                                    if (utm1 == null || utm2 == null || utm3 == null || utm4 == null)
-                                                        continue;
-
                                                     var imgx = MathHelper.map(xnext, xstart, xend, 0, 1);
                                                     var imgy = MathHelper.map(ynext, ystart, yend, 0, 1);
                                                     ti.vertex.Add(new Vertex(utm4[0], utm4[1], utm4[2] - zindexmod, 1, 0, 0, 1, imgx, imgy));
@@ -2621,12 +2421,12 @@ namespace MissionPlanner.Controls
                                                     var altCacheClone = (double[,])altCache.Clone();
                                                     var tileX = p.X;
                                                     var tileY = p.Y;
-                                                    var capturedZoom = tileZoom;
+                                                    var tileZoom = tilearea.zoom;
                                                     ThreadPool.QueueUserWorkItem(_ =>
                                                     {
                                                         try
                                                         {
-                                                            Map3DTileCache.SaveTile(tileX, tileY, capturedZoom,
+                                                            Map3DTileCache.SaveTile(tileX, tileY, tileZoom,
                                                                 gridWidth, gridHeight, pxstep, altCacheClone, imgClone);
                                                         }
                                                         catch (Exception ex)
@@ -2646,31 +2446,19 @@ namespace MissionPlanner.Controls
                                             }
                                         }
 
-                                        if (ti != null && ti.vertex.Count > 0 && ti.indices.Count > 0)
+                                        if (ti != null)
                                         {
                                             try
                                             {
                                                 var temp2 = ti.idEBO;
                                                 var temp3 = ti.idVBO;
-                                                // Only add if buffers were successfully created
-                                                if (temp2 == 0 || temp3 == 0)
-                                                {
-                                                    ti.Cleanup();
-                                                    ti = null;
-                                                }
                                             }
                                             catch
                                             {
-                                                ti?.Cleanup();
                                                 return;
                                             }
 
-                                            if (ti != null)
-                                                textureid[p] = ti;
-                                        }
-                                        else if (ti != null)
-                                        {
-                                            ti.Cleanup();
+                                            textureid[p] = ti;
                                         }
                                     }
                                     catch
@@ -2688,7 +2476,7 @@ namespace MissionPlanner.Controls
                     }
                 }
             }
-        
+        }
 
         private void Minimumtile(List<tileZoomArea> tileArea)
         {
@@ -2979,17 +2767,6 @@ namespace MissionPlanner.Controls
 
                 var chkDiskCache = new CheckBox { Text = "Disk Cache Tiles", Location = new Point(margin, y), AutoSize = true, Checked = _diskCacheTiles };
                 dialog.Controls.Add(chkDiskCache);
-
-                var btnDebugCache = new Button { Text = "Debug", Location = new Point(inputX + 20, y - 2), Width = 50, Height = 22 };
-                btnDebugCache.Click += (s, ev) => { ShowCacheDebugWindow(); };
-                dialog.Controls.Add(btnDebugCache);
-
-                var btnClearCache = new Button { Text = "Clear", Location = new Point(inputX + 75, y - 2), Width = 50, Height = 22 };
-                btnClearCache.Click += (s, ev) => {
-                    Map3DTileCache.ClearCache();
-                    MessageBox.Show("Map3D tile cache cleared.", "Cache Cleared", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                };
-                dialog.Controls.Add(btnClearCache);
                 y += 30;
 
                 int btnWidth = 75;
@@ -3525,10 +3302,6 @@ void main(void) {
                 }
 
                 {
-                    // Skip rendering if buffers are not valid
-                    if (ID_VBO == 0 || ID_EBO == 0 || indices.Count == 0)
-                        return;
-
                     GL.UseProgram(Program);
 
                     GL.EnableVertexAttribArray(positionSlot);
