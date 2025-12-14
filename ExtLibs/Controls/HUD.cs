@@ -27,6 +27,7 @@ using SkiaSharp;
 
 
 // Control written by Michael Oborne 2011
+// Modified by Mohammad Adib 2026 =)
 // dual opengl and GDI+
 
 namespace MissionPlanner.Controls
@@ -2035,7 +2036,7 @@ namespace MissionPlanner.Controls
                 // horizon
                 graphicsObject.RotateTransform(-_roll);
 
-                int fontsize = this.Height / 40;
+                int fontsize = this.Height / 30;
                 int fontoffset = fontsize - 6;
 
                 float every5deg = -this.Height / 65;
