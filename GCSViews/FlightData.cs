@@ -4035,90 +4035,10 @@ namespace MissionPlanner.GCSViews
 
         private void hud_UserItem(object sender, EventArgs e)
         {
-            Form selectform = new Form
-            {
-                Name = "select",
-                Width = 50,
-                Height = 50,
-                Text = "Display This",
-                AutoSize = true,
-                StartPosition = FormStartPosition.CenterParent,
-                MaximizeBox = false,
-                MinimizeBox = false,
-                AutoScroll = true
-
-            };
-            ThemeManager.ApplyThemeTo(selectform);
-
-            object thisBoxed = MainV2.comPort.MAV.cs;
-            Type test = thisBoxed.GetType();
-
-            int max_length = 0;
-            List<(string name, string desc)> fields = new List<(string, string)>();
-
-            foreach (var field in test.GetProperties())
-            {
-                // field.Name has the field's name.
-                object fieldValue = field.GetValue(thisBoxed, null); // Get value
-                if (fieldValue == null)
-                    continue;
-
-                if (!fieldValue.IsNumber())
-                    continue;
-
-                if (field.Name.Contains("customfield"))
-                {
-                    if (CurrentState.custom_field_names.ContainsKey(field.Name))
-                    {
-                        string name = CurrentState.custom_field_names[field.Name];
-                        max_length = Math.Max(max_length, TextRenderer.MeasureText(name, selectform.Font).Width);
-                        fields.Add((field.Name, name));
-                    }
-                }
-                else
-                {
-                    max_length = Math.Max(max_length, TextRenderer.MeasureText(field.Name, selectform.Font).Width);
-                    fields.Add((field.Name, field.Name));
-                }
-            }
-
-            max_length += 15;
-            fields.Sort((a, b) => CurrentState.StringCompareTo(a.Item2, b.Item2));
-
-            int col_count = (int) (Screen.FromControl(this).Bounds.Width * 0.8f) / max_length;
-            int row_count = fields.Count / col_count + ((fields.Count % col_count == 0) ? 0 : 1);
-            int row_height = 20;
-            //selectform.MinimumSize = new Size(col_count * max_length, row_count * row_height);
-            selectform.SuspendLayout();
-            for (int i = 0; i < fields.Count; i++)
-            {
-                CheckBox chk_box = new CheckBox
-                {
-                    Text = fields[i].desc,
-                    Name = fields[i].name,
-                    Tag = "custom",
-                    Location = new Point(5 + (i / row_count) * (max_length + 5), 2 + (i % row_count) * row_height),
-                    Size = new Size(max_length, row_height),
-                    Checked = hud1.CustomItems.ContainsKey(fields[i].name),
-                    AutoSize = true
-                };
-                chk_box.CheckedChanged += chk_box_hud_UserItem_CheckedChanged;
-                if (chk_box.Checked)
-                    chk_box.BackColor = Color.Green;
-                selectform.Controls.Add(chk_box);
-            }
-
-            selectform.ResumeLayout();
-            selectform.Shown += (o, args) =>
-            {
-                selectform.Controls.ForEach(a =>
-                {
-                    if (a is CheckBox && ((CheckBox) a).Checked)
-                        ((CheckBox) a).BackColor = Color.Green;
-                });
-            };
-
-            selectform.ShowDialog(this);
+            var form = new Controls.DisplayThisForm(
+                isChecked: fieldName => hud1.CustomItems.ContainsKey(fieldName),
+                checkChangedHandler: chk_box_hud_UserItem_CheckedChanged);
+            form.ShowDialog(this);
         }
 
         private void hud1_DoubleClick(object sender, EventArgs e)
@@ -7084,234 +7004,37 @@ namespace MissionPlanner.GCSViews
             BeginInvoke((Action) delegate { gMapControl1.UpdateRouteLocalPosition(route); });
         }
 
+        private bool IsTuningItemChecked(string fieldName)
+        {
+            return (list1item != null && list1item.Name == fieldName) ||
+                   (list2item != null && list2item.Name == fieldName) ||
+                   (list3item != null && list3item.Name == fieldName) ||
+                   (list4item != null && list4item.Name == fieldName) ||
+                   (list5item != null && list5item.Name == fieldName) ||
+                   (list6item != null && list6item.Name == fieldName) ||
+                   (list7item != null && list7item.Name == fieldName) ||
+                   (list8item != null && list8item.Name == fieldName) ||
+                   (list9item != null && list9item.Name == fieldName) ||
+                   (list10item != null && list10item.Name == fieldName) ||
+                   (list11item != null && list11item.Name == fieldName) ||
+                   (list12item != null && list12item.Name == fieldName) ||
+                   (list13item != null && list13item.Name == fieldName) ||
+                   (list14item != null && list14item.Name == fieldName) ||
+                   (list15item != null && list15item.Name == fieldName) ||
+                   (list16item != null && list16item.Name == fieldName) ||
+                   (list17item != null && list17item.Name == fieldName) ||
+                   (list18item != null && list18item.Name == fieldName) ||
+                   (list19item != null && list19item.Name == fieldName) ||
+                   (list20item != null && list20item.Name == fieldName);
+        }
+
         private void zg1_DoubleClick(object sender, EventArgs e)
         {
-
-            var selectform = new Form
-            {
-                Name = "select",
-                Width = 50,
-                Height = 50,
-                Text = "Display This",
-                AutoSize = true,
-                StartPosition = FormStartPosition.CenterParent,
-                MaximizeBox = false,
-                MinimizeBox = false,
-                AutoScroll = true
-            };
-
-            ThemeManager.ApplyThemeTo(selectform);
-
-            object thisBoxed = MainV2.comPort.MAV.cs;
-            Type test = thisBoxed.GetType();
-
-            int max_length = 0;
-            List<(string name, string desc)> fields = new List<(string, string)>();
-
-            foreach (var field in test.GetProperties())
-            {
-                // field.Name has the field's name.
-                object fieldValue = field.GetValue(thisBoxed, null); // Get value
-                if (fieldValue == null)
-                    continue;
-
-                if (!fieldValue.IsNumber())
-                    continue;
-
-                if (field.Name.Contains("customfield"))
-                {
-                    if (CurrentState.custom_field_names.ContainsKey(field.Name))
-                    {
-                        string name = CurrentState.custom_field_names[field.Name];
-                        max_length = Math.Max(max_length, TextRenderer.MeasureText(name, selectform.Font).Width);
-                        fields.Add((field.Name, name));
-                    }
-                }
-                else
-                {
-                    max_length = Math.Max(max_length, TextRenderer.MeasureText(field.Name, selectform.Font).Width);
-                    fields.Add((field.Name, field.Name));
-                }
-            }
-
-            max_length += 25;
-            fields.Sort((a, b) => {
-                var ans = CurrentState.GetGroupText(a.name).CompareTo(CurrentState.GetGroupText(b.name));
-                if (ans == 0) return a.Item2.CompareTo(b.Item2);
-                return ans;
-            });
-
-            int col_count = (int) (Screen.FromControl(this).Bounds.Width * 0.8f) / max_length;
-            int row_count = fields.Count / col_count + ((fields.Count % col_count == 0) ? 0 : 1);
-            int row_height = 20;
-
-            selectform.SuspendLayout();
-
-            (string name, string desc) last = ("", "");
-
-            int i = 1;
-            foreach (var field in fields)
-            {
-                CheckBox chk_box = new CheckBox();
-
-                ThemeManager.ApplyThemeTo(chk_box);
-
-                if (list1item != null && list1item.Name == field.name)
-                {
-                    chk_box.Checked = true;
-                    chk_box.BackColor = Color.Green;
-                }
-
-                if (list2item != null && list2item.Name == field.name)
-                {
-                    chk_box.Checked = true;
-                    chk_box.BackColor = Color.Green;
-                }
-
-                if (list3item != null && list3item.Name == field.name)
-                {
-                    chk_box.Checked = true;
-                    chk_box.BackColor = Color.Green;
-                }
-
-                if (list4item != null && list4item.Name == field.name)
-                {
-                    chk_box.Checked = true;
-                    chk_box.BackColor = Color.Green;
-                }
-
-                if (list5item != null && list5item.Name == field.name)
-                {
-                    chk_box.Checked = true;
-                    chk_box.BackColor = Color.Green;
-                }
-
-                if (list6item != null && list6item.Name == field.name)
-                {
-                    chk_box.Checked = true;
-                    chk_box.BackColor = Color.Green;
-                }
-
-                if (list7item != null && list7item.Name == field.name)
-                {
-                    chk_box.Checked = true;
-                    chk_box.BackColor = Color.Green;
-                }
-
-                if (list8item != null && list8item.Name == field.name)
-                {
-                    chk_box.Checked = true;
-                    chk_box.BackColor = Color.Green;
-                }
-
-                if (list9item != null && list9item.Name == field.name)
-                {
-                    chk_box.Checked = true;
-                    chk_box.BackColor = Color.Green;
-                }
-
-                if (list10item != null && list10item.Name == field.name)
-                {
-                    chk_box.Checked = true;
-                    chk_box.BackColor = Color.Green;
-                }
-                if (list11item != null && list11item.Name == field.name)
-                {
-                    chk_box.Checked = true;
-                    chk_box.BackColor = Color.Green;
-                }
-
-                if (list12item != null && list12item.Name == field.name)
-                {
-                    chk_box.Checked = true;
-                    chk_box.BackColor = Color.Green;
-                }
-
-                if (list13item != null && list13item.Name == field.name)
-                {
-                    chk_box.Checked = true;
-                    chk_box.BackColor = Color.Green;
-                }
-
-                if (list14item != null && list14item.Name == field.name)
-                {
-                    chk_box.Checked = true;
-                    chk_box.BackColor = Color.Green;
-                }
-
-                if (list15item != null && list15item.Name == field.name)
-                {
-                    chk_box.Checked = true;
-                    chk_box.BackColor = Color.Green;
-                }
-
-                if (list16item != null && list16item.Name == field.name)
-                {
-                    chk_box.Checked = true;
-                    chk_box.BackColor = Color.Green;
-                }
-
-                if (list17item != null && list17item.Name == field.name)
-                {
-                    chk_box.Checked = true;
-                    chk_box.BackColor = Color.Green;
-                }
-
-                if (list18item != null && list18item.Name == field.name)
-                {
-                    chk_box.Checked = true;
-                    chk_box.BackColor = Color.Green;
-                }
-
-                if (list19item != null && list19item.Name == field.name)
-                {
-                    chk_box.Checked = true;
-                    chk_box.BackColor = Color.Green;
-                }
-
-                if (list20item != null && list20item.Name == field.name)
-                {
-                    chk_box.Checked = true;
-                    chk_box.BackColor = Color.Green;
-                }
-
-                if (CurrentState.GetGroupText(field.name) != CurrentState.GetGroupText(last.name))
-                {
-                    selectform.Controls.Add(new System.Windows.Forms.Label()
-                    {
-                        Text = CurrentState.GetGroupText(field.name),
-                        Location = new Point(5 + (i / row_count) * (max_length + 5), 2 + (i % row_count) * row_height)
-                    });
-                    i++;
-                }
-
-                chk_box.Text = field.desc;
-                chk_box.Name = field.name;
-                chk_box.Tag = "custom";
-                chk_box.Location = new Point(5 + (i / row_count) * (max_length + 5), 2 + (i % row_count) * row_height);
-                chk_box.Size = new Size(120, 20);
-                chk_box.CheckedChanged += chk_box_tunningCheckedChanged;
-                chk_box.MouseDown += Chk_box_tunningMouseDown;
-                chk_box.AutoSize = true;
-
-                selectform.Controls.Add(chk_box);
-                i++;
-
-                last = field;
-            }
-
-            selectform.ResumeLayout();
-
-            selectform.Shown += (o, args) =>
-            {
-                selectform.Controls.ForEach(a =>
-                {
-                    if (a is CheckBox && ((CheckBox) a).Checked)
-                        ((CheckBox) a).BackColor = Color.Green;
-                });
-            };
-
-            selectform.Show();
+            var form = new Controls.DisplayThisForm(
+                isChecked: IsTuningItemChecked,
+                checkChangedHandler: chk_box_tunningCheckedChanged,
+                mouseDownHandler: Chk_box_tunningMouseDown);
+            form.Show();
         }
 
         private void Chk_box_tunningMouseDown(object sender, MouseEventArgs e)
