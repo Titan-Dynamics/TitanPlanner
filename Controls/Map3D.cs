@@ -3015,6 +3015,7 @@ namespace MissionPlanner.Controls
                     chkFPV.Checked = false;
                     chkDiskCache.Checked = true;
                     _cameraAngle = 0.0;
+                    dialog.Close();
                 };
 
                 buttonPanel.Controls.Add(btnSave);

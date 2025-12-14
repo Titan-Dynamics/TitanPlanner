@@ -1036,7 +1036,7 @@ namespace MissionPlanner.Controls
         private readonly SolidBrush _redBrush = new SolidBrush(Color.Red);
         private readonly SolidBrush _orangeBrush = new SolidBrush(Color.Orange);
 
-        private static readonly SolidBrush SlightlyTransparentBrush = new SolidBrush(Color.FromArgb(80, 255, 255, 255));
+        private static readonly SolidBrush SlightlyTransparentBrush = new SolidBrush(Color.FromArgb(40, 0, 0, 0));
 
         private static readonly SolidBrush SlightlyTransparentRedBrush = new SolidBrush(Color.FromArgb(100, 255, 0, 0));
 
@@ -2036,7 +2036,6 @@ namespace MissionPlanner.Controls
                 graphicsObject.RotateTransform(-_roll);
 
                 int fontsize = this.Height / 28;
-                int fontoffset = fontsize - 6;
 
                 float every5deg = -this.Height / 65;
 
@@ -2108,14 +2107,13 @@ namespace MissionPlanner.Controls
 
                     graphicsObject.RotateTransform(-_roll);
 
-                    //draw pitch
+                    // draw pitch
 
                     int lengthshort = this.Width / 14;
                     int lengthlong = this.Width / 10;
 
                     for (int a = -90; a <= 90; a += 5)
                     {
-                        // limit to 40 degrees
                         if (a >= _pitch - 29 && a <= _pitch + 20)
                         {
                             if (a % 10 == 0)
@@ -2134,15 +2132,14 @@ namespace MissionPlanner.Controls
                                 }
 
                                 drawstring(a.ToString(), font, fontsize + 2, _whiteBrush,
-                                    this.Width / 2 - lengthlong - 30 - halfwidth - (int) (fontoffset * 1.7),
-                                    pitchoffset + a * every5deg - 8 - fontoffset);
+                                    this.Width / 2 - lengthlong - halfwidth - (fontsize / 4f),
+                                    pitchoffset + a * every5deg - (fontsize / 1.5f));
                             }
                             else
                             {
                                 graphicsObject.DrawLine(this._whitePen, this.Width / 2 - lengthshort - halfwidth,
                                     pitchoffset + a * every5deg, this.Width / 2 + lengthshort - halfwidth,
                                     pitchoffset + a * every5deg);
-                                //drawstring(e,a.ToString(), new Font("Arial", 10), whiteBrush, this.Width / 2 - lengthshort - 20 - halfwidth, this.Height / 2 + pitchoffset + a * every5deg - 8);
                             }
                         }
                     }
@@ -2246,10 +2243,11 @@ namespace MissionPlanner.Controls
 
                 if (displayheading)
                 {
+                    var topMargin = fontsize / 5;
                     graphicsObject.FillRectangle(SlightlyTransparentBrush, headbg);
                     graphicsObject.DrawLine(_blackPen, 0, headbg.Bottom, headbg.Right, headbg.Bottom);
 
-                    float space = (headbg.Width - 10) / 120.0f;
+                    float space = headbg.Width / 120.0f;
                     int start = (int) Math.Round((_heading - 60), 1);
                     
                     for (int a = start; a <= start + 120; a += 1)
@@ -2257,80 +2255,39 @@ namespace MissionPlanner.Controls
                         if (((int) (a + 360) % 360) == (int) _groundcourse)
                         {
                             this._blackPen.Width = 6;
-                            graphicsObject.DrawLine(this._blackPen, headbg.Left + 5 + space * (a - start),
-                                headbg.Bottom, headbg.Left + 5 + space * (a - start), headbg.Top);
+                            graphicsObject.DrawLine(this._blackPen, headbg.Left + space * (a - start),
+                                headbg.Bottom, headbg.Left + space * (a - start), headbg.Top);
                             this._blackPen.Width = 2;
                         }
 
                         if ((int) a % 15 == 0)
                         {
-                            graphicsObject.DrawLine(this._whitePen, headbg.Left + 5 + space * (a - start),
-                                headbg.Bottom - 5, headbg.Left + 5 + space * (a - start), headbg.Bottom - 10);
+                            graphicsObject.DrawLine(this._whitePen, headbg.Left + space * (a - start),
+                                headbg.Bottom - 5, headbg.Left + space * (a - start), headbg.Bottom - 10);
                             int disp = (int) a;
                             if (disp < 0)
                                 disp += 360;
                             disp = disp % 360;
-                            var angleFontSize = fontsize - 2;
-                            var topMargin = fontsize / 4;
-                            if (disp == 0)
+                            string label;
+                            int size;
+                            switch (disp)
                             {
-                                drawstring(HUDT.N.PadLeft(2), font, fontsize, _whiteBrush,
-                                    headbg.Left - 5 + space * (a - start) - fontoffset,
-                                    topMargin);
+                                case 0:   label = HUDT.N;  size = fontsize; break;
+                                case 45:  label = HUDT.NE; size = fontsize; break;
+                                case 90:  label = HUDT.E;  size = fontsize; break;
+                                case 135: label = HUDT.SE; size = fontsize; break;
+                                case 180: label = HUDT.S;  size = fontsize; break;
+                                case 225: label = HUDT.SW; size = fontsize; break;
+                                case 270: label = HUDT.W;  size = fontsize; break;
+                                case 315: label = HUDT.NW; size = fontsize; break;
+                                default:  label = disp.ToString(); size = fontsize - 2; break;
                             }
-                            else if (disp == 45)
-                            {
-                                drawstring(HUDT.NE.PadLeft(2), font, fontsize, _whiteBrush,
-                                    headbg.Left - 5 + space * (a - start) - fontoffset,
-                                    topMargin);
-                            }
-                            else if (disp == 90)
-                            {
-                                drawstring(HUDT.E.PadLeft(2), font, fontsize, _whiteBrush,
-                                    headbg.Left - 5 + space * (a - start) - fontoffset,
-                                    topMargin);
-                            }
-                            else if (disp == 135)
-                            {
-                                drawstring(HUDT.SE.PadLeft(2), font, fontsize, _whiteBrush,
-                                    headbg.Left - 5 + space * (a - start) - fontoffset,
-                                    topMargin);
-                            }
-                            else if (disp == 180)
-                            {
-                                drawstring(HUDT.S.PadLeft(2), font, fontsize, _whiteBrush,
-                                    headbg.Left - 5 + space * (a - start) - fontoffset,
-                                    topMargin);
-                            }
-                            else if (disp == 225)
-                            {
-                                drawstring(HUDT.SW.PadLeft(2), font, fontsize, _whiteBrush,
-                                    headbg.Left - 5 + space * (a - start) - fontoffset,
-                                    topMargin);
-                            }
-                            else if (disp == 270)
-                            {
-                                drawstring(HUDT.W.PadLeft(2), font, fontsize, _whiteBrush,
-                                    headbg.Left - 5 + space * (a - start) - fontoffset,
-                                    topMargin);
-                            }
-                            else if (disp == 315)
-                            {
-                                drawstring(HUDT.NW.PadLeft(2), font, fontsize, _whiteBrush,
-                                    headbg.Left - 5 + space * (a - start) - fontoffset,
-                                    topMargin);
-                            }
-                            else
-                            {
-                                drawstring(String.Format("{0,3}", (int) (disp % 360)), font, angleFontSize,
-                                    _whiteBrush, headbg.Left - 8 + space * (a - start) - fontoffset,
-                                    topMargin);
-                            }
+                            drawstring(label, font, size, _whiteBrush, headbg.Left + space * (a - start), topMargin, true);
                         }
                         else if ((int) a % 5 == 0)
                         {
-                            graphicsObject.DrawLine(this._whitePen, headbg.Left + 5 + space * (a - start),
-                                headbg.Bottom - 5, headbg.Left + 5 + space * (a - start), headbg.Bottom - 10);
+                            graphicsObject.DrawLine(this._whitePen, headbg.Left + space * (a - start),
+                                headbg.Bottom - 5, headbg.Left + space * (a - start), headbg.Bottom - 10);
                         }
                     }
 
@@ -2374,11 +2331,11 @@ namespace MissionPlanner.Controls
                         if (homeDiff >= -60 && homeDiff <= 60)
                         {
                             float homeX = headbg.Left + 5 + space * (homeDiff + 60);
-                            drawstring("H", font, fontsize, (SolidBrush) Brushes.Green, homeX - fontoffset, 3);
+                            drawstring("H", font, fontsize, (SolidBrush) Brushes.Green, homeX, topMargin, true);
                         }
                     }
 
-                    drawstring(String.Format("{0,3}", (int) (heading % 360)), font, fontsize, _whiteBrush, headbg.Width / 2, 3 , true);
+                    drawstring(String.Format("{0,3}", (int) (heading % 360)), font, fontsize, _whiteBrush, headbg.Width / 2, topMargin, true);
                 }
 
                 // xtrack error
@@ -2992,7 +2949,7 @@ namespace MissionPlanner.Controls
 
                     if (displayicons)
                     {
-                        var bottomsize = ((fontsize + 2) * 3) + fontoffset - 2;
+                        var bottomsize = ((fontsize + 2) * 3);
                         var iconWidth = bottomsize / 2;
                         var textX = iconWidth + 6;
 
@@ -3403,7 +3360,7 @@ namespace MissionPlanner.Controls
                         }
                         else
                         {
-                            drawstring(HUDT.NotReadyToArm, font, fontsize, (SolidBrush)Brushes.Red, prearmhitzone.X, prearmhitzone.Y);
+                            drawstring(HUDT.NotReadyToArm, font, fontsize, (SolidBrush) Brushes.Red, prearmhitzone.X, prearmhitzone.Y);
                         }
                     }
                 }
