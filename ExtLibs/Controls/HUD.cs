@@ -3249,18 +3249,15 @@ namespace MissionPlanner.Controls
                     statuslast = status;
                 }
 
-                message = "This is a test of the messsage on the HUD";
                 if (message != null && message != "")
                 {
-                    Brush brush;
+                    Brush brush = _whiteBrush;
                     if (messageSeverity <= MAVLink.MAV_SEVERITY.ERROR)
                         brush = Brushes.Red;
                     else if (messageSeverity <= MAVLink.MAV_SEVERITY.WARNING)
                         brush = Brushes.Yellow;
-                    else
-                        brush = Brushes.White;
 
-                    drawstring(message, font, fontsize * 1.25f, (SolidBrush) brush, 0, halfheight / 2, true);
+                    drawstring(message, font, fontsize * 1.25f, (SolidBrush) brush, 0, halfheight / 3, true);
                 }
 
                 graphicsObject.ResetTransform();
