@@ -251,12 +251,12 @@ namespace MissionPlanner.Controls
         public static string ToHumanReadableByteCount(int i)
         {
             if (i > 1024 * 1024 * 1024)
-                return string.Format("{0:0.00}Gb", i / (float)(1024 * 1024 * 1024));
+                return string.Format("{0:0.00}GB", i / (float)(1024 * 1024 * 1024));
             if (i > 1024 * 1024)
-                return string.Format("{0:0.00}Mb", i / (float)(1024 * 1024));
+                return string.Format("{0:0.00}MB", i / (float)(1024 * 1024));
             if (i > 1024)
-                return string.Format("{0:0.00}Kb", i / (float)1024);
-            return string.Format("{0:####}b", i);
+                return string.Format("{0:0.00}KB", i / (float)1024);
+            return string.Format("{0:####}B", i);
         }
 
         private void chk_mavlink2_CheckedChanged(object sender, EventArgs e)

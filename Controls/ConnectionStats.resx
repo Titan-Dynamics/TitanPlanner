@@ -121,12 +121,16 @@
   <data name="label1.AutoSize" type="System.Boolean, mscorlib">
     <value>True</value>
   </data>
+  <assembly alias="System.Windows.Forms" name="System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089" />
+  <data name="label1.ImeMode" type="System.Windows.Forms.ImeMode, System.Windows.Forms">
+    <value>NoControl</value>
+  </data>
   <assembly alias="System.Drawing" name="System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a" />
   <data name="label1.Location" type="System.Drawing.Point, System.Drawing">
     <value>10, 18</value>
   </data>
   <data name="label1.Size" type="System.Drawing.Size, System.Drawing">
-    <value>33, 13</value>
+    <value>41, 16</value>
   </data>
   <data name="label1.TabIndex" type="System.Int32, mscorlib">
     <value>0</value>
@@ -149,11 +153,14 @@
   <data name="label2.AutoSize" type="System.Boolean, mscorlib">
     <value>True</value>
   </data>
+  <data name="label2.ImeMode" type="System.Windows.Forms.ImeMode, System.Windows.Forms">
+    <value>NoControl</value>
+  </data>
   <data name="label2.Location" type="System.Drawing.Point, System.Drawing">
     <value>135, 18</value>
   </data>
   <data name="label2.Size" type="System.Drawing.Size, System.Drawing">
-    <value>43, 13</value>
+    <value>52, 16</value>
   </data>
   <data name="label2.TabIndex" type="System.Int32, mscorlib">
     <value>1</value>
@@ -176,11 +183,14 @@
   <data name="label3.AutoSize" type="System.Boolean, mscorlib">
     <value>True</value>
   </data>
+  <data name="label3.ImeMode" type="System.Windows.Forms.ImeMode, System.Windows.Forms">
+    <value>NoControl</value>
+  </data>
   <data name="label3.Location" type="System.Drawing.Point, System.Drawing">
     <value>6, 44</value>
   </data>
   <data name="label3.Size" type="System.Drawing.Size, System.Drawing">
-    <value>46, 13</value>
+    <value>56, 16</value>
   </data>
   <data name="label3.TabIndex" type="System.Int32, mscorlib">
     <value>2</value>
@@ -203,11 +213,14 @@
   <data name="label4.AutoSize" type="System.Boolean, mscorlib">
     <value>True</value>
   </data>
+  <data name="label4.ImeMode" type="System.Windows.Forms.ImeMode, System.Windows.Forms">
+    <value>NoControl</value>
+  </data>
   <data name="label4.Location" type="System.Drawing.Point, System.Drawing">
     <value>3, 70</value>
   </data>
   <data name="label4.Size" type="System.Drawing.Size, System.Drawing">
-    <value>51, 13</value>
+    <value>61, 16</value>
   </data>
   <data name="label4.TabIndex" type="System.Int32, mscorlib">
     <value>3</value>
@@ -231,7 +244,7 @@
     <value>58, 16</value>
   </data>
   <data name="txt_BytesReceived.Size" type="System.Drawing.Size, System.Drawing">
-    <value>64, 20</value>
+    <value>64, 22</value>
   </data>
   <data name="txt_BytesReceived.TabIndex" type="System.Int32, mscorlib">
     <value>4</value>
@@ -252,7 +265,7 @@
     <value>184, 16</value>
   </data>
   <data name="txt_BytesPerSecondRx.Size" type="System.Drawing.Size, System.Drawing">
-    <value>51, 20</value>
+    <value>51, 22</value>
   </data>
   <data name="txt_BytesPerSecondRx.TabIndex" type="System.Int32, mscorlib">
     <value>5</value>
@@ -273,7 +286,7 @@
     <value>58, 42</value>
   </data>
   <data name="txt_PacketsRx.Size" type="System.Drawing.Size, System.Drawing">
-    <value>64, 20</value>
+    <value>64, 22</value>
   </data>
   <data name="txt_PacketsRx.TabIndex" type="System.Int32, mscorlib">
     <value>6</value>
@@ -294,7 +307,7 @@
     <value>58, 68</value>
   </data>
   <data name="txt_PacketsLost.Size" type="System.Drawing.Size, System.Drawing">
-    <value>64, 20</value>
+    <value>64, 22</value>
   </data>
   <data name="txt_PacketsLost.TabIndex" type="System.Int32, mscorlib">
     <value>7</value>
@@ -315,7 +328,7 @@
     <value>184, 68</value>
   </data>
   <data name="txt_LinkQuality.Size" type="System.Drawing.Size, System.Drawing">
-    <value>51, 20</value>
+    <value>51, 22</value>
   </data>
   <data name="txt_LinkQuality.TabIndex" type="System.Int32, mscorlib">
     <value>9</value>
@@ -335,11 +348,14 @@
   <data name="label5.AutoSize" type="System.Boolean, mscorlib">
     <value>True</value>
   </data>
+  <data name="label5.ImeMode" type="System.Windows.Forms.ImeMode, System.Windows.Forms">
+    <value>NoControl</value>
+  </data>
   <data name="label5.Location" type="System.Drawing.Point, System.Drawing">
     <value>139, 68</value>
   </data>
   <data name="label5.Size" type="System.Drawing.Size, System.Drawing">
-    <value>39, 13</value>
+    <value>48, 16</value>
   </data>
   <data name="label5.TabIndex" type="System.Int32, mscorlib">
     <value>8</value>
@@ -363,7 +379,7 @@
     <value>184, 42</value>
   </data>
   <data name="txt_PacketsPerSecond.Size" type="System.Drawing.Size, System.Drawing">
-    <value>51, 20</value>
+    <value>51, 22</value>
   </data>
   <data name="txt_PacketsPerSecond.TabIndex" type="System.Int32, mscorlib">
     <value>10</value>
@@ -384,7 +400,7 @@
     <value>74, 16</value>
   </data>
   <data name="txt_BytesSent.Size" type="System.Drawing.Size, System.Drawing">
-    <value>64, 20</value>
+    <value>64, 22</value>
   </data>
   <data name="txt_BytesSent.TabIndex" type="System.Int32, mscorlib">
     <value>12</value>
@@ -404,11 +420,14 @@
   <data name="label6.AutoSize" type="System.Boolean, mscorlib">
     <value>True</value>
   </data>
+  <data name="label6.ImeMode" type="System.Windows.Forms.ImeMode, System.Windows.Forms">
+    <value>NoControl</value>
+  </data>
   <data name="label6.Location" type="System.Drawing.Point, System.Drawing">
     <value>6, 18</value>
   </data>
   <data name="label6.Size" type="System.Drawing.Size, System.Drawing">
-    <value>60, 13</value>
+    <value>75, 16</value>
   </data>
   <data name="label6.TabIndex" type="System.Int32, mscorlib">
     <value>11</value>
@@ -431,11 +450,14 @@
   <data name="label7.AutoSize" type="System.Boolean, mscorlib">
     <value>True</value>
   </data>
+  <data name="label7.ImeMode" type="System.Windows.Forms.ImeMode, System.Windows.Forms">
+    <value>NoControl</value>
+  </data>
   <data name="label7.Location" type="System.Drawing.Point, System.Drawing">
     <value>23, 43</value>
   </data>
   <data name="label7.Size" type="System.Drawing.Size, System.Drawing">
-    <value>43, 13</value>
+    <value>52, 16</value>
   </data>
   <data name="label7.TabIndex" type="System.Int32, mscorlib">
     <value>13</value>
@@ -459,7 +481,7 @@
     <value>74, 42</value>
   </data>
   <data name="txt_BytesPerSecondSent.Size" type="System.Drawing.Size, System.Drawing">
-    <value>64, 20</value>
+    <value>64, 22</value>
   </data>
   <data name="txt_BytesPerSecondSent.TabIndex" type="System.Int32, mscorlib">
     <value>14</value>
@@ -479,11 +501,14 @@
   <data name="label8.AutoSize" type="System.Boolean, mscorlib">
     <value>True</value>
   </data>
+  <data name="label8.ImeMode" type="System.Windows.Forms.ImeMode, System.Windows.Forms">
+    <value>NoControl</value>
+  </data>
   <data name="label8.Location" type="System.Drawing.Point, System.Drawing">
     <value>126, 43</value>
   </data>
   <data name="label8.Size" type="System.Drawing.Size, System.Drawing">
-    <value>56, 13</value>
+    <value>67, 16</value>
   </data>
   <data name="label8.TabIndex" type="System.Int32, mscorlib">
     <value>15</value>
@@ -506,11 +531,14 @@
   <data name="label10.AutoSize" type="System.Boolean, mscorlib">
     <value>True</value>
   </data>
+  <data name="label10.ImeMode" type="System.Windows.Forms.ImeMode, System.Windows.Forms">
+    <value>NoControl</value>
+  </data>
   <data name="label10.Location" type="System.Drawing.Point, System.Drawing">
     <value>13, 96</value>
   </data>
   <data name="label10.Size" type="System.Drawing.Size, System.Drawing">
-    <value>156, 13</value>
+    <value>194, 16</value>
   </data>
   <data name="label10.TabIndex" type="System.Int32, mscorlib">
     <value>16</value>
@@ -534,7 +562,7 @@
     <value>184, 94</value>
   </data>
   <data name="txt_MaxPacketInterval.Size" type="System.Drawing.Size, System.Drawing">
-    <value>51, 20</value>
+    <value>51, 22</value>
   </data>
   <data name="txt_MaxPacketInterval.TabIndex" type="System.Int32, mscorlib">
     <value>17</value>
@@ -573,7 +601,7 @@
     <value>$this</value>
   </data>
   <data name="&gt;&gt;groupBox1.ZOrder" xml:space="preserve">
-    <value>3</value>
+    <value>4</value>
   </data>
   <data name="groupBox2.Location" type="System.Drawing.Point, System.Drawing">
     <value>255, 4</value>
@@ -597,20 +625,19 @@
     <value>$this</value>
   </data>
   <data name="&gt;&gt;groupBox2.ZOrder" xml:space="preserve">
-    <value>4</value>
+    <value>5</value>
   </data>
   <data name="chk_signing.AutoSize" type="System.Boolean, mscorlib">
     <value>True</value>
   </data>
-  <assembly alias="System.Windows.Forms" name="System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089" />
   <data name="chk_signing.ImeMode" type="System.Windows.Forms.ImeMode, System.Windows.Forms">
     <value>NoControl</value>
   </data>
   <data name="chk_signing.Location" type="System.Drawing.Point, System.Drawing">
-    <value>258, 113</value>
+    <value>254, 116</value>
   </data>
   <data name="chk_signing.Size" type="System.Drawing.Size, System.Drawing">
-    <value>61, 17</value>
+    <value>74, 20</value>
   </data>
   <data name="chk_signing.TabIndex" type="System.Int32, mscorlib">
     <value>21</value>
@@ -628,7 +655,7 @@
     <value>$this</value>
   </data>
   <data name="&gt;&gt;chk_signing.ZOrder" xml:space="preserve">
-    <value>2</value>
+    <value>3</value>
   </data>
   <data name="chk_mavlink2.AutoSize" type="System.Boolean, mscorlib">
     <value>True</value>
@@ -637,10 +664,10 @@
     <value>NoControl</value>
   </data>
   <data name="chk_mavlink2.Location" type="System.Drawing.Point, System.Drawing">
-    <value>259, 90</value>
+    <value>255, 93</value>
   </data>
   <data name="chk_mavlink2.Size" type="System.Drawing.Size, System.Drawing">
-    <value>72, 17</value>
+    <value>85, 20</value>
   </data>
   <data name="chk_mavlink2.TabIndex" type="System.Int32, mscorlib">
     <value>22</value>
@@ -658,10 +685,37 @@
     <value>$this</value>
   </data>
   <data name="&gt;&gt;chk_mavlink2.ZOrder" xml:space="preserve">
-    <value>1</value>
+    <value>2</value>
+  </data>
+  <data name="zedGraphBytesPerSec.Anchor" type="System.Windows.Forms.AnchorStyles, System.Windows.Forms">
+    <value>Bottom, Left, Right</value>
+  </data>
+  <data name="zedGraphBytesPerSec.Location" type="System.Drawing.Point, System.Drawing">
+    <value>3, 155</value>
+  </data>
+  <data name="zedGraphBytesPerSec.Size" type="System.Drawing.Size, System.Drawing">
+    <value>404, 240</value>
+  </data>
+  <data name="zedGraphBytesPerSec.TabIndex" type="System.Int32, mscorlib">
+    <value>20</value>
+  </data>
+  <data name="&gt;&gt;zedGraphBytesPerSec.Name" xml:space="preserve">
+    <value>zedGraphBytesPerSec</value>
+  </data>
+  <data name="&gt;&gt;zedGraphBytesPerSec.Type" xml:space="preserve">
+    <value>ZedGraph.ZedGraphControl, ZedGraph, Version=5.1.5.0, Culture=neutral, PublicKeyToken=null</value>
+  </data>
+  <data name="&gt;&gt;zedGraphBytesPerSec.Parent" xml:space="preserve">
+    <value>$this</value>
+  </data>
+  <data name="&gt;&gt;zedGraphBytesPerSec.ZOrder" xml:space="preserve">
+    <value>0</value>
+  </data>
+  <data name="but_reset.ImeMode" type="System.Windows.Forms.ImeMode, System.Windows.Forms">
+    <value>NoControl</value>
   </data>
   <data name="but_reset.Location" type="System.Drawing.Point, System.Drawing">
-    <value>356, 86</value>
+    <value>350, 91</value>
   </data>
   <data name="but_reset.Size" type="System.Drawing.Size, System.Drawing">
     <value>43, 23</value>
@@ -682,7 +736,7 @@
     <value>$this</value>
   </data>
   <data name="&gt;&gt;but_reset.ZOrder" xml:space="preserve">
-    <value>0</value>
+    <value>1</value>
   </data>
   <metadata name="$this.Localizable" type="System.Boolean, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089">
     <value>True</value>
