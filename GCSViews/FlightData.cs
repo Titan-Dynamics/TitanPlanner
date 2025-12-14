@@ -3945,22 +3945,29 @@ namespace MissionPlanner.GCSViews
                 return;
             }
 
+            // Capture values on UI thread
             Locationwp gotohere = new Locationwp();
-
             gotohere.id = (ushort) MAVLink.MAV_CMD.WAYPOINT;
             gotohere.alt = MainV2.comPort.MAV.GuidedMode.z; // back to m
             gotohere.lat = (MouseDownStart.Lat);
             gotohere.lng = (MouseDownStart.Lng);
             gotohere.frame = MainV2.comPort.MAV.GuidedMode.frame;
 
-            try
+            // Run MAVLink command async to prevent GUI freeze
+            System.Threading.Tasks.Task.Run(() =>
             {
-                MainV2.comPort.setGuidedModeWP(gotohere);
-            }
-            catch (Exception ex)
-            {
-                CustomMessageBox.Show(Strings.CommandFailed + ex.Message, Strings.ERROR);
-            }
+                try
+                {
+                    MainV2.comPort.setGuidedModeWP(gotohere);
+                }
+                catch (Exception ex)
+                {
+                    this.BeginInvoke((Action)(() =>
+                    {
+                        CustomMessageBox.Show(Strings.CommandFailed + ex.Message, Strings.ERROR);
+                    }));
+                }
+            });
         }
 
         private void groundColorToolStripMenuItem_Click(object sender, EventArgs e)
