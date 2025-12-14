@@ -1756,15 +1756,9 @@ namespace MissionPlanner.Controls
                         _flightPlanLines.Draw(projMatrix, modelMatrix);
                     }
                 }
-                // Only draw plane and indicators when connected
+                // Only draw indicators when connected (plane drawn after markers)
                 if (IsVehicleConnected)
                 {
-                    // Draw the plane model (skip in FPV mode since camera is at aircraft position)
-                    if (!_fpvMode)
-                    {
-                        DrawPlane(projMatrix, modelMatrix);
-                    }
-
                     // Draw heading (red) and nav bearing (orange) lines from plane center
                     DrawHeadingLines(projMatrix, modelMatrix);
 
@@ -1896,9 +1890,12 @@ namespace MissionPlanner.Controls
                                 startindex + 1, startindex + 3, startindex + 2
                             });
 
+                        // Disable depth test for Home marker so it renders fully even when underground
+                        bool isHomeMarker = point.Tag == "H";
+                        if (isHomeMarker)
+                            GL.Disable(EnableCap.DepthTest);
 
                         wpmarker.Draw(projMatrix, modelMatrix);
-
                         wpmarker.Cleanup(true);
 
                         // Draw waypoint label at top of sprite (no rotation)
@@ -1937,11 +1934,23 @@ namespace MissionPlanner.Controls
                                 wpnumber.Cleanup(true);
                             }
                         }
+
+                        // Re-enable depth test after Home marker and its label are drawn
+                        if (isHomeMarker)
+                            GL.Enable(EnableCap.DepthTest);
                     }
 
                     GL.Disable(EnableCap.Blend);
                     GL.DepthMask(true);
                 }
+
+                // Draw plane after markers so it properly occludes the Home marker
+                // (Home marker is drawn without depth testing to show through terrain)
+                if (IsVehicleConnected && !_fpvMode)
+                {
+                    DrawPlane(projMatrix, modelMatrix);
+                }
+
                 _fpsOverlay.UpdateAndDraw();
                 var beforeswapbuffer = DateTime.Now;
                 try
