@@ -1407,31 +1407,30 @@ namespace MissionPlanner.Controls
                 GL.LineWidth(penn.Width);
                 GL.Color4(penn.Color);
 
-                //GL.Begin(PrimitiveType.LineStrip);
-
                 start = 360 - start;
                 start -= 30;
 
-                var vertices = new float[(int)((degrees + 1) * 2)];
+                int numPoints = (int)Math.Abs(degrees) + 1;
+                var vertices = new float[numPoints * 2];
 
-                float x = 0, y = 0;
-                int length = 0;
-                for (float i = start; i <= start + degrees; i++)
+                float centerX = rect.X + rect.Width / 2;
+                float centerY = rect.Y + rect.Height / 2;
+                float radiusX = rect.Width / 2;
+                float radiusY = rect.Height / 2;
+                float step = degrees >= 0 ? 1 : -1;
+
+                for (int j = 0; j < numPoints; j++)
                 {
-                    x = (float) Math.Sin(i * deg2rad) * rect.Width / 2;
-                    y = (float) Math.Cos(i * deg2rad) * rect.Height / 2;
-                    x = x + rect.X + rect.Width / 2;
-                    y = y + rect.Y + rect.Height / 2;
-                    vertices[(int)((i - start) * 2)] = x;
-                    vertices[(int)((i - start) * 2 + 1)] = y;
-                    length += 2;
-                    //GL.Vertex2(x, y);
+                    float angle = start + j * step;
+                    float x = (float)Math.Sin(angle * deg2rad) * radiusX + centerX;
+                    float y = (float)Math.Cos(angle * deg2rad) * radiusY + centerY;
+                    vertices[j * 2] = x;
+                    vertices[j * 2 + 1] = y;
                 }
 
-                //GL.End();                
                 GL.VertexPointer(2, VertexPointerType.Float, 0, vertices);
                 GL.EnableClientState(ArrayCap.VertexArray);
-                GL.DrawArrays(PrimitiveType.LineStrip, 0, length/2);
+                GL.DrawArrays(PrimitiveType.LineStrip, 0, numPoints);
                 GL.DisableClientState(ArrayCap.VertexArray);
             }
             else
@@ -2036,7 +2035,7 @@ namespace MissionPlanner.Controls
                 // horizon
                 graphicsObject.RotateTransform(-_roll);
 
-                int fontsize = this.Height / 30;
+                int fontsize = this.Height / 28;
                 int fontoffset = fontsize - 6;
 
                 float every5deg = -this.Height / 65;
@@ -2176,17 +2175,23 @@ namespace MissionPlanner.Controls
 
                     this._redPen.Width = 2;
 
-                    int[] array = new int[] {-60, -45, -30, -20, -10, 0, 10, 20, 30, 45, 60};
+                    int[] array = new int[] {-60, -45, -30, -15, 0, 15, 30, 45, 60};
 
                     foreach (int a in array)
                     {
                         graphicsObject.ResetTransform();
                         graphicsObject.TranslateTransform(this.Width / 2, this.Height / 2);
                         graphicsObject.RotateTransform(a - _roll);
-                        drawstring(String.Format("{0,2}", Math.Abs(a)), font, fontsize, _whiteBrush,
-                            0 - 6 - fontoffset, -lengthlong * 8 - extra);
+
+                        // Draw tick mark
                         graphicsObject.DrawLine(this._whitePen, 0, -lengthlong * 3 - extra, 0,
                             -lengthlong * 3 - extra - lengthlong);
+
+                        // Draw label rotated to match arc
+                        string label = Math.Abs(a).ToString();
+                        float labelY = -lengthlong * 4 - extra - fontsize - 4;
+                        float labelX = -fontsize * label.Length / 4f;
+                        drawstring(label, font, fontsize, _whiteBrush, labelX, labelY);
                     }
 
                     graphicsObject.ResetTransform();
@@ -2234,7 +2239,7 @@ namespace MissionPlanner.Controls
                 }
 
                 //draw heading bar
-                Rectangle headbg = new Rectangle(0, 0, this.Width, fontsize + 20);
+                Rectangle headbg = new Rectangle(0, 0, this.Width, (int)(fontsize * 1.75f));
 
                 graphicsObject.ResetTransform();
                 graphicsObject.ResetClip();
@@ -2242,7 +2247,7 @@ namespace MissionPlanner.Controls
                 if (displayheading)
                 {
                     graphicsObject.FillRectangle(SlightlyTransparentBrush, headbg);
-                    graphicsObject.DrawLine(this._whitePen, 0, headbg.Bottom, headbg.Right, headbg.Bottom);
+                    graphicsObject.DrawLine(_blackPen, 0, headbg.Bottom, headbg.Right, headbg.Bottom);
 
                     float space = (headbg.Width - 10) / 120.0f;
                     int start = (int) Math.Round((_heading - 60), 1);
@@ -2265,60 +2270,61 @@ namespace MissionPlanner.Controls
                             if (disp < 0)
                                 disp += 360;
                             disp = disp % 360;
-                            var angleFontSize = fontsize - 4;
+                            var angleFontSize = fontsize - 2;
+                            var topMargin = fontsize / 4;
                             if (disp == 0)
                             {
                                 drawstring(HUDT.N.PadLeft(2), font, fontsize, _whiteBrush,
                                     headbg.Left - 5 + space * (a - start) - fontoffset,
-                                    3);
+                                    topMargin);
                             }
                             else if (disp == 45)
                             {
                                 drawstring(HUDT.NE.PadLeft(2), font, fontsize, _whiteBrush,
                                     headbg.Left - 5 + space * (a - start) - fontoffset,
-                                    3);
+                                    topMargin);
                             }
                             else if (disp == 90)
                             {
                                 drawstring(HUDT.E.PadLeft(2), font, fontsize, _whiteBrush,
                                     headbg.Left - 5 + space * (a - start) - fontoffset,
-                                    3);
+                                    topMargin);
                             }
                             else if (disp == 135)
                             {
                                 drawstring(HUDT.SE.PadLeft(2), font, fontsize, _whiteBrush,
                                     headbg.Left - 5 + space * (a - start) - fontoffset,
-                                    3);
+                                    topMargin);
                             }
                             else if (disp == 180)
                             {
                                 drawstring(HUDT.S.PadLeft(2), font, fontsize, _whiteBrush,
                                     headbg.Left - 5 + space * (a - start) - fontoffset,
-                                    3);
+                                    topMargin);
                             }
                             else if (disp == 225)
                             {
                                 drawstring(HUDT.SW.PadLeft(2), font, fontsize, _whiteBrush,
                                     headbg.Left - 5 + space * (a - start) - fontoffset,
-                                    3);
+                                    topMargin);
                             }
                             else if (disp == 270)
                             {
                                 drawstring(HUDT.W.PadLeft(2), font, fontsize, _whiteBrush,
                                     headbg.Left - 5 + space * (a - start) - fontoffset,
-                                    3);
+                                    topMargin);
                             }
                             else if (disp == 315)
                             {
                                 drawstring(HUDT.NW.PadLeft(2), font, fontsize, _whiteBrush,
                                     headbg.Left - 5 + space * (a - start) - fontoffset,
-                                    3);
+                                    topMargin);
                             }
                             else
                             {
                                 drawstring(String.Format("{0,3}", (int) (disp % 360)), font, angleFontSize,
                                     _whiteBrush, headbg.Left - 8 + space * (a - start) - fontoffset,
-                                    3);
+                                    topMargin);
                             }
                         }
                         else if ((int) a % 5 == 0)
@@ -2553,7 +2559,7 @@ namespace MissionPlanner.Controls
                     graphicsObject.DrawPolygon(this._blackPen, arrow);
                     graphicsObject.FillPolygon(new SolidBrush(Color.FromArgb(150, 0, 0, 0)), arrow);
 
-                    drawstring(HUDT.AS + (speed).ToString("0") + speedunit, font, (fontsize * 0.8f), (SolidBrush) airspeedBrush, notchIndent / 2f, ((fontsize * 0.8f) / -2f) - 2);
+                    drawstring(HUDT.AS + (speed).ToString("0") + speedunit, font, (fontsize * 0.75f), (SolidBrush) airspeedBrush, notchIndent / 3f, ((fontsize * 0.8f) / -2f) - 2);
 
                     // extra text data
                     var brush = (SolidBrush) Brushes.White;
@@ -2561,7 +2567,7 @@ namespace MissionPlanner.Controls
                     {
                         brush = (SolidBrush) Brushes.Red;
                     }
-                    drawstring(HUDT.GS + _groundspeed.ToString("0") + speedunit, font, (fontsize * 0.8f), (SolidBrush) airspeedBrush, notchIndent / 2f, arrowHalf + (fontsize * 0.125f));
+                    drawstring(HUDT.GS + _groundspeed.ToString("0") + speedunit, font, (fontsize * 0.75f), (SolidBrush) airspeedBrush, notchIndent / 3f, arrowHalf + (fontsize * 0.125f));
 
                     graphicsObject.ResetTransform();
 
@@ -2817,7 +2823,7 @@ namespace MissionPlanner.Controls
                     graphicsObject.ResetTransform();
                     graphicsObject.TranslateTransform(0, this.Height / 2);
 
-                    drawstring(((int) _alt).ToString("0") + altunit, font, (fontsize * 0.8f), (SolidBrush) Brushes.White, scrollbg.Left + (notchIndent * 2f), ((fontsize * 0.8f) / -2f) - 2);
+                    drawstring(((int) _alt).ToString("0") + altunit, font, (fontsize * 0.75f), (SolidBrush) Brushes.White, scrollbg.Left + (notchIndent * 1.25f), ((fontsize * 0.8f) / -2f) - 2);
                     graphicsObject.ResetTransform();
                 }
 
@@ -2825,10 +2831,10 @@ namespace MissionPlanner.Controls
                 var mode_x = graphicsObject.Width / 2;
 
                 var length = mode.ToCharArray().Length;
-                var wPerLetter = fontsize * 0.7f;
+                var wPerLetter = fontsize * 0.35f;
                 var textSizeHalf = ((length * wPerLetter) / 2);
                 var mode_text_x = mode_x - textSizeHalf;
-                var mode_height = (fontsize * 2.25f);
+                var mode_height = fontsize * 2f;
 
                 PointF[] polyM = new PointF[4];
                 polyM[0] = new PointF(mode_x - textSizeHalf - (mode_height), graphicsObject.Bottom);
@@ -2844,11 +2850,17 @@ namespace MissionPlanner.Controls
                 {
                     modeBrush = _redBrush;
                 }
-                drawstring(_mode, font, fontsize, _whiteBrush, mode_x, graphicsObject.Height - (fontsize * 1.625f), true);
+                drawstring(_mode, font, fontsize, _whiteBrush, mode_x, graphicsObject.Bottom - (fontsize * 1.5f), true);
 
                 if (displayconninfo)
                 {
-                    graphicsObject.TranslateTransform(35, fontsize);
+                    var translate_x = fontsize * 1.5f;
+                    var translate_y = fontsize * 1.5f;
+                    if (_linkqualitygcs == 100)
+                    {
+                        translate_x = fontsize;
+                    }
+                    graphicsObject.TranslateTransform(translate_x, translate_y);
                     if (_linkqualitygcs > 80)
                         graphicsObject.DrawLine(this._greenPen, scrollbg.Left - 5,
                         scrollbg.Top - (int) (fontsize * 2.2) - 2 - 20, scrollbg.Left - 5,
@@ -2874,7 +2886,7 @@ namespace MissionPlanner.Controls
                         graphicsObject.DrawLine(this._redPen, scrollbg.Left, scrollbg.Top - (int) (fontsize * 2.2) - 2,
                             scrollbg.Left + 50, scrollbg.Top - (int) (fontsize * 2.2) - 2 - 20);
                     }
-                    graphicsObject.TranslateTransform(-35, -fontsize);
+                    graphicsObject.TranslateTransform(-translate_x, -translate_y);
                 }
 
                 // AOA - Angle of Attack indicator
