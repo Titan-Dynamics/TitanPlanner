@@ -1855,16 +1855,19 @@ namespace MissionPlanner.Controls
                     if (_fpvMode)
                     {
                         // FPV mode: camera at aircraft position, looking in direction of flight
-                        // Based on OpenGLtest2.cs FPV camera logic
+                        // Uses same filtered values as plane model (_planeYaw, _planePitch)
                         cameraX = _planeDrawX;
                         cameraY = _planeDrawY;
                         cameraZ = _planeDrawZ;
 
-                        // Look direction from yaw (no +180 offset, same as OpenGLtest2)
+                        // Look direction from filtered yaw and pitch
                         double lookDist = 100;
-                        lookX = cameraX + Math.Sin(MathHelper.Radians(rpy.Z)) * lookDist;
-                        lookY = cameraY + Math.Cos(MathHelper.Radians(rpy.Z)) * lookDist;
-                        lookZ = cameraZ;
+                        double yawRad = MathHelper.Radians(_planeYaw);
+                        double pitchRad = MathHelper.Radians(_planePitch);
+                        double cosPitch = Math.Cos(pitchRad);
+                        lookX = cameraX + Math.Sin(yawRad) * cosPitch * lookDist;
+                        lookY = cameraY + Math.Cos(yawRad) * cosPitch * lookDist;
+                        lookZ = cameraZ + Math.Sin(pitchRad) * lookDist;
                     }
                     else
                     {
@@ -1892,11 +1895,9 @@ namespace MissionPlanner.Controls
 
                 if (_fpvMode && IsVehicleConnected)
                 {
-                    // In FPV mode, apply roll and pitch via matrix multiplication (same as OpenGLtest2.cs)
-                    // Roll around Z axis
-                    modelMatrix = Matrix4.Mult(modelMatrix, Matrix4.CreateRotationZ((float)(rpy.X * MathHelper.deg2rad)));
-                    // Pitch around X axis (negated)
-                    modelMatrix = Matrix4.Mult(modelMatrix, Matrix4.CreateRotationX((float)(rpy.Y * -MathHelper.deg2rad)));
+                    // In FPV mode, apply roll via matrix multiplication using same filtered values as plane
+                    // Roll around Z axis (using filtered _planeRoll)
+                    modelMatrix = Matrix4.Mult(modelMatrix, Matrix4.CreateRotationZ((float)(_planeRoll * MathHelper.deg2rad)));
                 }
 
                 // Update projection matrix based on altitude - 100km render distance when >500m altitude
@@ -2237,8 +2238,9 @@ namespace MissionPlanner.Controls
                 // Draw plane, heading lines, and trail (all part of Pass 2 with same projection)
                 if (IsVehicleConnected)
                 {
-                    // Draw heading (red) and nav bearing (orange) lines from plane center
-                    DrawHeadingLines(pass2ProjMatrix, modelMatrix);
+                    // Draw heading (red) and nav bearing (orange) lines from plane center (skip in FPV mode)
+                    if (!_fpvMode)
+                        DrawHeadingLines(pass2ProjMatrix, modelMatrix);
 
                     // Draw flight path trail
                     DrawTrail(pass2ProjMatrix, modelMatrix);
