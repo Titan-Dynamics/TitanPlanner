@@ -2132,8 +2132,8 @@ namespace MissionPlanner.Controls
                                 }
 
                                 drawstring(a.ToString(), font, fontsize + 2, _whiteBrush,
-                                    this.Width / 2 - lengthlong - halfwidth - (fontsize / 4f),
-                                    pitchoffset + a * every5deg - (fontsize / 1.5f));
+                                    this.Width / 2 - lengthlong - halfwidth - (fontsize),
+                                    pitchoffset + a * every5deg - (fontsize / 1.5f), true);
                             }
                             else
                             {
