@@ -64,7 +64,7 @@ namespace MissionPlanner.Utilities
         {
             iconSet = IconSet.BurnKermitIconSet;
             terminalTheming = true;
-            strThemeName = "BurntKermit.mpsystheme";
+            strThemeName = "titandynamics.mpsystheme";
 
             colors.Add("Background", Color.FromArgb(0x26, 0x27, 0x28), "BGColor");						// This changes the colour of the main menu background
             colors.Add("Control Background", Color.FromArgb(0x43, 0x44, 0x45), "ControlBGColor");		// This changes the colour of the sub menu backgrounds
@@ -121,13 +121,13 @@ namespace MissionPlanner.Utilities
                 switch (iconSet)
                 {
                     case IconSet.BurnKermitIconSet:
-                        MainV2.instance.switchicons(new MainV2.burntkermitmenuicons());
+                        MainV2.instance.switchicons(new MainV2.burntkermitmenuicons(), true);
                         break;
                     case IconSet.HighContrastIconSet:
-                        MainV2.instance.switchicons(new MainV2.highcontrastmenuicons());
+                        MainV2.instance.switchicons(new MainV2.highcontrastmenuicons(), true);
                         break;
-                    default:                                                            
-                        MainV2.instance.switchicons(new MainV2.burntkermitmenuicons());     //Fall back to BurntKermit
+                    default:
+                        MainV2.instance.switchicons(new MainV2.burntkermitmenuicons(), true);     //Fall back to BurntKermit
                         break;
                 }
             }
@@ -188,11 +188,11 @@ namespace MissionPlanner.Utilities
         public static Color BSVButtonAreaBGColor;
         public static Color UnselectedTextColour;
         public static Color HorizontalPBValueColor;
-        public static Color HudText;
-        public static Color HudGroundTop;
-        public static Color HudGroundBot;
-        public static Color HudSkyTop;
-        public static Color HudSkyBot;
+        public static Color HudText = Color.LightGray;
+        public static Color HudGroundTop = Color.FromArgb(0x9b, 0xb8, 0x24);
+        public static Color HudGroundBot = Color.FromArgb(0x41, 0x4f, 0x07);
+        public static Color HudSkyTop = Color.Blue;
+        public static Color HudSkyBot = Color.LightBlue;
 
         public static ThemeColorTable thmColor;
 
@@ -382,6 +382,50 @@ namespace MissionPlanner.Utilities
         public static void StartThemeEditor()
         {
             new ThemeEditor().ShowDialog();
+        }
+
+        /// <summary>
+        /// Recolors non-transparent, non-white pixels in an image to the theme's accent color (BannerColor2).
+        /// Used for theming menu icons.
+        /// </summary>
+        /// <param name="original">The original image to recolor</param>
+        /// <returns>A new image with accent pixels recolored to BannerColor2</returns>
+        public static Image RecolorMenuIcon(Image original)
+        {
+            if (original == null)
+                return null;
+
+            Bitmap result = new Bitmap(original.Width, original.Height, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
+
+            using (var orig = new Bitmap(original))
+            {
+                for (int y = 0; y < orig.Height; y++)
+                {
+                    for (int x = 0; x < orig.Width; x++)
+                    {
+                        Color pixel = orig.GetPixel(x, y);
+
+                        // Skip transparent pixels
+                        if (pixel.A == 0)
+                        {
+                            result.SetPixel(x, y, pixel);
+                            continue;
+                        }
+
+                        // Skip white/near-white pixels (R, G, B all > 240)
+                        if (pixel.R > 240 && pixel.G > 240 && pixel.B > 240)
+                        {
+                            result.SetPixel(x, y, pixel);
+                            continue;
+                        }
+
+                        // Recolor to BannerColor2, preserving alpha
+                        result.SetPixel(x, y, Color.FromArgb(pixel.A, BannerColor2.R, BannerColor2.G, BannerColor2.B));
+                    }
+                }
+            }
+
+            return result;
         }
 
         public static void ApplyThemeTo(object control)

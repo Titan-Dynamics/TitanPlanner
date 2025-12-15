@@ -2132,8 +2132,8 @@ namespace MissionPlanner.Controls
                                 }
 
                                 drawstring(a.ToString(), font, fontsize + 2, _whiteBrush,
-                                    this.Width / 2 - lengthlong - halfwidth - (fontsize / 4f),
-                                    pitchoffset + a * every5deg - (fontsize / 1.5f));
+                                    this.Width / 2 - lengthlong - halfwidth - (fontsize),
+                                    pitchoffset + a * every5deg - (fontsize / 1.5f), true);
                             }
                             else
                             {
@@ -2783,32 +2783,7 @@ namespace MissionPlanner.Controls
                     drawstring(((int) _alt).ToString("0") + altunit, font, (fontsize * 0.75f), (SolidBrush) Brushes.White, scrollbg.Left + (notchIndent * 1.25f), ((fontsize * 0.8f) / -2f) - 2);
                     graphicsObject.ResetTransform();
                 }
-
-                // draw mode
-                var mode_x = graphicsObject.Width / 2;
-
-                var length = mode.ToCharArray().Length;
-                var wPerLetter = fontsize * 0.35f;
-                var textSizeHalf = ((length * wPerLetter) / 2);
-                var mode_text_x = mode_x - textSizeHalf;
-                var mode_height = fontsize * 2f;
-
-                PointF[] polyM = new PointF[4];
-                polyM[0] = new PointF(mode_x - textSizeHalf - (mode_height), graphicsObject.Bottom);
-                polyM[1] = new PointF(mode_x - textSizeHalf - (mode_height / 2f), graphicsObject.Bottom - mode_height);
-                polyM[2] = new PointF(mode_x + textSizeHalf + (mode_height / 2f), graphicsObject.Bottom - mode_height);
-                polyM[3] = new PointF(mode_x + textSizeHalf + (mode_height), graphicsObject.Bottom);
-
-                graphicsObject.FillPolygon(SlightlyTransparentBrush, polyM);
-                graphicsObject.DrawPolygon(_whitePen, polyM);
-
-                var modeBrush = new SolidBrush(Color.White);
-                if (_modechanged.AddSeconds(2) > datetime)
-                {
-                    modeBrush = _redBrush;
-                }
-                drawstring(_mode, font, fontsize, _whiteBrush, mode_x, graphicsObject.Bottom - (fontsize * 1.5f), true);
-
+                               
                 if (displayconninfo)
                 {
                     // Signal strength indicator positioned above scrollbg
@@ -3332,38 +3307,36 @@ namespace MissionPlanner.Controls
                     }
                 }
 
-                if (displayprearm && status == false) // not armed
+                if (displayprearm && status == false)
                 {
-                    // Auto-width based on text, anchored to right, 3px above GPS row
-                    string prearmText = prearmstatus ? HUDT.ReadyToArm : HUDT.NotReadyToArm;
-                    var textSize = TextRenderer.MeasureText(prearmText, new Font(HUDT.Font, fontsize));
-                    int rightMargin = 3;
-                    int prearmY = this.Height - (fontsize + 13) - 3 - textSize.Height; // 3px above GPS row
-                    prearmhitzone = new Rectangle(this.Width - rightMargin - textSize.Width, prearmY, textSize.Width, textSize.Height);
-
-                    if (prearmstatus)
-                    {
-                        if (displayicons)
-                        {
-                            DrawImage(HUDT.prearm_green, prearmhitzone.X, prearmhitzone.Y, prearmhitzone.Width, prearmhitzone.Height);
-                        }
-                        else
-                        {
-                            drawstring(HUDT.ReadyToArm, font, fontsize, _whiteBrush, prearmhitzone.X, prearmhitzone.Y);
-                        }
-                    }
-                    else
-                    {
-                        if (displayicons)
-                        {
-                            DrawImage(HUDT.prearm_red, prearmhitzone.X, prearmhitzone.Y, prearmhitzone.Width, prearmhitzone.Height);
-                        }
-                        else
-                        {
-                            drawstring(HUDT.NotReadyToArm, font, fontsize, (SolidBrush) Brushes.Red, prearmhitzone.X, prearmhitzone.Y);
-                        }
-                    }
+                    drawstring(prearmstatus ? HUDT.ReadyToArm : HUDT.NotReadyToArm, font, fontsize, prearmstatus ? _whiteBrush : (SolidBrush) Brushes.Red, graphicsObject.Width / 2, graphicsObject.Height - (fontsize * 4), true);
                 }
+
+                // draw mode
+                graphicsObject.ResetTransform();
+                var mode_x = graphicsObject.Width / 2;
+
+                var length = mode.ToCharArray().Length;
+                var wPerLetter = fontsize * 0.35f;
+                var textSizeHalf = ((length * wPerLetter) / 2);
+                var mode_text_x = mode_x - textSizeHalf;
+                var mode_height = fontsize * 2f;
+
+                PointF[] polyM = new PointF[4];
+                polyM[0] = new PointF(mode_x - textSizeHalf - (mode_height), graphicsObject.Height);
+                polyM[1] = new PointF(mode_x - textSizeHalf - (mode_height / 2f), graphicsObject.Height - mode_height);
+                polyM[2] = new PointF(mode_x + textSizeHalf + (mode_height / 2f), graphicsObject.Height - mode_height);
+                polyM[3] = new PointF(mode_x + textSizeHalf + (mode_height), graphicsObject.Height);
+
+                graphicsObject.FillPolygon(SlightlyTransparentBrush, polyM);
+                graphicsObject.DrawPolygon(_whitePen, polyM);
+
+                var modeBrush = new SolidBrush(Color.White);
+                if (_modechanged.AddSeconds(2) > datetime)
+                {
+                    modeBrush = _redBrush;
+                }
+                drawstring(_mode, font, fontsize, _whiteBrush, mode_x, graphicsObject.Height - (fontsize * 1.5f), true);
 
                 if (DesignMode)
                 {

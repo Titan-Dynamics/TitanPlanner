@@ -153,9 +153,22 @@ namespace MissionPlanner
             return string.Concat(filename.Split(Path.GetInvalidFileNameChars()));
         }
 
+        private static void HandleTDEditionUpgrade()
+        {
+            // Check for Titan Dynamics edition - if not set, this is a new install or upgrade from original Mission Planner
+            if (Settings.Instance["td_edition"] == null)
+            {
+                // Set Titan Dynamics default theme
+                Settings.Instance["theme"] = "titandynamics.mpsystheme";
+                Settings.Instance["td_edition"] = "true";
+                Settings.Instance.Save();
+            }
+        }
+
         [MethodImpl(MethodImplOptions.NoInlining)]
         public static void Start(string[] args)
         {
+            HandleTDEditionUpgrade();
             Program.args = args;
             Console.WriteLine(
                 "If your error is about Microsoft.DirectX.DirectInput, please install the latest directx redist from here http://www.microsoft.com/en-us/download/details.aspx?id=35 \n\n");
@@ -306,7 +319,7 @@ namespace MissionPlanner
                 if (File.Exists(Settings.GetRunningDirectory() + "custom.mpsystheme"))
                     Settings.Instance["theme"] = "custom.mpsystheme";
                 else
-                    Settings.Instance["theme"] = "BurntKermit.mpsystheme";
+                    Settings.Instance["theme"] = "titandynamics.mpsystheme";
             }
             ThemeManager.LoadTheme(Settings.Instance["theme"]);
 
