@@ -365,6 +365,13 @@ namespace MissionPlanner.GCSViews
 
         private CheckBox CB_3dmap;
 
+        // Split ratio persistence
+        private const double MinSplitRatio = 0.2;
+        private const string SettingsKeyMainH = "Split.MainH";
+        private const string SettingsKeySubMainLeft = "Split.SubMainLeft";
+        private const string SettingsKeyMapBottom = "Split.MapBottom";
+        private const string SettingsKeyTuningParams = "Split.TuningParams";
+
         private void MoveMapControlsAboveTuning()
         {
             splitContainer1.Panel2.Resize -= splitContainer1_Panel2_Resize;
@@ -433,6 +440,56 @@ namespace MissionPlanner.GCSViews
             CHK_autopan.Location = new Point(CB_3dmap.Right + 10, CHK_autopan.Top);
         }
 
+        private void SaveSplitRatio(SplitContainer split, string settingsKey)
+        {
+            if (split == null)
+                return;
+
+            double total = split.Orientation == Orientation.Horizontal ? split.Height : split.Width;
+            if (total <= 0)
+                return;
+
+            double ratio = split.SplitterDistance / total;
+            ratio = Math.Max(MinSplitRatio, Math.Min(1.0 - MinSplitRatio, ratio));
+            Settings.Instance[settingsKey] = ratio.ToString(System.Globalization.CultureInfo.InvariantCulture);
+            log.Info($"SaveSplitRatio: {settingsKey} = {ratio} (distance={split.SplitterDistance}, total={total})");
+        }
+
+        private void ApplySplitRatio(SplitContainer split, string settingsKey, double defaultRatio = 0.5)
+        {
+            if (split == null)
+                return;
+
+            double total = split.Orientation == Orientation.Horizontal ? split.Height : split.Width;
+            if (total <= 0)
+            {
+                log.Info($"ApplySplitRatio: {settingsKey} - total is {total}, skipping");
+                return;
+            }
+
+            double ratio = defaultRatio;
+            if (Settings.Instance.ContainsKey(settingsKey))
+            {
+                if (double.TryParse(Settings.Instance[settingsKey], System.Globalization.NumberStyles.Float,
+                    System.Globalization.CultureInfo.InvariantCulture, out double savedRatio))
+                {
+                    ratio = savedRatio;
+                }
+            }
+
+            ratio = Math.Max(MinSplitRatio, Math.Min(1.0 - MinSplitRatio, ratio));
+
+            int minSize = (int)(total * MinSplitRatio);
+            split.Panel1MinSize = minSize;
+            split.Panel2MinSize = minSize;
+
+            int distance = (int)Math.Round(total * ratio);
+            distance = Math.Max(minSize, Math.Min((int)total - minSize, distance));
+
+            log.Info($"ApplySplitRatio: {settingsKey} - ratio={ratio}, distance={distance}, total={total}");
+            split.SplitterDistance = distance;
+        }
+
         public FlightData()
         {
             log.Info("Ctor Start");
@@ -462,6 +519,7 @@ namespace MissionPlanner.GCSViews
             this._themedTabStrip.ControlRemoved += (sender, e) => ManageLeftPanelVisibility();
             this.panel_persistent.ControlAdded += (sender, e) => ManageLeftPanelVisibility();
             this.panel_persistent.ControlRemoved += (sender, e) => ManageLeftPanelVisibility();
+
             //    _serializer = new DockStateSerializer(dockContainer1);
             //    _serializer.SavePath = Application.StartupPath + Path.DirectorySeparatorChar + "FDscreen.xml";
             //    dockContainer1.PreviewRenderer = new PreviewRenderer();
@@ -1322,7 +1380,13 @@ namespace MissionPlanner.GCSViews
             try
             {
                 if (hud1 != null)
-                    Settings.Instance["FlightSplitter"] = MainH.SplitterDistance.ToString();
+                {
+                    // Save all split ratios on app close
+                    SaveSplitRatio(MainH, SettingsKeyMainH);
+                    SaveSplitRatio(SubMainLeft, SettingsKeySubMainLeft);
+                    SaveSplitRatio(splitContainer1, SettingsKeyMapBottom);
+                    SaveSplitRatio(splitContainer2, SettingsKeyTuningParams);
+                }
 
                 Dispose3DMap();
             }
@@ -2555,14 +2619,6 @@ namespace MissionPlanner.GCSViews
 
             splitContainer1.Panel1Collapsed = false;
 
-            // Match the vertical split to the current HUD/FlightData split (pixel aligned)
-            int totalHeight = splitContainer1.Height;
-            int hudHeightPixels = (SubMainLeft != null && SubMainLeft.SplitterDistance > 0)
-                ? SubMainLeft.SplitterDistance
-                : totalHeight / 2;
-            int topHeight = Math.Max(0, Math.Min(totalHeight, hudHeightPixels - 5)); // slight nudge to align lines
-            int bottomHeight = Math.Max(0, totalHeight - topHeight);
-
             // Reset visibility defaults
             if (map3DHost != null)
                 map3DHost.Visible = false;
@@ -2600,21 +2656,15 @@ namespace MissionPlanner.GCSViews
 
                 ZedGraphTimer.Enabled = false;
                 ZedGraphTimer.Stop();
-
-                splitContainer1.SplitterDistance = Math.Max(0, Math.Min(totalHeight, topHeight));
             }
             else if (tuningChecked || paramsChecked)
             {
                 splitContainer1.Panel2Collapsed = false;
-
-                splitContainer1.SplitterDistance = Math.Max(0, Math.Min(totalHeight, topHeight));
-
                 splitContainer2.Panel1Collapsed = !tuningChecked;
                 splitContainer2.Panel2Collapsed = !paramsChecked;
 
                 if (tuningChecked && paramsChecked)
                 {
-                    splitContainer2.SplitterDistance = Math.Max(0, bottomHeight / 2);
                     ZedGraphTimer.Enabled = true;
                     ZedGraphTimer.Start();
                     zg1.Visible = true;
@@ -2647,8 +2697,6 @@ namespace MissionPlanner.GCSViews
                 ZedGraphTimer.Enabled = false;
                 ZedGraphTimer.Stop();
                 zg1.Visible = false;
-
-                splitContainer1.SplitterDistance = splitContainer1.Height;
             }
 
             splitContainer1_Panel2_Resize(null, null);
@@ -3579,21 +3627,6 @@ namespace MissionPlanner.GCSViews
             if (Settings.Instance.ContainsKey("HudSwap") && Settings.Instance["HudSwap"] == "true")
                 SwapHud1AndMap();
 
-            // Set minimum panel sizes to 25% of width
-            int minPanelSize = MainH.Width / 4;
-            MainH.Panel1MinSize = minPanelSize;
-            MainH.Panel2MinSize = minPanelSize;
-
-            if (Settings.Instance.ContainsKey("FlightSplitter"))
-            {
-                MainH.SplitterDistance = Settings.Instance.GetInt32("FlightSplitter");
-            }
-            else
-            {
-                // Default to 50% width for HUD panel on fresh install
-                MainH.SplitterDistance = MainH.Width / 2;
-            }
-
             //Remove it later, do not need
             groundColorToolStripMenuItem.Checked = Settings.Instance.GetBoolean("groundColorToolStripMenuItem");
             groundColorToolStripMenuItem_Click(null, null);
@@ -3602,6 +3635,7 @@ namespace MissionPlanner.GCSViews
 
             prop = new Propagation(gMapControl1);
 
+            // Set up panel collapsed states (but don't apply ratios yet)
             UpdateSplitContainerLayout();
 
             try
@@ -3618,6 +3652,24 @@ namespace MissionPlanner.GCSViews
 
             // Apply theme to the themed tab strip
             _themedTabStrip.ApplyTheme();
+
+            // Defer ratio application until form is fully laid out
+            BeginInvoke((Action)(() =>
+            {
+                log.Info("Applying saved split ratios...");
+
+                // 1. Apply MainH (left/right) split first
+                ApplySplitRatio(MainH, SettingsKeyMainH);
+
+                // 2. Apply SubMainLeft ratio
+                ApplySplitRatio(SubMainLeft, SettingsKeySubMainLeft);
+
+                // 3. Apply map/bottom panel split
+                ApplySplitRatio(splitContainer1, SettingsKeyMapBottom);
+
+                // 4. Apply tuning/params split
+                ApplySplitRatio(splitContainer2, SettingsKeyTuningParams);
+            }));
         }
 
         private void FlightData_ParentChanged(object sender, EventArgs e)
@@ -6359,10 +6411,13 @@ namespace MissionPlanner.GCSViews
             if (this.huddropout)
                 return;
 
+            bool movingMapToLeft = this.SubMainLeft.Panel1.Controls.Contains(hud1);
+
             MainH.Panel2.SuspendLayout();
             SubMainLeft.Panel1.SuspendLayout();
+            tableMap.SuspendLayout();
 
-            if (this.SubMainLeft.Panel1.Controls.Contains(hud1))
+            if (movingMapToLeft)
             {
                 Settings.Instance["HudSwap"] = "true";
                 // Move HUD to the larger panel (MainH.Panel2)
@@ -6370,6 +6425,7 @@ namespace MissionPlanner.GCSViews
                 hud1.Anchor = AnchorStyles.None;
                 MainH.Panel2.Controls.Add(hud1);
                 SubMainLeft.Panel1.Controls.Add(tableMap);
+                tableMap.Dock = DockStyle.Fill;
                 // Center the HUD in the panel
                 CenterHudInPanel(MainH.Panel2);
                 MainH.Panel2.Resize += MainHPanel2_Resize;
@@ -6381,11 +6437,26 @@ namespace MissionPlanner.GCSViews
                 MainH.Panel2.Resize -= MainHPanel2_Resize;
                 hud1.Dock = DockStyle.Fill;
                 MainH.Panel2.Controls.Add(tableMap);
+                tableMap.Dock = DockStyle.Fill;
                 SubMainLeft.Panel1.Controls.Add(hud1);
             }
 
-            SubMainLeft.Panel1.ResumeLayout();
-            MainH.Panel2.ResumeLayout();
+            tableMap.ResumeLayout(true);
+            SubMainLeft.Panel1.ResumeLayout(true);
+            MainH.Panel2.ResumeLayout(true);
+
+            // When map moves to left, set SubMainLeft split ratio based on bottom panel visibility
+            // 66% for map if tuning, params, or 3dmap is shown; 50% otherwise
+            if (movingMapToLeft && SubMainLeft.Height > 0)
+            {
+                bool bottomPanelShown = CB_tuning.Checked || CB_params.Checked || CB_3dmap.Checked;
+                double mapRatio = bottomPanelShown ? 0.66 : 0.5;
+
+                int minSize = (int)(SubMainLeft.Height * MinSplitRatio);
+                SubMainLeft.Panel1MinSize = minSize;
+                SubMainLeft.Panel2MinSize = minSize;
+                SubMainLeft.SplitterDistance = (int)(SubMainLeft.Height * mapRatio);
+            }
         }
 
         private void MainHPanel2_Resize(object sender, EventArgs e)
