@@ -40,6 +40,16 @@ namespace MissionPlanner.Controls
             this.chkHudShow.CheckedChanged += ChkHudShow_CheckedChanged;
             this.btnGStreamerStart.Click += BtnGStreamerStart_Click;
             this.btnGStreamerStop.Click += BtnGStreamerStop_Click;
+            this.VisibleChanged += FlightPlannerVideoOptions_VisibleChanged;
+        }
+
+        private void FlightPlannerVideoOptions_VisibleChanged(object sender, EventArgs e)
+        {
+            if (this.Visible)
+            {
+                // Sync HUD overlay checkbox with saved setting when tab becomes visible
+                chkHudShow.Checked = Settings.Instance.GetBoolean("CHK_hudshow", GCSViews.FlightData.myhud.hudon);
+            }
         }
 
         private void InitializeComponent()
@@ -253,12 +263,14 @@ namespace MissionPlanner.Controls
             if (MainV2.cam != null)
             {
                 btnVideoStart.Enabled = false;
-                chkHudShow.Checked = GCSViews.FlightData.myhud.hudon;
             }
             else
             {
                 btnVideoStart.Enabled = true;
             }
+
+            // Sync HUD overlay checkbox with saved setting
+            chkHudShow.Checked = Settings.Instance.GetBoolean("CHK_hudshow", GCSViews.FlightData.myhud.hudon);
 
             // Setup GStreamer start button state
             btnGStreamerStart.Enabled = !GCSViews.FlightData.IsHudGStreamerRunning;

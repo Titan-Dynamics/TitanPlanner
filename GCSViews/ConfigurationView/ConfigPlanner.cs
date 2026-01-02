@@ -559,12 +559,14 @@ namespace MissionPlanner.GCSViews.ConfigurationView
             if (MainV2.cam != null)
             {
                 BUT_videostart.Enabled = false;
-                CHK_hudshow.Checked = FlightData.myhud.hudon;
             }
             else
             {
                 BUT_videostart.Enabled = true;
             }
+
+            // Sync HUD overlay checkbox with saved setting
+            CHK_hudshow.Checked = Settings.Instance.GetBoolean("CHK_hudshow", FlightData.myhud.hudon);
 
             // setup speech states
             SetCheckboxFromConfig("speechenable", CHK_enablespeech);
