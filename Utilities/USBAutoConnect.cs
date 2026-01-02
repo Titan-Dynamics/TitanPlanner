@@ -164,25 +164,14 @@ namespace MissionPlanner.Utilities
 
             var hid = hardwareId.ToUpperInvariant();
 
-            if (hid.Contains("VID_0483&PID_5740") || hid.Contains("VID_1209&PID_5740"))
-                return true;
-
-            if (hid.Contains("VID_2DAE") || hid.Contains("VID_3162") || hid.Contains("VID_27AC"))
-                return true;
-
-            if (hid.Contains("VID_26AC&PID_0010") || hid.Contains("VID_26AC&PID_0011") ||
-                hid.Contains("VID_26AC&PID_0012") || hid.Contains("VID_26AC&PID_0013") ||
-                hid.Contains("VID_26AC&PID_0016") || hid.Contains("VID_26AC&PID_0021") ||
-                hid.Contains("VID_26AC&PID_0032") || hid.Contains("VID_26AC&PID_0001"))
-                return true;
-
-            if (hid.Contains("VID_1FC9&PID_001C"))
-                return true;
-
-            if (hid.Contains("VID_2341&PID_0010"))
-                return true;
-
-            return false;
+            return hid.Contains("VID_0483&PID_5740") ||  // STM32 ChibiOS
+                   hid.Contains("VID_1209") ||           // ArduPilot (pid.codes)
+                   hid.Contains("VID_2DAE") ||           // Hex/ProfiCNC
+                   hid.Contains("VID_3162") ||           // Holybro
+                   hid.Contains("VID_26AC") ||           // 3DR/PX4
+                   hid.Contains("VID_27AC") ||           // CubePilot/VRBrain
+                   hid.Contains("VID_1FC9") ||           // NXP
+                   hid.Contains("VID_2341");             // Arduino
         }
     }
 }
