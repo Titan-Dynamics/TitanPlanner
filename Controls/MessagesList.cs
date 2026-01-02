@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Windows.Forms;
+using MissionPlanner.Utilities;
 using static MAVLink;
 
 namespace MissionPlanner.Controls
@@ -10,11 +11,14 @@ namespace MissionPlanner.Controls
     {
         private Panel containerPanel;
         private VScrollBar scrollBar;
+        private ContextMenuStrip contextMenu;
         private List<(DateTime time, string message, byte severity)> messages = new List<(DateTime, string, byte)>();
         private int itemHeight = 26;
         private int lastMessageCount = 0;
         private bool autoScroll = true;
         private Font displayFont;
+        private int selectedIndex = -1;
+        private int hoverIndex = -1;
 
         public MessagesList()
         {
@@ -26,7 +30,16 @@ namespace MissionPlanner.Controls
         {
             this.containerPanel = new DoubleBufferedPanel();
             this.scrollBar = new VScrollBar();
+            this.contextMenu = new ContextMenuStrip();
             this.SuspendLayout();
+
+            // Context menu for copy
+            var copyItem = new ToolStripMenuItem("Copy Message");
+            copyItem.Click += CopyItem_Click;
+            var copyAllItem = new ToolStripMenuItem("Copy All Messages");
+            copyAllItem.Click += CopyAllItem_Click;
+            this.contextMenu.Items.Add(copyItem);
+            this.contextMenu.Items.Add(copyAllItem);
 
             // scrollBar - add first so it docks on right
             this.scrollBar.Dock = DockStyle.Right;
@@ -36,19 +49,39 @@ namespace MissionPlanner.Controls
             // containerPanel
             this.containerPanel.Dock = DockStyle.Fill;
             this.containerPanel.Name = "containerPanel";
-            this.containerPanel.BackColor = Color.FromArgb(30, 30, 30);
             this.containerPanel.Paint += ContainerPanel_Paint;
             this.containerPanel.MouseWheel += ContainerPanel_MouseWheel;
             this.containerPanel.MouseClick += ContainerPanel_MouseClick;
             this.containerPanel.MouseEnter += ContainerPanel_MouseEnter;
+            this.containerPanel.MouseMove += ContainerPanel_MouseMove;
+            this.containerPanel.MouseLeave += ContainerPanel_MouseLeave;
+            this.containerPanel.ContextMenuStrip = this.contextMenu;
 
             // MessagesList - add scrollbar first, then panel
             this.Controls.Add(this.scrollBar);
             this.Controls.Add(this.containerPanel);
             this.Name = "MessagesList";
             this.Size = new Size(400, 300);
-            this.BackColor = Color.FromArgb(30, 30, 30);
             this.ResumeLayout(false);
+
+            ApplyTheme();
+        }
+
+        public void ApplyTheme()
+        {
+            try
+            {
+                this.BackColor = ThemeManager.BGColor;
+                this.containerPanel.BackColor = ThemeManager.BGColor;
+                this.scrollBar.BackColor = ThemeManager.ControlBGColor;
+            }
+            catch
+            {
+                // Fallback colors if theme not initialized
+                this.BackColor = Color.FromArgb(30, 30, 30);
+                this.containerPanel.BackColor = Color.FromArgb(30, 30, 30);
+            }
+            containerPanel.Invalidate();
         }
 
         private void ContainerPanel_MouseEnter(object sender, EventArgs e)
@@ -58,10 +91,74 @@ namespace MissionPlanner.Controls
                 containerPanel.Focus();
         }
 
+        private void ContainerPanel_MouseLeave(object sender, EventArgs e)
+        {
+            if (hoverIndex != -1)
+            {
+                hoverIndex = -1;
+                containerPanel.Invalidate();
+            }
+        }
+
+        private void ContainerPanel_MouseMove(object sender, MouseEventArgs e)
+        {
+            int scrollOffset = scrollBar.Enabled ? scrollBar.Value : 0;
+            int newHoverIndex = scrollOffset + (e.Y / itemHeight);
+
+            if (newHoverIndex >= messages.Count)
+                newHoverIndex = -1;
+
+            if (newHoverIndex != hoverIndex)
+            {
+                hoverIndex = newHoverIndex;
+                containerPanel.Invalidate();
+            }
+        }
+
         private void ContainerPanel_MouseClick(object sender, MouseEventArgs e)
         {
             // Focus the panel to receive mouse wheel events
             containerPanel.Focus();
+
+            int scrollOffset = scrollBar.Enabled ? scrollBar.Value : 0;
+            int clickedIndex = scrollOffset + (e.Y / itemHeight);
+
+            if (clickedIndex < messages.Count)
+            {
+                selectedIndex = clickedIndex;
+                containerPanel.Invalidate();
+            }
+        }
+
+        private void CopyItem_Click(object sender, EventArgs e)
+        {
+            if (selectedIndex >= 0 && selectedIndex < messages.Count)
+            {
+                var msg = messages[selectedIndex];
+                string text = $"[{msg.time:HH:mm:ss}] [{GetSeverityText(msg.severity)}] {msg.message}";
+                try
+                {
+                    Clipboard.SetText(text);
+                }
+                catch { }
+            }
+        }
+
+        private void CopyAllItem_Click(object sender, EventArgs e)
+        {
+            if (messages.Count == 0)
+                return;
+
+            var sb = new System.Text.StringBuilder();
+            foreach (var msg in messages)
+            {
+                sb.AppendLine($"[{msg.time:HH:mm:ss}] [{GetSeverityText(msg.severity)}] {msg.message}");
+            }
+            try
+            {
+                Clipboard.SetText(sb.ToString());
+            }
+            catch { }
         }
 
         private void ContainerPanel_MouseWheel(object sender, MouseEventArgs e)
@@ -144,8 +241,12 @@ namespace MissionPlanner.Controls
 
             if (messages.Count == 0)
             {
-                // Draw placeholder text
-                using (var brush = new SolidBrush(Color.Gray))
+                // Draw placeholder text using theme color
+                Color placeholderColor;
+                try { placeholderColor = ThemeManager.TextColor; }
+                catch { placeholderColor = Color.Gray; }
+
+                using (var brush = new SolidBrush(Color.FromArgb(128, placeholderColor)))
                 using (var sf = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center })
                 {
                     g.DrawString("No messages", displayFont, brush, containerPanel.ClientRectangle, sf);
@@ -165,7 +266,9 @@ namespace MissionPlanner.Controls
                     break;
 
                 var msg = messages[msgIndex];
-                DrawMessageRow(g, msg, y);
+                bool isSelected = (msgIndex == selectedIndex);
+                bool isHovered = (msgIndex == hoverIndex);
+                DrawMessageRow(g, msg, y, msgIndex, isSelected, isHovered);
                 y += itemHeight;
 
                 if (y > containerPanel.Height)
@@ -173,11 +276,38 @@ namespace MissionPlanner.Controls
             }
         }
 
-        private void DrawMessageRow(Graphics g, (DateTime time, string message, byte severity) msg, int y)
+        private void DrawMessageRow(Graphics g, (DateTime time, string message, byte severity) msg, int y, int index, bool isSelected, bool isHovered)
         {
             Color bgColor = GetSeverityBackgroundColor(msg.severity);
             Color textColor = GetSeverityTextColor(msg.severity);
             string severityText = GetSeverityText(msg.severity);
+
+            // Get theme colors for separator and timestamp
+            Color separatorColor, timestampColor;
+            try
+            {
+                separatorColor = ThemeManager.ControlBGColor;
+                timestampColor = ThemeManager.TextColor;
+            }
+            catch
+            {
+                separatorColor = Color.FromArgb(50, 50, 50);
+                timestampColor = Color.FromArgb(160, 160, 160);
+            }
+
+            // Adjust background for selection/hover
+            if (isSelected)
+            {
+                try { bgColor = Color.FromArgb(80, ThemeManager.BannerColor2); }
+                catch { bgColor = Color.FromArgb(60, 80, 100); }
+            }
+            else if (isHovered)
+            {
+                bgColor = Color.FromArgb(
+                    Math.Min(255, bgColor.R + 15),
+                    Math.Min(255, bgColor.G + 15),
+                    Math.Min(255, bgColor.B + 15));
+            }
 
             // Draw background
             using (var brush = new SolidBrush(bgColor))
@@ -186,7 +316,7 @@ namespace MissionPlanner.Controls
             }
 
             // Draw separator line
-            using (var pen = new Pen(Color.FromArgb(50, 50, 50)))
+            using (var pen = new Pen(Color.FromArgb(60, separatorColor)))
             {
                 g.DrawLine(pen, 0, y + itemHeight - 1, containerPanel.Width, y + itemHeight - 1);
             }
@@ -196,7 +326,7 @@ namespace MissionPlanner.Controls
 
             // Draw timestamp
             string timeStr = msg.time.ToString("HH:mm:ss");
-            using (var brush = new SolidBrush(Color.FromArgb(160, 160, 160)))
+            using (var brush = new SolidBrush(Color.FromArgb(160, timestampColor)))
             {
                 g.DrawString(timeStr, displayFont, brush, padding, textY);
             }

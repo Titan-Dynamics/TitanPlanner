@@ -904,40 +904,6 @@ namespace MissionPlanner.GCSViews.ConfigurationView
             log.InfoFormat("Filter: {0}ms", (DateTime.Now - start).TotalMilliseconds);
         }
 
-        private void BUT_paramfileload_Click(object sender, EventArgs e)
-        {
-            var filepath = Settings.GetUserDataDirectory() + CMB_paramfiles.Text;
-
-            try
-            {
-                var data = GitHubContent.GetFileContent("ArduPilot", "ardupilot",
-                    ((GitHubContent.FileInfo)CMB_paramfiles.SelectedValue).path);
-
-                File.WriteAllBytes(filepath, data);
-
-                var param2 = ParamFile.loadParamFile(filepath);
-
-                Form paramCompareForm = new ParamCompare(Params, MainV2.comPort.MAV.param, param2);
-
-                ThemeManager.ApplyThemeTo(paramCompareForm);
-                if (paramCompareForm.ShowDialog() == DialogResult.OK)
-                {
-                    CustomMessageBox.Show("Loaded parameters, please make sure you write them!", "Loaded");
-                }
-
-                // no activate the user needs to click write.
-                //this.Activate();
-            }
-            catch (Exception ex)
-            {
-                CustomMessageBox.Show("Failed to load file.\n" + ex);
-            }
-        }
-
-        private void CMB_paramfiles_SelectedIndexChanged(object sender, EventArgs e)
-        {
-        }
-
         private void BUT_reset_params_Click(object sender, EventArgs e)
         {
             if (
