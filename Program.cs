@@ -160,6 +160,13 @@ namespace MissionPlanner
             {
                 // Set Titan Dynamics default theme
                 Settings.Instance["theme"] = "titandynamics.mpsystheme";
+
+                // Show tabs by default
+                Settings.Instance["displayParamsTab"] = "true";
+                Settings.Instance["displayVideoTab"] = "true";
+                Settings.Instance["displayTuningTab"] = "true";
+                Settings.Instance["displayInspectorTab"] = "true";
+
                 Settings.Instance["td_edition"] = "true";
                 Settings.Instance.Save();
             }
