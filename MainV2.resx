@@ -368,8 +368,11 @@
         LCwYqc9ulF+/fk3jQfR6veGPztFt+L/SfwDK+gkLGFznWQAAAABJRU5ErkJggg==
 </value>
   </data>
+  <data name="MenuFlightData.AutoSize" type="System.Boolean, mscorlib">
+    <value>False</value>
+  </data>
   <data name="MenuFlightData.Size" type="System.Drawing.Size, System.Drawing">
-    <value>49, 58</value>
+    <value>55, 58</value>
   </data>
   <data name="MenuFlightData.Text" xml:space="preserve">
     <value>FLY</value>
@@ -433,8 +436,11 @@
         XOP/8m/5F2UMHhS6FwIQAAAAAElFTkSuQmCC
 </value>
   </data>
+  <data name="MenuFlightPlanner.AutoSize" type="System.Boolean, mscorlib">
+    <value>False</value>
+  </data>
   <data name="MenuFlightPlanner.Size" type="System.Drawing.Size, System.Drawing">
-    <value>49, 58</value>
+    <value>55, 58</value>
   </data>
   <data name="MenuFlightPlanner.Text" xml:space="preserve">
     <value>PLAN</value>
@@ -446,7 +452,7 @@
     <value>ImageAboveText</value>
   </data>
   <data name="MenuFlightPlanner.ToolTipText" xml:space="preserve">
-    <value>Flight Planner</value>
+    <value>Flight Planning</value>
   </data>
   <data name="MenuInitConfig.Image" type="System.Drawing.Bitmap, System.Drawing" mimetype="application/x-microsoft.net.object.bytearray.base64">
     <value>
@@ -492,8 +498,11 @@
         qEDfpYQrDhmva1YyORbZh+319xCN/wFClNfkSvu4MgAAAABJRU5ErkJggg==
 </value>
   </data>
+  <data name="MenuInitConfig.AutoSize" type="System.Boolean, mscorlib">
+    <value>False</value>
+  </data>
   <data name="MenuInitConfig.Size" type="System.Drawing.Size, System.Drawing">
-    <value>58, 58</value>
+    <value>55, 58</value>
   </data>
   <data name="MenuInitConfig.Text" xml:space="preserve">
     <value>SETUP</value>
@@ -550,8 +559,11 @@
         Td3o6CizFph1qdnZWeru7dsMy7Jrb0fe6eX0Hw5vGTPtTqe7AAAAAElFTkSuQmCC
 </value>
   </data>
+  <data name="MenuConfigTune.AutoSize" type="System.Boolean, mscorlib">
+    <value>False</value>
+  </data>
   <data name="MenuConfigTune.Size" type="System.Drawing.Size, System.Drawing">
-    <value>64, 58</value>
+    <value>55, 58</value>
   </data>
   <data name="MenuConfigTune.Text" xml:space="preserve">
     <value>CONFIG</value>
@@ -602,8 +614,11 @@
         8QLYKvoPhd1VthWLxBMAAAAASUVORK5CYII=
 </value>
   </data>
+  <data name="MenuSimulation.AutoSize" type="System.Boolean, mscorlib">
+    <value>False</value>
+  </data>
   <data name="MenuSimulation.Size" type="System.Drawing.Size, System.Drawing">
-    <value>95, 58</value>
+    <value>55, 58</value>
   </data>
   <data name="MenuSimulation.Text" xml:space="preserve">
     <value>SITL</value>
@@ -648,8 +663,11 @@
         AAAASUVORK5CYII=
 </value>
   </data>
+  <data name="MenuHelp.AutoSize" type="System.Boolean, mscorlib">
+    <value>False</value>
+  </data>
   <data name="MenuHelp.Size" type="System.Drawing.Size, System.Drawing">
-    <value>49, 58</value>
+    <value>55, 58</value>
   </data>
   <data name="MenuHelp.Text" xml:space="preserve">
     <value>HELP</value>

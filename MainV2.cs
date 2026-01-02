@@ -1230,11 +1230,12 @@ namespace MissionPlanner
 
             MainMenu.BackgroundImage = displayicons.bg;
 
-            MenuFlightData.Image = ThemeManager.RecolorMenuIcon(displayicons.fd);
-            MenuFlightPlanner.Image = ThemeManager.RecolorMenuIcon(displayicons.fp);
-            MenuInitConfig.Image = ThemeManager.RecolorMenuIcon(displayicons.initsetup);
-            MenuSimulation.Image = ThemeManager.RecolorMenuIcon(displayicons.sim);
-            MenuConfigTune.Image = ThemeManager.RecolorMenuIcon(displayicons.config_tuning);
+            // Use new unified icons with theme recoloring
+            MenuFlightData.Image = ThemeManager.RecolorMenuIcon(Properties.Resources.icon_fly);
+            MenuFlightPlanner.Image = ThemeManager.RecolorMenuIcon(Properties.Resources.icon_plan);
+            MenuInitConfig.Image = ThemeManager.RecolorMenuIcon(Properties.Resources.icon_setup);
+            MenuSimulation.Image = ThemeManager.RecolorMenuIcon(Properties.Resources.icon_sitl);
+            MenuConfigTune.Image = ThemeManager.RecolorMenuIcon(Properties.Resources.icon_config);
             MenuConnect.Image = displayicons.connect;
             MenuHelp.Image = ThemeManager.RecolorMenuIcon(displayicons.help);
 

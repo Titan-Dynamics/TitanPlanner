@@ -390,41 +390,59 @@ namespace MissionPlanner.Utilities
         /// </summary>
         /// <param name="original">The original image to recolor</param>
         /// <returns>A new image with accent pixels recolored to BannerColor2</returns>
-        public static Image RecolorMenuIcon(Image original)
+        public static Image RecolorMenuIcon(Image original, int targetSize = 32)
         {
             if (original == null)
                 return null;
 
-            Bitmap result = new Bitmap(original.Width, original.Height, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
+            // Determine if theme is light based on background color brightness
+            int bgBrightness = (BGColor.R + BGColor.G + BGColor.B) / 3;
+            bool isLightTheme = bgBrightness > 128;
 
-            using (var orig = new Bitmap(original))
+            // First, scale the image with high-quality anti-aliasing
+            Bitmap scaled = new Bitmap(targetSize, targetSize, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
+            using (Graphics g = Graphics.FromImage(scaled))
             {
-                for (int y = 0; y < orig.Height; y++)
+                g.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic;
+                g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.HighQuality;
+                g.PixelOffsetMode = System.Drawing.Drawing2D.PixelOffsetMode.HighQuality;
+                g.CompositingQuality = System.Drawing.Drawing2D.CompositingQuality.HighQuality;
+                g.DrawImage(original, 0, 0, targetSize, targetSize);
+            }
+
+            // Now recolor the scaled image
+            Bitmap result = new Bitmap(targetSize, targetSize, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
+
+            for (int y = 0; y < scaled.Height; y++)
+            {
+                for (int x = 0; x < scaled.Width; x++)
                 {
-                    for (int x = 0; x < orig.Width; x++)
+                    Color pixel = scaled.GetPixel(x, y);
+
+                    // Skip transparent pixels
+                    if (pixel.A == 0)
                     {
-                        Color pixel = orig.GetPixel(x, y);
-
-                        // Skip transparent pixels
-                        if (pixel.A == 0)
-                        {
-                            result.SetPixel(x, y, pixel);
-                            continue;
-                        }
-
-                        // Skip white/near-white pixels (R, G, B all > 240)
-                        if (pixel.R > 240 && pixel.G > 240 && pixel.B > 240)
-                        {
-                            result.SetPixel(x, y, pixel);
-                            continue;
-                        }
-
-                        // Recolor to BannerColor2, preserving alpha
-                        result.SetPixel(x, y, Color.FromArgb(pixel.A, BannerColor2.R, BannerColor2.G, BannerColor2.B));
+                        result.SetPixel(x, y, pixel);
+                        continue;
                     }
+
+                    // Handle white/near-white pixels (R, G, B all > 240)
+                    if (pixel.R > 240 && pixel.G > 240 && pixel.B > 240)
+                    {
+                        // On light themes, make white pixels black for visibility
+                        if (isLightTheme)
+                            result.SetPixel(x, y, Color.FromArgb(pixel.A, 0, 0, 0));
+                        else
+                            result.SetPixel(x, y, pixel);
+                        continue;
+                    }
+
+                    // Recolor to BannerColor2, preserving alpha
+                    result.SetPixel(x, y, Color.FromArgb(pixel.A, BannerColor2.R, BannerColor2.G, BannerColor2.B));
                 }
             }
 
+            scaled.Dispose();
             return result;
         }
 
