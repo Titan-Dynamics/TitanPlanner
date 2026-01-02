@@ -3066,7 +3066,7 @@ namespace MissionPlanner.Controls
                         //If displayicons is true then we display image icons instead of text on GPS staus
                         if (displayicons)
                         {
-                            var width = (fontsize + 8) * 3;
+                            var width = (int)(fontsize * 2.5);
                             var gap = 5;
                             var rightMargin = 3;
                             // GPS2 is slot 1 (rightmost), GPS1 is slot 2 when dual or slot 1 when single
@@ -3077,7 +3077,7 @@ namespace MissionPlanner.Controls
                                 slot = 1; // Single GPS at slot 1
 
                             var hor_pos = this.Width - rightMargin - slot * width - (slot - 1) * gap;
-                            DrawImage(icon, hor_pos, this.Height - (fontsize + 13) + 2, width, fontsize + 8);
+                            DrawImage(icon, hor_pos, this.Height - (fontsize + 5), width, fontsize);
                         }
                         else
                         {
@@ -3198,12 +3198,12 @@ namespace MissionPlanner.Controls
                 {
                     if (displayicons)
                     {
-                        var width = (fontsize + 8) * 3;
+                        var width = (int) (fontsize * 2.5);
                         var gap = 5;
                         var rightMargin = 3;
                         int gpsCount = (_gpsfix2 > 0) ? 2 : 1;
-                        int slot = gpsCount + 1; // Vibe is after GPS icons
-                        vibehitzone = new Rectangle(this.Width - rightMargin - slot * width - (slot - 1) * gap, this.Height - (fontsize + 13), width, fontsize + 8);
+                        int slot = displaygps ? gpsCount + 1 : 1; // Vibe is after GPS icons (if GPS shown)
+                        vibehitzone = new Rectangle(this.Width - rightMargin - slot * width - (slot - 1) * gap, this.Height - (fontsize + 5), width, fontsize);
                     }
                     else
                     {
@@ -3217,7 +3217,7 @@ namespace MissionPlanner.Controls
                         {
                             if (displayicons)
                             {
-                                DrawImage(HUDT.vibe_red, vibehitzone.X, vibehitzone.Y + 2, vibehitzone.Width, vibehitzone.Height);
+                                DrawImage(HUDT.vibe_red, vibehitzone.X, vibehitzone.Y, vibehitzone.Width, vibehitzone.Height);
                             }
                             else
                             {
@@ -3228,7 +3228,7 @@ namespace MissionPlanner.Controls
                         {
                             if (displayicons)
                             {
-                                DrawImage(HUDT.vibe_yellow, vibehitzone.X, vibehitzone.Y + 2, vibehitzone.Width, vibehitzone.Height);
+                                DrawImage(HUDT.vibe_yellow, vibehitzone.X, vibehitzone.Y, vibehitzone.Width, vibehitzone.Height);
                             }
                             else
                             {
@@ -3241,7 +3241,7 @@ namespace MissionPlanner.Controls
                     {
                         if (displayicons)
                         {
-                            DrawImage(HUDT.vibe_green, vibehitzone.X, vibehitzone.Y + 2, vibehitzone.Width, vibehitzone.Height);
+                            DrawImage(HUDT.vibe_green, vibehitzone.X, vibehitzone.Y, vibehitzone.Width, vibehitzone.Height);
                         }
                         else
                         {
@@ -3257,12 +3257,12 @@ namespace MissionPlanner.Controls
                 {
                     if (displayicons)
                     {
-                        var width = (fontsize + 8) * 3;
+                        var width = (int)(fontsize * 2.5);
                         var gap = 5;
                         var rightMargin = 3;
                         int gpsCount = (_gpsfix2 > 0) ? 2 : 1;
-                        int slot = gpsCount + 2; // EKF is after GPS icons and Vibe
-                        ekfhitzone = new Rectangle(this.Width - rightMargin - slot * width - (slot - 1) * gap, this.Height - (fontsize + 13), width, fontsize + 8);
+                        int slot = (displaygps ? gpsCount : 0) + (displayvibe ? 1 : 0) + 1; // EKF is after GPS and Vibe (if shown)
+                        ekfhitzone = new Rectangle(this.Width - rightMargin - slot * width - (slot - 1) * gap, this.Height - (fontsize + 5), width, fontsize);
                     }
                     else
                     {
@@ -3275,7 +3275,7 @@ namespace MissionPlanner.Controls
                         {
                             if (displayicons)
                             {
-                                DrawImage(HUDT.ekf_red, ekfhitzone.X, ekfhitzone.Y + 2, ekfhitzone.Width, ekfhitzone.Height);
+                                DrawImage(HUDT.ekf_red, ekfhitzone.X, ekfhitzone.Y, ekfhitzone.Width, ekfhitzone.Height);
                             }
                             else
                             {
@@ -3286,7 +3286,7 @@ namespace MissionPlanner.Controls
                         {
                             if (displayicons)
                             {
-                                DrawImage(HUDT.ekf_yellow, ekfhitzone.X, ekfhitzone.Y + 2, ekfhitzone.Width, ekfhitzone.Height);
+                                DrawImage(HUDT.ekf_yellow, ekfhitzone.X, ekfhitzone.Y, ekfhitzone.Width, ekfhitzone.Height);
                             }
                             else
                             {
@@ -3298,7 +3298,7 @@ namespace MissionPlanner.Controls
                     {
                         if (displayicons)
                         {
-                            DrawImage(HUDT.ekf_green, ekfhitzone.X, ekfhitzone.Y + 2, ekfhitzone.Width, ekfhitzone.Height);
+                            DrawImage(HUDT.ekf_green, ekfhitzone.X, ekfhitzone.Y, ekfhitzone.Width, ekfhitzone.Height);
                         }
                         else
                         {
