@@ -3250,8 +3250,8 @@ namespace MissionPlanner.Controls
                     }
                 }
 
-                if (load == 100)
-                    drawstring("CPU", font, fontsize + 2, _redBrush, vibehitzone.Right, vibehitzone.Y);
+                if (load == 90)
+                    drawstring("CPU > 90%", font, fontsize - 2, _redBrush, vibehitzone.Right, vibehitzone.Y - (fontsize * 2), true);
 
                 if (displayekf)
                 {
