@@ -51,7 +51,7 @@ namespace MissionPlanner.Controls
             this.containerPanel.Name = "containerPanel";
             this.containerPanel.Paint += ContainerPanel_Paint;
             this.containerPanel.MouseWheel += ContainerPanel_MouseWheel;
-            this.containerPanel.MouseClick += ContainerPanel_MouseClick;
+            this.containerPanel.MouseDown += ContainerPanel_MouseDown;
             this.containerPanel.MouseEnter += ContainerPanel_MouseEnter;
             this.containerPanel.MouseMove += ContainerPanel_MouseMove;
             this.containerPanel.MouseLeave += ContainerPanel_MouseLeave;
@@ -115,9 +115,8 @@ namespace MissionPlanner.Controls
             }
         }
 
-        private void ContainerPanel_MouseClick(object sender, MouseEventArgs e)
+        private void ContainerPanel_MouseDown(object sender, MouseEventArgs e)
         {
-            // Focus the panel to receive mouse wheel events
             containerPanel.Focus();
 
             int scrollOffset = scrollBar.Enabled ? scrollBar.Value : 0;
