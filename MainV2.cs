@@ -4054,9 +4054,6 @@ namespace MissionPlanner
             SetAutoConnectUSB(Settings.Instance.GetBoolean("auto_connect_usb", true));
         }
 
-        /// <summary>
-        /// Initializes the USB auto-connect handler with callbacks to MainV2.
-        /// </summary>
         private void InitializeUSBAutoConnect()
         {
             _usbAutoConnect = new Utilities.USBAutoConnect(
@@ -4069,10 +4066,7 @@ namespace MissionPlanner
                 {
                     try
                     {
-                        if (comPort.BaseStream.IsOpen)
-                            return;
-
-                        if (IsOnInstallFirmwareScreen())
+                        if (comPort.BaseStream.IsOpen || IsOnInstallFirmwareScreen())
                             return;
 
                         var portIndex = _connectionControl.CMB_serialport.Items.IndexOf(port);
@@ -4093,17 +4087,11 @@ namespace MissionPlanner
             );
         }
 
-        /// <summary>
-        /// Enables or disables auto-connect for USB ArduPilot/MAVLink devices.
-        /// </summary>
         public void SetAutoConnectUSB(bool enabled)
         {
             _usbAutoConnect?.SetEnabled(enabled);
         }
 
-        /// <summary>
-        /// Returns true when the Install Firmware tab is active.
-        /// </summary>
         private bool IsOnInstallFirmwareScreen()
         {
             try
