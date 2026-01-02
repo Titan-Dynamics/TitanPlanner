@@ -474,9 +474,7 @@ namespace MissionPlanner
         /// <summary>
         /// Auto-connect to USB ArduPilot/MAVLink devices when plugged in
         /// </summary>
-        private const int USB_ENUMERATION_DELAY_MS = 6000;
-        private bool _autoConnectUSB = false;
-        private int _autoConnectInProgress = 0;
+        private Utilities.USBAutoConnect _usbAutoConnect;
 
         public static bool speechEnabled()
         {
@@ -1450,7 +1448,7 @@ namespace MissionPlanner
             log.Info("We are disconnecting");
 
             // Reset auto-connect flag so it can try again on next plug-in
-            _autoConnectInProgress = 0;
+            _usbAutoConnect?.ResetState();
 
             try
             {
@@ -4052,7 +4050,40 @@ namespace MissionPlanner
             Settings.Instance["GMapMarkerBase_InactiveDisplayStyle"] = inactiveDisplayStyle.ToString();
 
             // Initialize auto-connect USB feature (default ON)
+            InitializeUSBAutoConnect();
             SetAutoConnectUSB(Settings.Instance.GetBoolean("auto_connect_usb", true));
+        }
+
+        /// <summary>
+        /// Initializes the USB auto-connect handler with callbacks to MainV2.
+        /// </summary>
+        private void InitializeUSBAutoConnect()
+        {
+            _usbAutoConnect = new Utilities.USBAutoConnect(
+                isConnected: () => comPort.BaseStream.IsOpen,
+                shouldBlock: () => IsOnInstallFirmwareScreen(),
+                deviceChangedSubscribe: handler => DeviceChanged += handler,
+                deviceChangedUnsubscribe: handler => DeviceChanged -= handler,
+                connect: () => this.BeginInvokeIfRequired(() =>
+                {
+                    try
+                    {
+                        if (comPort.BaseStream.IsOpen)
+                            return;
+
+                        if (IsOnInstallFirmwareScreen())
+                            return;
+
+                        PopulateSerialportList();
+                        _connectionControl.CMB_serialport.SelectedIndex = 0;
+                        MenuConnect_Click(null, null);
+                    }
+                    catch (Exception ex)
+                    {
+                        log.Error("Auto-connect failed: " + ex.Message);
+                    }
+                })
+            );
         }
 
         /// <summary>
@@ -4060,17 +4091,7 @@ namespace MissionPlanner
         /// </summary>
         public void SetAutoConnectUSB(bool enabled)
         {
-            if (enabled && !_autoConnectUSB)
-            {
-                DeviceChanged += OnUSBDeviceChanged;
-                CheckForExistingDevice();
-            }
-            else if (!enabled && _autoConnectUSB)
-            {
-                DeviceChanged -= OnUSBDeviceChanged;
-            }
-
-            _autoConnectUSB = enabled;
+            _usbAutoConnect?.SetEnabled(enabled);
         }
 
         /// <summary>
@@ -4100,185 +4121,6 @@ namespace MissionPlanner
             }
 
             return false;
-        }
-
-        /// <summary>
-        /// Checks for already-connected ArduPilot devices on startup.
-        /// </summary>
-        private void CheckForExistingDevice()
-        {
-            System.Threading.ThreadPool.QueueUserWorkItem(_ =>
-            {
-                try
-                {
-                    if (comPort.BaseStream.IsOpen)
-                        return;
-
-                    if (IsOnInstallFirmwareScreen())
-                        return;
-
-                    var port = FindArduPilotPort();
-                    if (port != null)
-                    {
-                        SelectPortAndConnect(port);
-                    }
-                }
-                catch (Exception ex)
-                {
-                    log.Error("Auto-connect startup error: " + ex.Message);
-                }
-            });
-        }
-
-        /// <summary>
-        /// Handles USB device arrival for auto-connect.
-        /// </summary>
-        private void OnUSBDeviceChanged(WM_DEVICECHANGE_enum cause)
-        {
-            if (cause != WM_DEVICECHANGE_enum.DBT_DEVICEARRIVAL)
-                return;
-
-            if (comPort.BaseStream.IsOpen)
-                return;
-
-            if (IsOnInstallFirmwareScreen())
-                return;
-
-            if (System.Threading.Interlocked.CompareExchange(ref _autoConnectInProgress, 1, 0) != 0)
-                return;
-
-            var port = FindArduPilotPort();
-            if (port == null)
-            {
-                _autoConnectInProgress = 0;
-                return;
-            }
-
-            // Set dropdown immediately so user sees which port will be used
-            this.BeginInvokeIfRequired(() =>
-            {
-                PopulateSerialportList();
-                var portIndex = _connectionControl.CMB_serialport.Items.IndexOf(port);
-                if (portIndex >= 0)
-                {
-                    _connectionControl.CMB_serialport.SelectedIndex = portIndex;
-                }
-            });
-
-            // Wait for device to fully enumerate, then connect
-            System.Threading.ThreadPool.QueueUserWorkItem(_ =>
-            {
-                try
-                {
-                    System.Threading.Thread.Sleep(USB_ENUMERATION_DELAY_MS);
-
-                    if (IsOnInstallFirmwareScreen())
-                    {
-                        _autoConnectInProgress = 0;
-                        return;
-                    }
-
-                    if (comPort.BaseStream.IsOpen)
-                    {
-                        _autoConnectInProgress = 0;
-                        return;
-                    }
-
-                    this.BeginInvokeIfRequired(() =>
-                    {
-                        try
-                        {
-                            if (!comPort.BaseStream.IsOpen)
-                            {
-                                MenuConnect_Click(null, null);
-                            }
-                        }
-                        catch (Exception ex)
-                        {
-                            log.Error("Auto-connect failed: " + ex.Message);
-                        }
-                        finally
-                        {
-                            _autoConnectInProgress = 0;
-                        }
-                    });
-                }
-                catch (Exception ex)
-                {
-                    log.Error("Auto-connect error: " + ex.Message);
-                    _autoConnectInProgress = 0;
-                }
-            });
-        }
-
-        /// <summary>
-        /// Finds the first connected ArduPilot device port.
-        /// </summary>
-        private string FindArduPilotPort()
-        {
-            var deviceList = Win32DeviceMgmt.GetAllCOMPorts();
-            foreach (var device in deviceList)
-            {
-                if (!string.IsNullOrEmpty(device.name) && IsArduPilotUSBDevice(device.hardwareid))
-                {
-                    return device.name;
-                }
-            }
-            return null;
-        }
-
-        /// <summary>
-        /// Selects a port in the dropdown and initiates connection.
-        /// </summary>
-        private void SelectPortAndConnect(string port)
-        {
-            this.BeginInvokeIfRequired(() =>
-            {
-                try
-                {
-                    if (IsOnInstallFirmwareScreen())
-                        return;
-
-                    if (comPort.BaseStream.IsOpen)
-                        return;
-
-                    if (!SerialPort.GetPortNames().Contains(port))
-                        return;
-
-                    PopulateSerialportList();
-
-                    var portIndex = _connectionControl.CMB_serialport.Items.IndexOf(port);
-                    if (portIndex >= 0)
-                    {
-                        _connectionControl.CMB_serialport.SelectedIndex = portIndex;
-                        MenuConnect_Click(null, null);
-                    }
-                }
-                catch (Exception ex)
-                {
-                    log.Error("Auto-connect failed: " + ex.Message);
-                }
-            });
-        }
-
-        /// <summary>
-        /// Checks if a USB hardware ID matches known ArduPilot/MAVLink devices.
-        /// </summary>
-        private bool IsArduPilotUSBDevice(string hardwareId)
-        {
-            if (string.IsNullOrEmpty(hardwareId))
-                return false;
-
-            var hid = hardwareId.ToUpperInvariant();
-
-            return hid.Contains("VID_1209") ||  // ArduPilot ChibiOS
-                   hid.Contains("VID_0483") ||  // STM32 ChibiOS
-                   hid.Contains("VID_2DAE") ||  // Hex/ProfiCNC
-                   hid.Contains("VID_3162") ||  // Holybro
-                   hid.Contains("VID_26AC") ||  // 3DR/PX4
-                   hid.Contains("VID_27AC") ||  // CubePilot
-                   hid.Contains("VID_2341") ||  // Arduino (legacy APM)
-                   hid.Contains("VID_1FC9");    // NXP
         }
 
         private void BGLogMessagesMetaData(object nothing)
