@@ -16,7 +16,7 @@ namespace MissionPlanner.Utilities
         /// Delay in milliseconds to wait for USB device enumeration after plug-in.
         /// This allows the bootloader to pass and the device to fully enumerate.
         /// </summary>
-        public int EnumerationDelayMs { get; set; } = 6000;
+        public int EnumerationDelayMs { get; set; } = 6600;
 
         private bool _enabled = false;
         private int _connectInProgress = 0;
@@ -26,6 +26,7 @@ namespace MissionPlanner.Utilities
         private readonly Func<bool> _shouldBlock;
         private readonly Action<MainV2.WMDeviceChangeEventHandler> _deviceChangedSubscribe;
         private readonly Action<MainV2.WMDeviceChangeEventHandler> _deviceChangedUnsubscribe;
+        private readonly Action _refreshPortList;
         private readonly Action<string> _connect;
 
         /// <summary>
@@ -35,18 +36,21 @@ namespace MissionPlanner.Utilities
         /// <param name="shouldBlock">Returns true if auto-connect should be blocked (e.g., firmware install screen)</param>
         /// <param name="deviceChangedSubscribe">Action to subscribe to DeviceChanged event</param>
         /// <param name="deviceChangedUnsubscribe">Action to unsubscribe from DeviceChanged event</param>
+        /// <param name="refreshPortList">Action to refresh the serial port list</param>
         /// <param name="connect">Action to select port and initiate connection</param>
         public USBAutoConnect(
             Func<bool> isConnected,
             Func<bool> shouldBlock,
             Action<MainV2.WMDeviceChangeEventHandler> deviceChangedSubscribe,
             Action<MainV2.WMDeviceChangeEventHandler> deviceChangedUnsubscribe,
+            Action refreshPortList,
             Action<string> connect)
         {
             _isConnected = isConnected;
             _shouldBlock = shouldBlock;
             _deviceChangedSubscribe = deviceChangedSubscribe;
             _deviceChangedUnsubscribe = deviceChangedUnsubscribe;
+            _refreshPortList = refreshPortList;
             _connect = connect;
         }
 
@@ -130,14 +134,14 @@ namespace MissionPlanner.Utilities
             if (System.Threading.Interlocked.CompareExchange(ref _connectInProgress, 1, 0) != 0)
                 return;
 
-            var port = FindArduPilotPort();
-            if (port == null)
+            // Quick check that an ArduPilot device was plugged in
+            if (FindArduPilotPort() == null)
             {
                 _connectInProgress = 0;
                 return;
             }
 
-            // Wait for device to fully enumerate, then connect
+            // Wait for device to fully enumerate (e.g., Cube re-enumerates from COM6 to COM7/COM8)
             System.Threading.ThreadPool.QueueUserWorkItem(_ =>
             {
                 try
@@ -147,8 +151,17 @@ namespace MissionPlanner.Utilities
                     if (_shouldBlock() || _isConnected())
                         return;
 
-                    // Pass the originally detected port - if it's no longer valid
-                    // (e.g., Cube re-enumerated), MainV2 will fallback to AUTO
+                    // Refresh port list after device has finished re-enumerating
+                    _refreshPortList();
+
+                    // Detect the port AFTER the delay when device has finished re-enumerating
+                    var port = FindArduPilotPort();
+                    if (port == null)
+                    {
+                        log.Warn("Auto-connect: No ArduPilot port found after enumeration delay");
+                        return;
+                    }
+
                     _connect(port);
                 }
                 catch (Exception ex)
@@ -163,19 +176,39 @@ namespace MissionPlanner.Utilities
         }
 
         /// <summary>
-        /// Finds the first connected ArduPilot device port.
+        /// Finds the best connected ArduPilot device port.
+        /// For composite USB devices (like CubeOrange), prefers the MAVLink interface.
         /// </summary>
         public static string FindArduPilotPort()
         {
             var deviceList = Win32DeviceMgmt.GetAllCOMPorts();
+            string fallbackPort = null;
+
             foreach (var device in deviceList)
             {
-                if (!string.IsNullOrEmpty(device.name) && IsArduPilotUSBDevice(device.hardwareid))
+                if (string.IsNullOrEmpty(device.name) || !IsArduPilotUSBDevice(device.hardwareid))
+                    continue;
+
+                // Prefer port with "Mavlink" in description (e.g., CubeOrange MAVLink interface)
+                if (!string.IsNullOrEmpty(device.description) &&
+                    device.description.IndexOf("mavlink", StringComparison.OrdinalIgnoreCase) >= 0)
                 {
                     return device.name;
                 }
+
+                // Prefer MI_00 (interface 0) which is typically MAVLink on composite devices
+                if (!string.IsNullOrEmpty(device.hardwareid) &&
+                    device.hardwareid.Contains("MI_00"))
+                {
+                    return device.name;
+                }
+
+                // Keep first matching port as fallback
+                if (fallbackPort == null)
+                    fallbackPort = device.name;
             }
-            return null;
+
+            return fallbackPort;
         }
 
         /// <summary>

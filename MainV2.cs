@@ -4064,6 +4064,7 @@ namespace MissionPlanner
                 shouldBlock: () => IsOnInstallFirmwareScreen(),
                 deviceChangedSubscribe: handler => DeviceChanged += handler,
                 deviceChangedUnsubscribe: handler => DeviceChanged -= handler,
+                refreshPortList: () => this.BeginInvokeIfRequired(() => PopulateSerialportList()),
                 connect: port => this.BeginInvokeIfRequired(() =>
                 {
                     try
@@ -4074,17 +4075,14 @@ namespace MissionPlanner
                         if (IsOnInstallFirmwareScreen())
                             return;
 
-                        PopulateSerialportList();
                         var portIndex = _connectionControl.CMB_serialport.Items.IndexOf(port);
-                        if (portIndex >= 0)
+                        if (portIndex < 0)
                         {
-                            _connectionControl.CMB_serialport.SelectedIndex = portIndex;
+                            log.Warn("Auto-connect: Port " + port + " not found in list");
+                            // Fallback to AUTO
+                            portIndex = 0;
                         }
-                        else
-                        {
-                            // Port not found (e.g., Cube re-enumerated), go the AUTO route
-                            _connectionControl.CMB_serialport.SelectedIndex = 0;
-                        }
+                        _connectionControl.CMB_serialport.SelectedIndex = portIndex;
                         MenuConnect_Click(null, null);
                     }
                     catch (Exception ex)
