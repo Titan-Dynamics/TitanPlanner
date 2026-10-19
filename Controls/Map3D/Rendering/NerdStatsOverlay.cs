@@ -42,7 +42,6 @@ namespace MissionPlanner.Controls.Scene3D
         const int RowHeight = 15;
         const int ValueX = 96;
         const int GraphHeight = 54;
-        const float GraphMaxMs = 50;
         const int RefreshMs = 250;
 
         /// <summary>One graph bar per frame, two pixels wide.</summary>
@@ -79,13 +78,38 @@ namespace MissionPlanner.Controls.Scene3D
         int _height = 400;
         int _graphTop;
         bool _disposed;
+        int _targetFps = 60;
+        bool _uncapped;
 
+        /// <summary>Frame time at the target rate: the green limit, the first graph guide, a third of its scale.</summary>
+        float TargetMs
+        {
+            get { return 1000f / _targetFps; }
+        }
+
+        float GraphMaxMs
+        {
+            get { return 3 * TargetMs; }
+        }
+
+        /// <summary>
+        /// targetFps is what frames are graded against (the FPS limit, or the top setting when uncapped): green
+        /// at the target, amber down to half of it, red below.
+        /// </summary>
         public void Draw(LineRenderer lines, int viewportWidth, int viewportHeight, FrameStats frames,
-            TerrainStats terrain, SceneStats scene)
+            TerrainStats terrain, SceneStats scene, int targetFps, bool uncapped)
         {
             // The fonts are gone after Dispose; GDI+ would throw "Parameter is not valid" from inside the paint.
             if (_disposed || viewportWidth <= 0 || viewportHeight <= 0)
                 return;
+
+            targetFps = Math.Max(1, targetFps);
+            if (targetFps != _targetFps || uncapped != _uncapped)
+            {
+                _targetFps = targetFps;
+                _uncapped = uncapped;
+                _sinceRefresh.Reset(); // re-render the guides and legend now
+            }
 
             if (_texture == 0 || !_sinceRefresh.IsRunning || _sinceRefresh.ElapsedMilliseconds >= RefreshMs)
             {
@@ -117,7 +141,7 @@ namespace MissionPlanner.Controls.Scene3D
             GL.Enable(EnableCap.DepthTest);
         }
 
-        /// <summary>Frame-time bars (green within 60 fps, amber within 30, red slower), CPU time line, 60/30 fps guides.</summary>
+        /// <summary>Frame-time bars coloured by <see cref="FrameColor"/>, CPU time line, target and half-target guides.</summary>
         void DrawGraph(LineRenderer lines, FrameStats frames, ref Matrix4 projection, ref Matrix4 modelView)
         {
             float x0 = Pad;
@@ -131,7 +155,7 @@ namespace MissionPlanner.Controls.Scene3D
             {
                 float ms = frames.Interval(frames.Count - count + i);
                 float height = Math.Min(1f, ms / GraphMaxMs) * GraphHeight;
-                Color c = ms <= 17.5f ? Good : ms <= 34f ? Warn : Bad;
+                Color c = FrameColor(ms);
                 float r = c.R / 255f, g = c.G / 255f, b = c.B / 255f;
                 float xa = x0 + (offset + i) * barWidth;
                 float xb = xa + Math.Max(1f, barWidth - 0.5f);
@@ -148,7 +172,7 @@ namespace MissionPlanner.Controls.Scene3D
             lines.Draw(_bars, PrimitiveType.Triangles, 1f, ref projection, ref modelView);
 
             _lines.Clear();
-            foreach (float guideMs in new[] { 1000f / 60, 1000f / 30 })
+            foreach (float guideMs in new[] { TargetMs, 2 * TargetMs })
             {
                 float y = bottom - guideMs / GraphMaxMs * GraphHeight;
                 _lines.AddColored(x0, y, 0, 1, 1, 1, 0.22f);
@@ -223,7 +247,8 @@ namespace MissionPlanner.Controls.Scene3D
                 Row(g, y, "FPS",
                     Part(fps.ToString("0.0"), FpsColor(fps)),
                     Part("  avg ", Dim), Part(frames.AverageFps().ToString("0"), Value),
-                    Part("  low ", Dim), Part(frames.LowFps().ToString("0"), FpsColor(frames.LowFps())));
+                    Part("  low ", Dim), Part(frames.LowFps().ToString("0"), FpsColor(frames.LowFps())),
+                    Part("  limit ", Dim), Part(_uncapped ? "none" : _targetFps.ToString(), Value));
                 Row(g, y + RowHeight, "Frame",
                     Part((1000 / Math.Max(0.1, fps)).ToString("0.0") + " ms", Value),
                     Part("  cpu ", Dim), Part(scene.CpuMs.ToString("0.0"), CpuColor(scene.CpuMs)),
@@ -368,16 +393,20 @@ namespace MissionPlanner.Controls.Scene3D
             using (var pen = new Pen(Color.FromArgb(40, 255, 255, 255)))
                 g.DrawRectangle(pen, Pad, y, PanelWidth - 2 * Pad, GraphHeight);
 
-            foreach (var guide in new[] { Tuple.Create(1000f / 60, "60"), Tuple.Create(1000f / 30, "30") })
+            foreach (var guide in new[]
+                     {
+                         Tuple.Create(TargetMs, _targetFps.ToString()),
+                         Tuple.Create(2 * TargetMs, (_targetFps / 2.0).ToString("0"))
+                     })
             {
                 float gy = y + GraphHeight - guide.Item1 / GraphMaxMs * GraphHeight;
-                Text(g, guide.Item2, _smallFont, Dim, PanelWidth - Pad - 17, gy - 12);
+                Text(g, guide.Item2, _smallFont, Dim, PanelWidth - Pad - 6 - Width(g, guide.Item2, _smallFont), gy - 12);
             }
 
             float ly = y + GraphHeight + 3;
             float lx = Pad;
-            lx = LegendSwatch(g, lx, ly, Good, "<16.7 ms");
-            lx = LegendSwatch(g, lx, ly, Warn, "<33 ms");
+            lx = LegendSwatch(g, lx, ly, Good, "<" + TargetMs.ToString("0.#") + " ms");
+            lx = LegendSwatch(g, lx, ly, Warn, "<" + (2 * TargetMs).ToString("0") + " ms");
             lx = LegendSwatch(g, lx, ly, Bad, "slower");
             using (var pen = new Pen(Info, 1.5f))
                 g.DrawLine(pen, lx, ly + 6, lx + 10, ly + 6);
@@ -435,14 +464,21 @@ namespace MissionPlanner.Controls.Scene3D
             Text(g, " / " + terrain.GpuBudgetBytes / (1024 * 1024) + " MB", _rowFont, Dim, x + Width(g, used, _rowFont), y);
         }
 
-        static Color FpsColor(double fps)
+        // Graded against the target with a little slack, since the frame timer lands either side of it.
+        Color FpsColor(double fps)
         {
-            return fps >= 55 ? Good : fps >= 30 ? Warn : Bad;
+            return fps >= _targetFps * 0.92 ? Good : fps >= _targetFps / 2.0 ? Warn : Bad;
         }
 
-        static Color CpuColor(double ms)
+        Color FrameColor(float ms)
         {
-            return ms < 8 ? Good : ms < 16 ? Warn : Bad;
+            return ms <= TargetMs * 1.05f ? Good : ms <= 2 * TargetMs * 1.02f ? Warn : Bad;
+        }
+
+        /// <summary>Work within half the frame budget is green, within all of it amber.</summary>
+        Color CpuColor(double ms)
+        {
+            return ms < TargetMs / 2 ? Good : ms < TargetMs ? Warn : Bad;
         }
 
         static Color Blend(Color a, Color b, float t)

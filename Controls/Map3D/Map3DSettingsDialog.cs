@@ -78,6 +78,9 @@ namespace MissionPlanner.Controls
                 var numAdsbSize = new NumericUpDown { Minimum = 50, Maximum = 2000, Increment = 50, Value = clamp(settings.AdsbCircleSize, 50, 2000) };
                 addRow("ADSB Size:", numAdsbSize);
 
+                var numFps = new FpsLimitUpDown { Minimum = Map3DSettings.MinFpsLimit, Maximum = Map3DSettings.MaxFpsLimit, Increment = 5, Value = clamp(settings.FpsLimit, Map3DSettings.MinFpsLimit, Map3DSettings.MaxFpsLimit) };
+                addRow("FPS Limit:", numFps);
+
                 Color selectedColor = settings.VehicleColor;
                 var colorPanel = new Panel { Height = 23, BorderStyle = BorderStyle.FixedSingle, Cursor = Cursors.Hand, Tag = "IgnoreTheme", BackColor = selectedColor };
                 colorPanel.Click += (s, e) =>
@@ -153,6 +156,7 @@ namespace MissionPlanner.Controls
                     numScale.Value = (decimal)defaults.VehicleScale;
                     numMarkerSize.Value = (decimal)defaults.WaypointMarkerSize;
                     numAdsbSize.Value = (decimal)defaults.AdsbCircleSize;
+                    numFps.Value = defaults.FpsLimit;
                     selectedColor = defaults.VehicleColor;
                     colorPanel.BackColor = selectedColor;
                     selectedStl = "";
@@ -175,6 +179,9 @@ namespace MissionPlanner.Controls
                 dialog.Controls.Add(layout);
 
                 ThemeManager.ApplyThemeTo(dialog);
+                // The theme matches NumericUpDown by exact type, so the subclass takes its colours from a sibling.
+                numFps.BackColor = numFov.BackColor;
+                numFps.ForeColor = numFov.ForeColor;
 
                 dialog.FormClosing += (s, e) =>
                 {
@@ -184,6 +191,7 @@ namespace MissionPlanner.Controls
                     settings.FieldOfView = (float)numFov.Value;
                     settings.WaypointMarkerSize = (double)numMarkerSize.Value;
                     settings.AdsbCircleSize = (double)numAdsbSize.Value;
+                    settings.FpsLimit = (int)numFps.Value;
                     settings.VehicleColor = selectedColor;
                     settings.StlPath = selectedStl;
                     settings.ShowHeadingLine = chkHeading.Checked;
@@ -197,6 +205,32 @@ namespace MissionPlanner.Controls
                 };
 
                 dialog.ShowDialog(owner);
+            }
+        }
+
+        /// <summary>Shows the top value as "100+", since the highest setting is uncapped.</summary>
+        sealed class FpsLimitUpDown : NumericUpDown
+        {
+            protected override void UpdateEditText()
+            {
+                // Take what the user typed first ("100+" parses as 100, the sign is allowed trailing).
+                if (UserEdit)
+                    ParseEditText();
+
+                if (Value >= Maximum)
+                {
+                    // ChangingText is cleared by the TextChanged it suppresses, so only set it if the text changes.
+                    string text = Maximum + "+";
+                    if (Text != text)
+                    {
+                        ChangingText = true;
+                        Text = text;
+                    }
+                }
+                else
+                {
+                    base.UpdateEditText();
+                }
             }
         }
     }

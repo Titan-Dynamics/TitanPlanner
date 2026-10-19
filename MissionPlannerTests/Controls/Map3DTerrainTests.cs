@@ -752,4 +752,25 @@ namespace MissionPlanner.Controls.Scene3D.Tests
             Assert.IsFalse(loader.TryGetResult(out result), "jobs finished after Dispose must not be kept");
         }
     }
+
+    [TestClass]
+    public class FramePacingTests
+    {
+        [TestMethod]
+        public void TimerIntervalFollowsTheFpsLimit()
+        {
+            Assert.AreEqual(16, MissionPlanner.Controls.Map3D.FrameIntervalMs(60));
+            Assert.AreEqual(33, MissionPlanner.Controls.Map3D.FrameIntervalMs(30));
+            Assert.AreEqual(10, MissionPlanner.Controls.Map3D.FrameIntervalMs(100));
+        }
+
+        [TestMethod]
+        public void OutOfRangeLimitsAreClamped()
+        {
+            // WinForms timers can't tick faster than every 10 ms.
+            Assert.AreEqual(10, MissionPlanner.Controls.Map3D.FrameIntervalMs(240));
+            Assert.AreEqual(100, MissionPlanner.Controls.Map3D.FrameIntervalMs(0));
+            Assert.AreEqual(100, MissionPlanner.Controls.Map3D.FrameIntervalMs(-5));
+        }
+    }
 }

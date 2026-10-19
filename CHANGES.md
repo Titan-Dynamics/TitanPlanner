@@ -61,7 +61,7 @@ Terrain streams Google Earth style:
 - **No reloads while flying.** Tiles keep their own UTM origins, so moving the scene origin never discards loaded terrain.
 - **Memory given back on close.** Hiding the 3D map frees the SRTM cells it loaded (26 MB each) and the loader's pending tiles once its workers exit, then compacts the heap, so RAM drops back. Elevation lookups on the UI thread (opening the map, ground height, mission and ADS-B overlays) only use cells already in memory and never wait on a disk load. The vehicle model is parsed once per session.
 - **Idle rendering.** Full frame rate only while something changes (connected vehicle, terrain streaming, markers, ADS-B, input, the 2D map moving, or the stats panel open); otherwise one frame a second.
-- **Stats for nerds** (3D map Settings): a colour-coded panel in the top-right with FPS (current/avg/low), a scrolling frame-time graph with CPU time and 60/30 fps guides, terrain streaming internals (tiles drawn/on GPU, per-zoom histogram, GPU memory, queue, load rate, fetch/mesh times, failures, elevation status), the camera view and fog range, and GPU/memory info. FPS is only shown here.
+- **Stats for nerds** (3D map Settings): a colour-coded panel in the top-right with FPS (current/avg/low/limit), a scrolling frame-time graph with CPU time and guides at the FPS limit and half of it (colours and scale follow the limit; 100 when uncapped), terrain streaming internals (tiles drawn/on GPU, per-zoom histogram, GPU memory, queue, load rate, fetch/mesh times, failures, elevation status), the camera view and fog range, and GPU/memory info. FPS is only shown here.
 
 The code lives in `Controls/Map3D/` (Terrain, Rendering, Overlays, Scene) and is excluded from the Android/Mac library build.
 
@@ -84,6 +84,7 @@ ADS-B traffic is rendered with proper depth testing and pass ordering so it corr
 - Reset button defaults aligned with settings defaults
 - 2D ↔ 3D map waypoint and position synchronization
 - "Stats for nerds" diagnostics panel, off by default
+- FPS limit setting (10 to "100+", default 60); the frame timer runs at 1 ms timer resolution while the map is shown so the limit is met evenly, and "100+" is uncapped: frames are drawn back to back whenever the UI thread is idle
 - Required-valid-GPS gate before vehicle tracking begins
 - 3D Map cleanly stops on disconnect and tears down before app close
 

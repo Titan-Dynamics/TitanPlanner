@@ -34,6 +34,16 @@ namespace MissionPlanner.Controls
         public double WaypointMarkerSize = 60;
         public double AdsbCircleSize = 500;
 
+        /// <summary>Most frames drawn per second; the top setting, shown as "100+", is uncapped.</summary>
+        public int FpsLimit = 60;
+        public const int MinFpsLimit = 10;
+        public const int MaxFpsLimit = 100;
+
+        public bool FpsUncapped => FpsLimit >= MaxFpsLimit;
+
+        /// <summary>The rate "Stats for nerds" grades frames against: the limit, or 100 when uncapped.</summary>
+        public int TargetFps => Math.Max(MinFpsLimit, Math.Min(MaxFpsLimit, FpsLimit));
+
         public static Map3DSettings Load()
         {
             var s = Settings.Instance;
@@ -53,7 +63,8 @@ namespace MissionPlanner.Controls
                 FpvMode = s.GetBoolean("map3d_fpv_mode", false),
                 StatsForNerds = s.GetBoolean("map3d_stats_for_nerds", false),
                 WaypointMarkerSize = s.GetDouble("map3d_waypoint_marker_size", 60),
-                AdsbCircleSize = s.GetDouble("map3d_adsb_size", 500)
+                AdsbCircleSize = s.GetDouble("map3d_adsb_size", 500),
+                FpsLimit = s.GetInt32("map3d_fps_limit", 60)
             };
 
             try
@@ -76,6 +87,7 @@ namespace MissionPlanner.Controls
             s["map3d_fov"] = FieldOfView.ToString();
             s["map3d_waypoint_marker_size"] = WaypointMarkerSize.ToString();
             s["map3d_adsb_size"] = AdsbCircleSize.ToString();
+            s["map3d_fps_limit"] = FpsLimit.ToString();
             s["map3d_mav_color"] = VehicleColor.ToArgb().ToString();
             s["map3d_plane_stl_path"] = StlPath ?? "";
             s["map3d_show_heading"] = ShowHeadingLine.ToString();

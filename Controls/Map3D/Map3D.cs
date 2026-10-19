@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
 using System.IO;
+using System.Runtime.InteropServices;
 using System.Threading;
 using System.Windows.Forms;
 using GMap.NET;
@@ -234,8 +235,7 @@ namespace MissionPlanner.Controls
 
         public void Deactivate()
         {
-            timer1?.Stop();
-            started = false;
+            StopFrameTimer();
             // Keep the GPU tile cache for when the view comes back, but stop loading for it.
             _terrain?.Pause();
         }
@@ -243,10 +243,7 @@ namespace MissionPlanner.Controls
         public void Activate()
         {
             if (!started)
-            {
-                timer1?.Start();
-                started = true;
-            }
+                StartFrameTimer();
 
             // Jump to the current pose instead of easing in from stale filter state.
             _vehicle.Reset();
@@ -260,8 +257,7 @@ namespace MissionPlanner.Controls
                 return;
 
             if (!started)
-                timer1.Start();
-            started = true;
+                StartFrameTimer();
             onpaintrun = true;
 
             try
@@ -446,7 +442,8 @@ namespace MissionPlanner.Controls
             if (_settings.StatsForNerds)
             {
                 UpdateSceneStats(connected, viewRadius);
-                _nerdStats.Draw(_lines, Width, Height, _frameStats, _terrain.Stats, _sceneStats);
+                _nerdStats.Draw(_lines, Width, Height, _frameStats, _terrain.Stats, _sceneStats, _settings.TargetFps,
+                    _settings.FpsUncapped);
             }
         }
 
@@ -588,7 +585,7 @@ namespace MissionPlanner.Controls
                 {
                 }
 
-                timer1?.Stop();
+                StopFrameTimer();
                 timer1?.Dispose();
                 _adsbToolTip?.Dispose();
                 _settingsToolTip?.Dispose();
@@ -682,8 +679,118 @@ namespace MissionPlanner.Controls
         {
             Map3DSettingsDialog.Show(this, _settings);
             _stlLoader.CustomSTLPath = _settings.StlPath;
+            if (started)
+                timer1.Interval = FrameIntervalMs(_settings.FpsLimit);
+            UpdateUncappedLoop();
             MarkActive();
             Invalidate();
+        }
+
+        [DllImport("winmm.dll")]
+        private static extern uint timeBeginPeriod(uint period);
+
+        [DllImport("winmm.dll")]
+        private static extern uint timeEndPeriod(uint period);
+
+        private bool _fineTimerResolution;
+
+        /// <summary>
+        /// Frames are drawn on timer ticks, so the timer interval is the FPS limit. At Windows' default 15.6 ms
+        /// timer resolution every interval rounds up to a multiple of it (16 ms becomes 31 ms), so 1 ms resolution
+        /// is requested while the map is running.
+        /// </summary>
+        private void StartFrameTimer()
+        {
+            if (!_fineTimerResolution)
+            {
+                try
+                {
+                    _fineTimerResolution = timeBeginPeriod(1) == 0;
+                }
+                catch
+                {
+                }
+            }
+
+            timer1.Interval = FrameIntervalMs(_settings.FpsLimit);
+            timer1.Start();
+            started = true;
+            UpdateUncappedLoop();
+        }
+
+        private void StopFrameTimer()
+        {
+            timer1?.Stop();
+            started = false;
+            UpdateUncappedLoop();
+
+            if (_fineTimerResolution)
+            {
+                _fineTimerResolution = false;
+                try
+                {
+                    timeEndPeriod(1);
+                }
+                catch
+                {
+                }
+            }
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct NativeMessage
+        {
+            public IntPtr Handle;
+            public uint Message;
+            public IntPtr WParam;
+            public IntPtr LParam;
+            public uint Time;
+            public int X;
+            public int Y;
+        }
+
+        [DllImport("user32.dll")]
+        private static extern bool PeekMessage(out NativeMessage message, IntPtr window, uint filterMin, uint filterMax,
+            uint remove);
+
+        private bool _uncappedLoop;
+
+        /// <summary>
+        /// The top FPS setting is uncapped, which the frame timer (10 ms at best) can't do, so frames are then also
+        /// drawn back to back whenever the UI thread is idle.
+        /// </summary>
+        private void UpdateUncappedLoop()
+        {
+            bool want = started && !_disposed && _settings.FpsUncapped;
+            if (want == _uncappedLoop)
+                return;
+
+            _uncappedLoop = want;
+            if (want)
+                Application.Idle += OnApplicationIdle;
+            else
+                Application.Idle -= OnApplicationIdle;
+        }
+
+        /// <summary>
+        /// Draws frames until any message is waiting (input, a timer, another control's paint), so the rest of the
+        /// UI runs between them; the frame timer's next tick brings it back here once the queue is empty.
+        /// </summary>
+        private void OnApplicationIdle(object sender, EventArgs e)
+        {
+            NativeMessage message;
+            while (_uncappedLoop && !_disposed && !_glFailed && IsHandleCreated && Visible && Width > 0 && Height > 0 &&
+                   NeedsFrame() && !PeekMessage(out message, IntPtr.Zero, 0, 0, 0))
+            {
+                Utilities.Extensions.ProtectReentry(doPaint);
+            }
+        }
+
+        /// <summary>Timer interval for an FPS limit; a tick lands slightly after it, so this rounds down.</summary>
+        public static int FrameIntervalMs(int fpsLimit)
+        {
+            int fps = Math.Max(Map3DSettings.MinFpsLimit, Math.Min(Map3DSettings.MaxFpsLimit, fpsLimit));
+            return Math.Max(10, (int)(1000.0 / fps));
         }
 
         private void timer1_Tick(object sender, EventArgs e)
