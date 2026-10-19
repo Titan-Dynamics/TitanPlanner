@@ -78,6 +78,11 @@ namespace MissionPlanner.Utilities
         /// </summary>
         private const int API_LOOP_DELAY_MAX_MILLISECONDS = 10000;
 
+        /// <summary>
+        /// adsb.lol asks API clients to put contact info in their User-Agent and rejects generic ones.
+        /// </summary>
+        private const string API_CONTACT = "contact@titanuas.com";
+
         public adsb()
         {
             thisthread = new Thread(TryConnect);
@@ -137,6 +142,7 @@ namespace MissionPlanner.Utilities
                         // ADSB Exchange API format - see https://api.adsb.lol/docs
                         string url = "{0}/v2/point/{1}/{2}/{3}";
                         var delay = API_LOOP_DELAY_MILLISECONDS;
+                        var userAgent = (Settings.Instance.UserAgent ?? "TitanPlanner") + " (contact: " + API_CONTACT + ")";
 
                         while (true)
                         {
@@ -144,7 +150,7 @@ namespace MissionPlanner.Utilities
                             var timer = Stopwatch.StartNew();
 
                             string formattedUrl = string.Format(CultureInfo.InvariantCulture, url, server, CurrentPosition.Lat, CurrentPosition.Lng, httpRequestRadius);
-                            var t = Download.GetAsyncWithStatus(formattedUrl);
+                            var t = Download.GetAsyncWithStatus(formattedUrl, userAgent);
                             t.Wait();
 
                             // Check for long running requests
@@ -155,6 +161,9 @@ namespace MissionPlanner.Utilities
 
                             if (!t.IsFaulted && t.Result.status == System.Net.HttpStatusCode.OK)
                             {
+                                // Back to the normal rate after a failure slowed it down.
+                                delay = API_LOOP_DELAY_MILLISECONDS;
+
                                 var result = JsonConvert.DeserializeObject<RootObject>(t.Result.content);
 
                                 // Increase range if we don't see many planes

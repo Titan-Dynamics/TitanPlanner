@@ -267,6 +267,7 @@ Built for air-gapped use. Opened from the **Offline Maps** button next to Find L
 Behaviour that differs from upstream because the fork fixed it:
 
 - The 3D map's paint path locks on a dedicated token, so the intermittent `Destination array was not long enough` crash does not occur
+- Live ADS-B from the default adsb.lol API works again: its requests send the app's User-Agent (the API now answers 403 "User-Agent too generic" without one) over a shared HTTP client, and the poll rate returns to once a second after a failure instead of staying at the 10 s back-off
 - SRTM elevation cells are read and written under the cache lock everywhere, so the 3D map's loader threads can't corrupt the dictionary under `srtm.getAltitude`, and one slow cell load no longer holds up every other elevation lookup; a paint that arrives while the 3D map is being disposed is ignored
 - The Full Parameter List opens without crashing, and Flight Modes populates its `RCx_OPTION` lists on load
 - Starting a camera that another program holds open fails gracefully instead of crashing

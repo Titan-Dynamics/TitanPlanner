@@ -330,12 +330,23 @@ namespace MissionPlanner.Utilities
         /// <summary>
         /// Perform a GET request and return the content and status code
         /// </summary>
-        public static async Task<HTTPResult> GetAsyncWithStatus(string uri)
+        public static async Task<HTTPResult> GetAsyncWithStatus(string uri, string userAgent = null)
         {
-            var httpClient = new HttpClient();
-            var response = await httpClient.GetAsync(uri);
-            var content = await response.Content.ReadAsStringAsync();
-            return await Task.Run(() => (new HTTPResult() { content = content, status = response.StatusCode }));
+            using (var request = new HttpRequestMessage(HttpMethod.Get, uri))
+            {
+                // Some APIs refuse requests without one: adsb.lol answers 403 "User-Agent too generic". Set per
+                // request, since the shared client's default is only added if the app had set it by then.
+                userAgent = userAgent ?? Settings.Instance.UserAgent;
+                if (!String.IsNullOrEmpty(userAgent))
+                    request.Headers.TryAddWithoutValidation("User-Agent", userAgent);
+
+                // The shared client: ADS-B polls every second, and a new HttpClient per call leaks sockets.
+                using (var response = await client.SendAsync(request).ConfigureAwait(false))
+                {
+                    var content = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+                    return new HTTPResult() { content = content, status = response.StatusCode };
+                }
+            }
         }
 
         public static event EventHandler<HttpRequestMessage> RequestModification;
