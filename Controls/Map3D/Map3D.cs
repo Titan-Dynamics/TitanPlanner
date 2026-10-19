@@ -101,6 +101,8 @@ namespace MissionPlanner.Controls
             instance = this;
             _settings = Map3DSettings.Load();
             _stlLoader.CustomSTLPath = _settings.StlPath;
+            // Parsed on a worker while the GL context is created, rather than on the UI thread in the first frame.
+            _stlLoader.Preload();
 
             InitializeComponent();
             MouseMove += OnMouseMove;
@@ -240,6 +242,43 @@ namespace MissionPlanner.Controls
             _terrain?.Pause();
         }
 
+        private volatile bool _suspended;
+
+        /// <summary>False while the map is hidden (<see cref="Suspend"/>); telemetry feeds can skip their work then.</summary>
+        public bool IsActive
+        {
+            get { return !_suspended; }
+        }
+
+        /// <summary>
+        /// The map was hidden: stops drawing and gives the terrain back (GPU tiles, loader threads, SRTM cells), but
+        /// keeps the control and its GL context. Creating the context took the driver about 1.5 s on the UI thread
+        /// every time the map was shown.
+        /// </summary>
+        public void Suspend()
+        {
+            _suspended = true;
+            Deactivate();
+            try
+            {
+                _settings.SaveCamera();
+            }
+            catch
+            {
+            }
+
+            ReleaseTerrain();
+        }
+
+        /// <summary>Shown again after <see cref="Suspend"/>; the terrain is rebuilt on the next frame.</summary>
+        public void Resume()
+        {
+            _suspended = false;
+            // The time it was hidden is not a frame.
+            _frameClock.Reset();
+            Activate();
+        }
+
         public void Activate()
         {
             if (!started)
@@ -256,7 +295,8 @@ namespace MissionPlanner.Controls
 
         protected override void OnPaint(PaintEventArgs e)
         {
-            if (_disposed)
+            // Hidden (Suspend): a stray paint must not restart the frame timer or rebuild the terrain.
+            if (_disposed || _suspended)
                 return;
 
             if (!started)
@@ -318,24 +358,27 @@ namespace MissionPlanner.Controls
 
         private void EnsureRenderers()
         {
-            if (_terrain != null)
-                return;
-
-            _terrain = new TerrainEngine(_frame, new GMapImagerySource(GoogleSatelliteMapProvider.Instance));
-            _sky = new SkyRenderer();
-            _lines = new LineRenderer();
-            _mission = new MissionOverlay();
-            _vehicleOverlay = new VehicleOverlay(_stlLoader);
-            _nerdStats = new NerdStatsOverlay();
-
-            try
+            if (_sky == null)
             {
-                _sceneStats.Renderer = GL.GetString(StringName.Renderer) ?? "";
-                _sceneStats.GLVersion = GL.GetString(StringName.Version) ?? "";
+                _sky = new SkyRenderer();
+                _lines = new LineRenderer();
+                _mission = new MissionOverlay();
+                _vehicleOverlay = new VehicleOverlay(_stlLoader);
+                _nerdStats = new NerdStatsOverlay();
+
+                try
+                {
+                    _sceneStats.Renderer = GL.GetString(StringName.Renderer) ?? "";
+                    _sceneStats.GLVersion = GL.GetString(StringName.Version) ?? "";
+                }
+                catch
+                {
+                }
             }
-            catch
-            {
-            }
+
+            // Released while the map is hidden (Suspend) and made again on the first frame after.
+            if (_terrain == null)
+                _terrain = new TerrainEngine(_frame, new GMapImagerySource(GoogleSatelliteMapProvider.Instance));
         }
 
         private void RenderFrame()
@@ -603,9 +646,31 @@ namespace MissionPlanner.Controls
 
         private void DisposeRenderers()
         {
-            if (_terrain == null)
+            ReleaseTerrain();
+
+            if (_sky == null)
                 return;
 
+            MakeContextCurrent();
+            try
+            {
+                _sky.Dispose();
+                _lines.Dispose();
+                _mission.Dispose();
+                _vehicleOverlay.Dispose();
+                _nerdStats.Dispose();
+                _settingsButton.Dispose();
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine("Map3D cleanup: " + ex.Message);
+            }
+
+            _sky = null;
+        }
+
+        private void MakeContextCurrent()
+        {
             try
             {
                 if (IsHandleCreated && Context != null && !Context.IsCurrent)
@@ -614,9 +679,22 @@ namespace MissionPlanner.Controls
             catch
             {
             }
+        }
+
+        /// <summary>
+        /// Gives back the terrain: its GPU tiles and loader threads now, and once those threads have exited the SRTM
+        /// cells, followed by a compacting GC so the memory goes back to Windows.
+        /// </summary>
+        private void ReleaseTerrain()
+        {
+            if (_terrain == null)
+                return;
+
+            MakeContextCurrent();
 
             // The engine stops its loader threads even if GL cleanup fails.
             var terrain = _terrain;
+            _terrain = null;
             terrain.Dispose();
 
             // The terrain's elevation cells (26 MB each) would otherwise stay in memory after the map closes. A
@@ -639,22 +717,6 @@ namespace MissionPlanner.Controls
                     log.Error(ex);
                 }
             });
-
-            try
-            {
-                _sky.Dispose();
-                _lines.Dispose();
-                _mission.Dispose();
-                _vehicleOverlay.Dispose();
-                _nerdStats.Dispose();
-                _settingsButton.Dispose();
-            }
-            catch (Exception ex)
-            {
-                Debug.WriteLine("Map3D cleanup: " + ex.Message);
-            }
-
-            _terrain = null;
         }
 
         private void InitializeComponent()

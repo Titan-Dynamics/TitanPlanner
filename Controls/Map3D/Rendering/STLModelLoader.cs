@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Threading.Tasks;
 using System.Windows.Forms;
 
 namespace MissionPlanner.Controls
@@ -11,8 +12,12 @@ namespace MissionPlanner.Controls
     /// </summary>
     public class STLModelLoader
     {
-        private static readonly Dictionary<string, Tuple<List<float>, List<float>>> _parsedModels =
-            new Dictionary<string, Tuple<List<float>, List<float>>>();
+        /// <summary>
+        /// Models parsed (or being parsed) in the background, shared by every 3D map: parsing a multi-megabyte ASCII
+        /// STL took about a second, which used to be spent on the UI thread when the map first drew the vehicle.
+        /// </summary>
+        private static readonly Dictionary<string, Task<Tuple<List<float>, List<float>>>> _parsedModels =
+            new Dictionary<string, Task<Tuple<List<float>, List<float>>>>();
 
         private List<float> _vertices;
         private List<float> _normals;
@@ -25,6 +30,11 @@ namespace MissionPlanner.Controls
         public int VertexCount => _vertices?.Count / 3 ?? 0;
         public bool IsLoaded => _isLoaded;
         public MAVLink.MAV_TYPE? LoadedMavType => _loadedMavType;
+
+        /// <summary>
+        /// Set when <see cref="EnsureLoaded"/> returned false only because the model is still being parsed.
+        /// </summary>
+        public bool IsPending { get; private set; }
 
         public string CustomSTLPath
         {
@@ -40,21 +50,32 @@ namespace MissionPlanner.Controls
         }
 
         /// <summary>
+        /// Starts parsing the current vehicle's model in the background, so it is ready by the time the map draws.
+        /// </summary>
+        public void Preload()
+        {
+            try
+            {
+                ModelTask(CurrentMavType(), UsingCustomSTL);
+            }
+            catch
+            {
+                // EnsureLoaded reports problems when the model is actually needed.
+            }
+        }
+
+        /// <summary>
         /// Loads the STL model if needed, based on current MAV_TYPE or custom path.
-        /// Returns true if the model is ready to render.
+        /// Returns true if the model is ready to render; false with <see cref="IsPending"/> set while it is still
+        /// being parsed in the background.
         /// </summary>
         public bool EnsureLoaded()
         {
-            // Get current MAV_TYPE
-            MAVLink.MAV_TYPE currentMavType = MAVLink.MAV_TYPE.FIXED_WING;
-            try
-            {
-                currentMavType = MainV2.comPort?.MAV?.aptype ?? MAVLink.MAV_TYPE.FIXED_WING;
-            }
-            catch { }
+            IsPending = false;
+            MAVLink.MAV_TYPE currentMavType = CurrentMavType();
 
             // Check if we need to reload due to vehicle type change (only when using default STL)
-            bool usingCustomSTL = !string.IsNullOrEmpty(_customSTLPath) && File.Exists(_customSTLPath);
+            bool usingCustomSTL = UsingCustomSTL;
             if (_isLoaded && !usingCustomSTL && _loadedMavType.HasValue && _loadedMavType.Value != currentMavType)
             {
                 // Vehicle type changed, force reload
@@ -65,44 +86,25 @@ namespace MissionPlanner.Controls
 
             try
             {
-                // Parsed models are shared, so reopening the 3D map doesn't re-parse a multi-megabyte STL on
-                // the UI thread.
-                string key = usingCustomSTL
-                    ? "file:" + _customSTLPath + "|" + File.GetLastWriteTimeUtc(_customSTLPath).Ticks
-                    : "type:" + currentMavType + (currentMavType == MAVLink.MAV_TYPE.FIXED_WING && IsQuadPlaneByParam() ? "|quadplane" : "");
-                Tuple<List<float>, List<float>> parsed;
-                lock (_parsedModels)
-                    _parsedModels.TryGetValue(key, out parsed);
-                if (parsed != null)
+                var task = ModelTask(currentMavType, usingCustomSTL);
+                if (!task.IsCompleted)
                 {
-                    _vertices = parsed.Item1;
-                    _normals = parsed.Item2;
-                    if (!usingCustomSTL)
-                        _loadedMavType = currentMavType;
-                    _isLoaded = true;
-                    return true;
+                    IsPending = true;
+                    return false;
                 }
 
-                string stlContent;
-                if (usingCustomSTL)
-                {
-                    stlContent = File.ReadAllText(_customSTLPath);
-                }
-                else
-                {
-                    stlContent = GetDefaultSTLForMavType(currentMavType);
-                    _loadedMavType = currentMavType;
-                }
-
-                if (string.IsNullOrEmpty(stlContent))
+                // Throws the parse's exception, if it had one.
+                var parsed = task.GetAwaiter().GetResult();
+                if (parsed == null)
                 {
                     MessageBox.Show("STL resource not found for vehicle type", "STL Load Error");
                     return false;
                 }
 
-                ParseSTL(stlContent);
-                lock (_parsedModels)
-                    _parsedModels[key] = Tuple.Create(_vertices, _normals);
+                _vertices = parsed.Item1;
+                _normals = parsed.Item2;
+                if (!usingCustomSTL)
+                    _loadedMavType = currentMavType;
                 _isLoaded = true;
                 return true;
             }
@@ -110,6 +112,49 @@ namespace MissionPlanner.Controls
             {
                 MessageBox.Show("Error loading STL: " + ex.Message, "STL Load Error");
                 return false;
+            }
+        }
+
+        private bool UsingCustomSTL => !string.IsNullOrEmpty(_customSTLPath) && File.Exists(_customSTLPath);
+
+        private static MAVLink.MAV_TYPE CurrentMavType()
+        {
+            try
+            {
+                return MainV2.comPort?.MAV?.aptype ?? MAVLink.MAV_TYPE.FIXED_WING;
+            }
+            catch
+            {
+                return MAVLink.MAV_TYPE.FIXED_WING;
+            }
+        }
+
+        /// <summary>
+        /// The parse of the model for this vehicle, started on a worker thread the first time it is asked for. The
+        /// vehicle parameters are read here, on the caller's thread; the task only reads the STL and parses it.
+        /// </summary>
+        private Task<Tuple<List<float>, List<float>>> ModelTask(MAVLink.MAV_TYPE mavType, bool usingCustomSTL)
+        {
+            string path = _customSTLPath;
+            bool quadPlane = !usingCustomSTL && mavType == MAVLink.MAV_TYPE.FIXED_WING && IsQuadPlaneByParam();
+            string key = usingCustomSTL
+                ? "file:" + path + "|" + File.GetLastWriteTimeUtc(path).Ticks
+                : "type:" + mavType + (quadPlane ? "|quadplane" : "");
+
+            lock (_parsedModels)
+            {
+                Task<Tuple<List<float>, List<float>>> task;
+                if (!_parsedModels.TryGetValue(key, out task))
+                {
+                    task = Task.Run(() =>
+                    {
+                        string stlContent = usingCustomSTL ? File.ReadAllText(path) : GetDefaultSTL(mavType, quadPlane);
+                        return string.IsNullOrEmpty(stlContent) ? null : ParseSTL(stlContent);
+                    });
+                    _parsedModels[key] = task;
+                }
+
+                return task;
             }
         }
 
@@ -142,14 +187,14 @@ namespace MissionPlanner.Controls
         /// <summary>
         /// Gets the default embedded STL content based on MAV_TYPE.
         /// Uses specific models for different vehicle types, with fallbacks.
-        /// Also checks Q_ENABLE parameter for quadplanes that report as FIXED_WING.
+        /// quadPlane is the Q_ENABLE check for quadplanes that report as FIXED_WING, made by the caller.
         /// </summary>
-        private string GetDefaultSTLForMavType(MAVLink.MAV_TYPE mavType)
+        private static string GetDefaultSTL(MAVLink.MAV_TYPE mavType, bool quadPlane)
         {
             string stl = null;
 
             // Check for quadplane via Q_ENABLE parameter (some quadplanes report as FIXED_WING)
-            if (mavType == MAVLink.MAV_TYPE.FIXED_WING && IsQuadPlaneByParam())
+            if (quadPlane)
             {
                 stl = MissionPlanner.Properties.Resources.quadplane_stl;
                 if (string.IsNullOrEmpty(stl)) stl = MissionPlanner.Properties.Resources.plane_stl;
@@ -239,10 +284,10 @@ namespace MissionPlanner.Controls
         /// Parses ASCII STL content into vertices and normals.
         /// Keeps the STL’s original origin and applies a -90 degree Z rotation.
         /// </summary>
-        private void ParseSTL(string stlContent)
+        private static Tuple<List<float>, List<float>> ParseSTL(string stlContent)
         {
-            _vertices = new List<float>();
-            _normals = new List<float>();
+            var vertices = new List<float>();
+            var normals = new List<float>();
 
             var lines = stlContent.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
             float nx = 0, ny = 0, nz = 0;
@@ -264,41 +309,42 @@ namespace MissionPlanner.Controls
                     float vy = float.Parse(parts[2], System.Globalization.CultureInfo.InvariantCulture);
                     float vz = float.Parse(parts[3], System.Globalization.CultureInfo.InvariantCulture);
 
-                    _vertices.Add(vx);
-                    _vertices.Add(vy);
-                    _vertices.Add(vz);
+                    vertices.Add(vx);
+                    vertices.Add(vy);
+                    vertices.Add(vz);
 
-                    _normals.Add(nx);
-                    _normals.Add(ny);
-                    _normals.Add(nz);
+                    normals.Add(nx);
+                    normals.Add(ny);
+                    normals.Add(nz);
                 }
             }
 
             // STL is in millimeters - conversion to meters happens in Map3D.DrawPlane()
 
             // Rotate STL -90 degrees around Z axis (swap X and Y, negate new Y)
-            RotateModel();
+            RotateModel(vertices, normals);
+            return Tuple.Create(vertices, normals);
         }
 
         /// <summary>
         /// Rotates the model -90 degrees around Z axis.
         /// </summary>
-        private void RotateModel()
+        private static void RotateModel(List<float> vertices, List<float> normals)
         {
-            for (int i = 0; i < _vertices.Count; i += 3)
+            for (int i = 0; i < vertices.Count; i += 3)
             {
-                float x = _vertices[i];
-                float y = _vertices[i + 1];
-                _vertices[i] = y;
-                _vertices[i + 1] = -x;
+                float x = vertices[i];
+                float y = vertices[i + 1];
+                vertices[i] = y;
+                vertices[i + 1] = -x;
             }
 
-            for (int i = 0; i < _normals.Count; i += 3)
+            for (int i = 0; i < normals.Count; i += 3)
             {
-                float normX = _normals[i];
-                float normY = _normals[i + 1];
-                _normals[i] = normY;
-                _normals[i + 1] = -normX;
+                float normX = normals[i];
+                float normY = normals[i + 1];
+                normals[i] = normY;
+                normals[i + 1] = -normX;
             }
         }
     }

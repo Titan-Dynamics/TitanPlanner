@@ -59,7 +59,7 @@ Terrain streams Google Earth style:
 - **Shared imagery cache.** Imagery goes through the 2D map's tile cache, so tiles seen on the 2D map and imported `.mappack` files load instantly and offline mode works. The old separate 3D tile cache is removed.
 - **Elevation that always arrives.** Missing SRTM cells are downloaded instead of leaving gaps; tiles start from their parent's heights and are re-meshed when the data lands.
 - **No reloads while flying.** Tiles keep their own UTM origins, so moving the scene origin never discards loaded terrain.
-- **Memory given back on close.** Hiding the 3D map frees the SRTM cells it loaded (26 MB each) and the loader's pending tiles once its workers exit, then compacts the heap, so RAM drops back. Elevation lookups on the UI thread (opening the map, ground height, mission and ADS-B overlays) only use cells already in memory and never wait on a disk load. The vehicle model is parsed once per session.
+- **Memory given back on hide, without the reload cost.** Hiding the 3D map frees its terrain (GPU tiles, loader threads, and the SRTM cells it loaded, 26 MB each, once its workers exit), then compacts the heap, so RAM drops back. The control and its GL context are kept, because creating the context took the graphics driver about 1.5 s on the UI thread every time the map was shown; showing it again only rebuilds the terrain. Elevation lookups on the UI thread (opening the map, ground height, mission and ADS-B overlays) only use cells already in memory and never wait on a disk load. The vehicle model is parsed on a worker thread while the GL context is created, once per session, and drawn as soon as it is ready.
 - **Idle rendering.** Full frame rate only while something changes (connected vehicle, terrain streaming, markers, ADS-B, input, the 2D map moving, or the stats panel open); otherwise one frame a second.
 - **Stats for nerds** (3D map Settings): a colour-coded panel in the top-right with FPS (current/avg/low), a scrolling frame-time graph with CPU time and 60/30 fps guides, terrain streaming internals (tiles drawn/on GPU, per-zoom histogram, GPU memory, queue, load rate, fetch/mesh times, failures, elevation status), the camera view and fog range, and GPU/memory info. FPS is only shown here.
 
@@ -86,7 +86,6 @@ ADS-B traffic is rendered with proper depth testing and pass ordering so it corr
 - "Stats for nerds" diagnostics panel, off by default
 - Required-valid-GPS gate before vehicle tracking begins
 - 3D Map cleanly stops on disconnect and tears down before app close
-- The 3D map is created 100 ms after it is shown, so the checkbox and the layout change paint before its GL setup
 
 ## GPU Acceleration
 GPU acceleration is enabled application-wide, with a registry-level Windows GPU-preference hint to prefer the discrete GPU on hybrid systems.

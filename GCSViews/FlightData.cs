@@ -2615,52 +2615,44 @@ namespace MissionPlanner.GCSViews
             }
         }
 
-        /// <summary>
-        /// Creates the 3D map 100 ms after it is shown, so the tick and the layout change paint before its GL
-        /// context and renderers are set up on the UI thread.
-        /// </summary>
-        private System.Windows.Forms.Timer _map3DCreateTimer;
-
         public void Toggle3DMap(bool enable)
         {
             if (enable)
             {
-                if (map3DHost != null)
-                    map3DHost.Visible = true;
-
                 if (map3DControl == null || map3DControl.IsDisposed)
                 {
-                    if (_map3DCreateTimer == null)
-                    {
-                        _map3DCreateTimer = new System.Windows.Forms.Timer(components) { Interval = 100 };
-                        _map3DCreateTimer.Tick += (sender, e) =>
-                        {
-                            _map3DCreateTimer.Stop();
-                            Create3DMap();
-                        };
-                    }
-
-                    // Restarting it keeps a quick re-toggle to a single creation.
-                    _map3DCreateTimer.Stop();
-                    _map3DCreateTimer.Start();
+                    Create3DMap();
                     return;
                 }
 
+                if (map3DHost != null)
+                    map3DHost.Visible = true;
+
+                // Kept from the last time it was shown (Hide3DMap), GL context and all.
                 if (map3DHost != null && !map3DHost.Controls.Contains(map3DControl))
                 {
                     map3DHost.Controls.Clear();
                     map3DHost.Controls.Add(map3DControl);
                 }
+
+                map3DControl.Resume();
             }
             else
             {
-                Dispose3DMap();
-                if (map3DHost != null)
-                {
-                    map3DHost.Controls.Clear();
-                    map3DHost.Visible = false;
-                }
+                Hide3DMap();
             }
+        }
+
+        /// <summary>
+        /// Hides the 3D map without disposing it: it stops drawing and frees its terrain, but keeps its GL context,
+        /// which took the driver about 1.5 s on the UI thread to create every time the map was shown.
+        /// </summary>
+        public void Hide3DMap()
+        {
+            if (map3DControl != null && !map3DControl.IsDisposed)
+                map3DControl.Suspend();
+            if (map3DHost != null)
+                map3DHost.Visible = false;
         }
 
         private void Create3DMap()
@@ -2690,9 +2682,6 @@ namespace MissionPlanner.GCSViews
 
         public void Dispose3DMap()
         {
-            // Hidden or closing before the delay ran out: don't create it afterwards.
-            _map3DCreateTimer?.Stop();
-
             if (map3DControl != null)
             {
                 map3DHost?.Controls.Remove(map3DControl);
@@ -2720,14 +2709,7 @@ namespace MissionPlanner.GCSViews
                 zg1.Visible = true;
 
             if (!map3DChecked)
-            {
-                Dispose3DMap();
-                if (map3DHost != null)
-                {
-                    map3DHost.Controls.Clear();
-                    map3DHost.Visible = false;
-                }
-            }
+                Hide3DMap();
 
             if (map3DChecked)
             {
@@ -4726,8 +4708,9 @@ namespace MissionPlanner.GCSViews
                             "here");
                     }
 
-                    // update 3D map (only when connected with valid location - disconnected mode uses 2D map center)
-                    if (Map3D.instance != null && MainV2.comPort?.BaseStream?.IsOpen == true &&
+                    // update 3D map (only when connected with valid location - disconnected mode uses 2D map center).
+                    // Not while it is hidden: the terrain lookup would load back an SRTM cell the hide just freed.
+                    if (Map3D.instance != null && Map3D.instance.IsActive && MainV2.comPort?.BaseStream?.IsOpen == true &&
                         MainV2.comPort.MAV.cs.lat != 0 && MainV2.comPort.MAV.cs.lng != 0)
                     {
                         Map3D.instance.rpy = new Vector3(MainV2.comPort.MAV.cs.roll,

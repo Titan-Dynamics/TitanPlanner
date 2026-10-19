@@ -67,7 +67,9 @@ namespace MissionPlanner.Controls.Scene3D
 
             if (!_loader.EnsureLoaded() || _loader.Vertices == null || _loader.VertexCount == 0)
             {
-                _failedKey = key;
+                // Still being parsed in the background: try again next frame.
+                if (!_loader.IsPending)
+                    _failedKey = key;
                 return false;
             }
 
