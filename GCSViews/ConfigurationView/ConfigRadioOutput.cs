@@ -185,6 +185,8 @@ namespace MissionPlanner.GCSViews.ConfigurationView
                     MainV2.comPort.MAV.cs.firmware.ToString()), servo + "_FUNCTION", MainV2.comPort.MAV.param);
             min1.setup(800, 2200, 1, 1, servo + "_MIN", MainV2.comPort.MAV.param);
             trim1.setup(800, 2200, 1, 1, servo + "_TRIM", MainV2.comPort.MAV.param);
+            // step like the trim slider; set after setup, which takes the increment from the param metadata
+            trim1.Increment = 10;
             max1.setup(800, 2200, 1, 1, servo + "_MAX", MainV2.comPort.MAV.param);
 
             // Enable slider if trim parameter exists
