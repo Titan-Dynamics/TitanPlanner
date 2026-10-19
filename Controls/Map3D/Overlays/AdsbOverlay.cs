@@ -29,7 +29,9 @@ namespace MissionPlanner.Controls.Scene3D
         }
 
         readonly VertexList _vertices = new VertexList();
-        readonly List<Tuple<adsb.PointLatLngAltHdg, double>> _planes = new List<Tuple<adsb.PointLatLngAltHdg, double>>();
+        /// <summary>Plane, where it is predicted to be this frame, and its distance from our vehicle.</summary>
+        readonly List<Tuple<adsb.PointLatLngAltHdg, PointLatLngAlt, double>> _planes =
+            new List<Tuple<adsb.PointLatLngAltHdg, PointLatLngAlt, double>>();
 
         /// <summary>Where each aircraft was drawn last frame, nearest last.</summary>
         public readonly List<ScreenPosition> ScreenPositions = new List<ScreenPosition>();
@@ -44,19 +46,22 @@ namespace MissionPlanner.Controls.Scene3D
             if (MainV2.instance == null)
                 return;
 
+            var now = DateTime.Now;
             lock (MainV2.instance.adsblock)
             {
                 foreach (var kvp in MainV2.instance.adsbPlanes)
                 {
                     var plane = kvp.Value;
-                    if (plane == null || plane.Time < DateTime.Now.AddSeconds(-30))
+                    if (plane == null || plane.Time < now.AddSeconds(-30))
                         continue;
                     if (plane.Lat == 0 && plane.Lng == 0)
                         continue;
 
-                    double distance = ownPosition.GetDistance(new PointLatLngAlt(plane.Lat, plane.Lng, plane.Alt));
+                    // Carried forward between feed updates so traffic moves at the frame rate.
+                    var position = plane.Predict(now);
+                    double distance = ownPosition.GetDistance(position);
                     if (distance <= MaxDistance)
-                        _planes.Add(Tuple.Create(plane, distance));
+                        _planes.Add(Tuple.Create(plane, position, distance));
                 }
             }
 
@@ -64,7 +69,7 @@ namespace MissionPlanner.Controls.Scene3D
                 return;
 
             // Farthest first so nearer circles draw over farther ones.
-            _planes.Sort((a, b) => b.Item2.CompareTo(a.Item2));
+            _planes.Sort((a, b) => b.Item3.CompareTo(a.Item3));
 
             var viewProjection = Matrix4.Mult(view, projection);
             double tanHalfFov = Math.Tan(fovDegrees * Math.PI / 180 / 2);
@@ -73,15 +78,16 @@ namespace MissionPlanner.Controls.Scene3D
             foreach (var item in _planes)
             {
                 var plane = item.Item1;
-                double distanceToOwn = item.Item2;
+                var position = item.Item2;
+                double distanceToOwn = item.Item3;
                 bool grounded = plane.IsOnGround;
                 double radius = circleDiameter / 2.0 / (grounded ? 5.0 : 1.0);
 
                 double x, y;
-                frame.ToLocal(plane.Lat, plane.Lng, out x, out y);
-                double z = plane.Alt;
+                frame.ToLocal(position.Lat, position.Lng, out x, out y);
+                double z = position.Alt;
                 double terrain;
-                if (grounded && srtm.TryGetLoadedAltitude(plane.Lat, plane.Lng, out terrain))
+                if (grounded && srtm.TryGetLoadedAltitude(position.Lat, position.Lng, out terrain))
                 {
                     // Keep grounded traffic visible above the terrain.
                     z = Math.Max(z, terrain + 10);

@@ -64,6 +64,10 @@ See [Linux/README.md](Linux/README.md) for the upstream build (`./Linux/build.sh
 
 ---
 
+## Data Sources
+
+- Live ADS-B traffic: [adsb.fi](https://adsb.fi) open data (personal, non-commercial use)
+
 ## Upstream
 
 - Upstream repository: https://github.com/ArduPilot/MissionPlanner

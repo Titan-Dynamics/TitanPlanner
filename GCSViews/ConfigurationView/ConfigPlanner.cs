@@ -1420,8 +1420,8 @@ namespace MissionPlanner.GCSViews.ConfigurationView
 
             if (((CheckBox)sender).Checked)
             {
-                var server = Settings.Instance["adsbserverv2"] ?? Settings.Instance["adsbserver"] ?? "https://api.adsb.lol/";
-                if (DialogResult.Cancel == InputBox.Show("ADSB Server", "Server IP or API base URL (see https://ardupilot.org/planner/docs/common-adsb.html)", ref server))
+                var server = adsb.MigrateServer(Settings.Instance["adsbserverv2"] ?? Settings.Instance["adsbserver"]) ?? adsb.DefaultServer;
+                if (DialogResult.Cancel == InputBox.Show("ADSB Server", "Server IP or API base URL (see https://ardupilot.org/planner/docs/common-adsb.html)\nDefault: live data from adsb.fi (https://adsb.fi), for personal, non-commercial use", ref server))
                     return;
                 // Strip ending slash off server
                 if (server.EndsWith("/"))

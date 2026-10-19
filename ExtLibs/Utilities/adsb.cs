@@ -76,9 +76,24 @@ namespace MissionPlanner.Utilities
         private const int API_LOOP_DELAY_MILLISECONDS = 3000;
 
         /// <summary>
+        /// Loop delay for adsb.fi, which allows one request a second (any 4xx counts toward a temporary IP block),
+        /// so just over that. Its data refreshes every 2 s; <see cref="PointLatLngAltHdg.Predict"/> moves planes
+        /// along in between.
+        /// </summary>
+        private const int ADSBFI_LOOP_DELAY_MILLISECONDS = 1100;
+
+        /// <summary>
         /// Maximum loop delay in milliseconds for ADS-B connections to HTTP API endpoints.
         /// </summary>
         private const int API_LOOP_DELAY_MAX_MILLISECONDS = 10000;
+
+        /// <summary>
+        /// The default API. adsb.fi's terms: personal, non-commercial use, crediting adsb.fi with a link to https://adsb.fi.
+        /// </summary>
+        public const string DefaultServer = "https://opendata.adsb.fi";
+
+        /// <summary>The previous default, which settings saved with it move off (<see cref="MigrateServer"/>).</summary>
+        private const string PreviousDefaultServer = "https://api.adsb.lol";
 
         /// <summary>
         /// Longest Retry-After honoured; adsb.lol's window is a minute.
@@ -104,6 +119,33 @@ namespace MissionPlanner.Utilities
             thisthread.IsBackground = true;
 
             thisthread.Start();
+        }
+
+        /// <summary>A server saved as the previous default follows the new default; any other server is kept.</summary>
+        public static string MigrateServer(string saved)
+        {
+            if (saved != null && string.Equals(saved.TrimEnd('/'), PreviousDefaultServer, StringComparison.OrdinalIgnoreCase))
+                return DefaultServer;
+            return saved;
+        }
+
+        /// <summary>
+        /// The radius query and poll interval for the API at server. adsb.fi has its own path; adsb.lol and the other
+        /// ADSBExchange-style APIs use /v2/point.
+        /// </summary>
+        static void ApiFor(string server, out string pointQuery, out int interval)
+        {
+            if (server.IndexOf("adsb.fi", StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                pointQuery = server.EndsWith("/api", StringComparison.OrdinalIgnoreCase)
+                    ? "{0}/v3/lat/{1}/lon/{2}/dist/{3}"
+                    : "{0}/api/v3/lat/{1}/lon/{2}/dist/{3}";
+                interval = ADSBFI_LOOP_DELAY_MILLISECONDS;
+                return;
+            }
+
+            pointQuery = "{0}/v2/point/{1}/{2}/{3}";
+            interval = API_LOOP_DELAY_MILLISECONDS;
         }
 
         public static void Stop()
@@ -151,9 +193,11 @@ namespace MissionPlanner.Utilities
                 {
                     if (!String.IsNullOrEmpty(server) && server.StartsWith("http", StringComparison.InvariantCultureIgnoreCase) && CurrentPosition != PointLatLngAlt.Zero)
                     {
-                        // ADSB Exchange API format - see https://api.adsb.lol/docs
-                        string url = "{0}/v2/point/{1}/{2}/{3}";
-                        var delay = API_LOOP_DELAY_MILLISECONDS;
+                        // ADSB Exchange API format - see https://api.adsb.lol/docs and https://github.com/adsbfi/opendata
+                        string url;
+                        int interval;
+                        ApiFor(server, out url, out interval);
+                        var delay = interval;
                         var userAgent = (Settings.Instance.UserAgent ?? "TitanPlanner") + " (contact: " + API_CONTACT + ")";
 
                         while (true)
@@ -174,9 +218,19 @@ namespace MissionPlanner.Utilities
                             if (!t.IsFaulted && t.Result.status == System.Net.HttpStatusCode.OK)
                             {
                                 // Back to the normal rate after a failure slowed it down.
-                                delay = API_LOOP_DELAY_MILLISECONDS;
+                                delay = interval;
 
                                 var result = JsonConvert.DeserializeObject<RootObject>(t.Result.content);
+
+                                // When each position was measured: seen_pos before the snapshot, which is itself a
+                                // moment old ("now" is in ms; clamped, since the two clocks can differ a little).
+                                var received = DateTime.Now;
+                                double snapshotAge = 0;
+                                if (result.now > 0)
+                                {
+                                    double snapshotMs = result.now < 1e11 ? result.now * 1000.0 : result.now;
+                                    snapshotAge = Math.Max(0, Math.Min(5, (DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - snapshotMs) / 1000.0));
+                                }
 
                                 // Increase range if we don't see many planes
                                 if (result.ac.Count < 10)
@@ -201,11 +255,14 @@ namespace MissionPlanner.Utilities
                                     PointLatLngAltHdg plane = new PointLatLngAltHdg(ac.lat,
                                         ac.lon,
                                         alt * FEET_TO_METERS,
-                                        (float)ac.track,
+                                        (float)(ac.track ?? 0),
                                         ac.gs * KNOTS_TO_CMS,
                                         ac.hex.Trim().ToUpper(),
                                         DateTime.Now)
                                     {
+                                        PositionTime = received.AddSeconds(-(ac.seen_pos + snapshotAge)),
+                                        // Some aircraft report a ground speed but no track; don't move those north.
+                                        TrackKnown = ac.track.HasValue,
                                         VerticalSpeed = ac.baro_rate * FTM_TO_CMS,
                                         CallSign = (ac.flight ?? "").Trim().ToUpper(),
                                         Squawk = Convert.ToUInt16(ac.squawk, 10), // Convert the string into a collquial number representation, so that "1200" becomes 1200.
@@ -372,7 +429,7 @@ namespace MissionPlanner.Utilities
             public string year { get; set; }
             public object alt_baro { get; set; }
             public double gs { get; set; }
-            public double track { get; set; }
+            public double? track { get; set; }
             public int baro_rate { get; set; }
             public string squawk { get; set; }
             public string category { get; set; }
@@ -1327,7 +1384,43 @@ namespace MissionPlanner.Utilities
 
             public MAVLink.MAV_COLLISION_THREAT_LEVEL ThreatLevel { get; set; }
 
+            /// <summary>
+            /// When the plane was last received; planes are dropped 30 s after it.
+            /// </summary>
             public DateTime Time { get; set; }
+
+            /// <summary>
+            /// When Lat/Lng/Alt were measured, which for an API is a few seconds before <see cref="Time"/>. Left
+            /// unset, it is taken as the time received.
+            /// </summary>
+            public DateTime PositionTime { get; set; }
+
+            /// <summary>
+            /// False when the source gave a speed but no track, so <see cref="Heading"/> is a placeholder.
+            /// </summary>
+            public bool TrackKnown { get; set; } = true;
+
+            /// <summary>Longest a position is carried forward by <see cref="Predict"/>.</summary>
+            public const double MaxPredictSeconds = 10;
+
+            /// <summary>
+            /// Where the aircraft should be at the given time: dead-reckoned from its last position along its track
+            /// at its ground speed and vertical rate, for at most <see cref="MaxPredictSeconds"/>. Feeds update every
+            /// second or few, so this keeps the maps moving smoothly in between. Aircraft on the ground, without a
+            /// track or standing still stay where they were reported.
+            /// </summary>
+            public PointLatLngAlt Predict(DateTime at)
+            {
+                var measured = PositionTime == default(DateTime) ? Time : PositionTime;
+                double dt = (at - measured).TotalSeconds;
+                if (IsOnGround || !TrackKnown || Speed <= 0 || dt <= 0 || measured == default(DateTime))
+                    return new PointLatLngAlt(Lat, Lng, Alt, Tag);
+
+                dt = Math.Min(dt, MaxPredictSeconds);
+                var predicted = new PointLatLngAlt(Lat, Lng, Alt, Tag).newpos(Heading, Speed / 100.0 * dt);
+                predicted.Alt = Alt + VerticalSpeed / 100.0 * dt;
+                return predicted;
+            }
 
             public bool DisplayICAO { get; set; }
 

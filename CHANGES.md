@@ -175,7 +175,8 @@ Arm/disarm indicator and a clickable GPS status popup with detailed real-time te
 - Enhanced tooltip with altitude delta and smart distance formatting
 - Speech callouts of proximate aircraft
 - Emitter category support; squawk fixes
-- ADS-B URL auto-upgraded to adsb.lol so existing users move to the maintained endpoint
+- Live traffic from **[adsb.fi](https://adsb.fi)** by default (personal, non-commercial use), polled about once a second within its 1 request/s limit; settings still on the old adsb.lol default move to it, and adsb.lol or any other ADSBExchange-style API can still be entered
+- **Smooth traffic motion:** each aircraft is carried forward along its track at its ground speed and vertical rate from when its position was measured (up to 10 s), so the 2D map and 3D view move planes continuously between feed updates instead of jumping every few seconds; aircraft on the ground or without a track stay put
 
 ---
 
@@ -267,7 +268,7 @@ Built for air-gapped use. Opened from the **Offline Maps** button next to Find L
 Behaviour that differs from upstream because the fork fixed it:
 
 - The 3D map's paint path locks on a dedicated token, so the intermittent `Destination array was not long enough` crash does not occur
-- Live ADS-B from the default adsb.lol API works again: its requests send the app's User-Agent (the API now answers 403 "User-Agent too generic" without one) over a shared HTTP client. It polls every 3 s rather than every second (adsb.lol allows 60 requests a minute per IP, and 1 Hz ran into 429s long enough for every plane to expire), waits as long as a 429's Retry-After asks, gives up on a request after 20 s, and returns to the normal rate after a failure instead of staying at the 10 s back-off
+- Live ADS-B from adsb.lol works again: its requests send the app's User-Agent (the API now answers 403 "User-Agent too generic" without one) over a shared HTTP client. It polls every 3 s rather than every second (adsb.lol allows 60 requests a minute per IP, and 1 Hz ran into 429s long enough for every plane to expire), waits as long as a 429's Retry-After asks, gives up on a request after 20 s, and returns to the normal rate after a failure instead of staying at the 10 s back-off
 - SRTM elevation cells are read and written under the cache lock everywhere, so the 3D map's loader threads can't corrupt the dictionary under `srtm.getAltitude`, and one slow cell load no longer holds up every other elevation lookup; a paint that arrives while the 3D map is being disposed is ignored
 - The Full Parameter List opens without crashing, and Flight Modes populates its `RCx_OPTION` lists on load
 - Starting a camera that another program holds open fails gracefully instead of crashing

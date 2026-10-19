@@ -5239,7 +5239,8 @@ namespace MissionPlanner.GCSViews
                                     if (pllau.ThreatLevel != MAVLink.MAV_COLLISION_THREAT_LEVEL.NONE)
                                         adsbplane.ToolTipText += "\n" + "Collision risk: " + (pllau.ThreatLevel == MAVLink.MAV_COLLISION_THREAT_LEVEL.LOW ? "Warning" : "Danger");
                                     adsbplane.ToolTipMode = MarkerTooltipMode.OnMouseOver;
-                                    adsbplane.Position = pllau;
+                                    // Carried forward between feed updates so the plane moves smoothly.
+                                    adsbplane.Position = pllau.Predict(DateTime.Now);
                                     adsbplane.heading = pllau.Heading;
                                     adsbplane.Tag = pllau;
                                     adsbplane.EmitterCategory = pllau.GetEmitterCategory();
