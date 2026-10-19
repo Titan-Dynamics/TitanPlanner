@@ -2073,7 +2073,7 @@ namespace MissionPlanner
 
         private void OnParamWritten(string paramName)
         {
-            if (IsDisposed)
+            if (IsDisposed || !IsHandleCreated)
                 return;
 
             BeginInvoke((Action)(() =>

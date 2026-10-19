@@ -1721,7 +1721,17 @@ Mission Planner waits for 2 valid heartbeat packets before connecting
 
                     lastparamset = DateTime.UtcNow;
 
-                    ParamWritten?.Invoke(paramname);
+                    complete = true;
+
+                    // a throwing listener must not turn a confirmed write into a timeout
+                    try
+                    {
+                        ParamWritten?.Invoke(paramname);
+                    }
+                    catch (Exception ex)
+                    {
+                        log.Error(ex);
+                    }
 
                     // check if enabeling this param has added subparams, queue on gui thread
                     if (currentparamcount < par.param_count)
@@ -1734,8 +1744,6 @@ Mission Planner waits for 2 valid heartbeat packets before connecting
                         });
                         */
                     }
-
-                    complete = true;
                 }
 
                 return true;
@@ -1749,6 +1757,9 @@ Mission Planner waits for 2 valid heartbeat packets before connecting
                     compid);
 
                 DateTime start = DateTime.Now;
+                // ArduPilot answers once the value is saved, which its IO thread can delay by several seconds,
+                // so keep listening after the last retry instead of failing a write that went through
+                DateTime giveup = start.AddSeconds(10);
                 int retrys = 3;
                 while (true)
                 {
@@ -1766,7 +1777,8 @@ Mission Planner waits for 2 valid heartbeat packets before connecting
                             continue;
                         }
 
-                        throw new TimeoutException("Timeout on read - setParam " + paramname);
+                        if (DateTime.Now > giveup)
+                            throw new TimeoutException("Timeout on read - setParam " + paramname);
                     }
 
                     await readPacketAsync().ConfigureAwait(false);
