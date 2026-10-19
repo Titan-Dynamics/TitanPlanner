@@ -14,16 +14,43 @@ namespace MissionPlanner.Controls
         private ContextMenuStrip contextMenu;
         private List<(DateTime time, string message, byte severity)> messages = new List<(DateTime, string, byte)>();
         private int itemHeight = 26;
-        private int lastMessageCount = 0;
         private bool autoScroll = true;
         private Font displayFont;
+        private Font badgeFont;
+        private readonly StringFormat centerFormat = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center };
+        private readonly StringFormat messageFormat = new StringFormat { Trimming = StringTrimming.EllipsisCharacter, FormatFlags = StringFormatFlags.NoWrap };
         private int selectedIndex = -1;
         private int hoverIndex = -1;
+
+        // What the source list held at the last update. It is capped at 1000 messages, dropping the oldest, so once
+        // full its count stops changing: comparing only the count froze the view on long flights (issue #23).
+        private int sourceCount = -1;
+        private (DateTime time, string message, byte severity) sourceNewest;
+
+        /// <summary>The newest message when the list was cleared; only messages after it are shown.</summary>
+        private (DateTime time, string message, byte severity)? clearedThrough;
+
+        /// <summary>The messages the list is showing, oldest first.</summary>
+        public IReadOnlyList<(DateTime time, string message, byte severity)> Shown => messages;
 
         public MessagesList()
         {
             InitializeComponent();
             displayFont = new Font("Segoe UI", 9.5f, FontStyle.Regular);
+            badgeFont = new Font(displayFont.FontFamily, displayFont.Size * 0.8f, FontStyle.Bold);
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                displayFont?.Dispose();
+                badgeFont?.Dispose();
+                centerFormat.Dispose();
+                messageFormat.Dispose();
+            }
+
+            base.Dispose(disposing);
         }
 
         private void InitializeComponent()
@@ -38,8 +65,12 @@ namespace MissionPlanner.Controls
             copyItem.Click += CopyItem_Click;
             var copyAllItem = new ToolStripMenuItem("Copy All Messages");
             copyAllItem.Click += CopyAllItem_Click;
+            var clearItem = new ToolStripMenuItem("Clear Messages");
+            clearItem.Click += (sender, e) => ClearMessages();
             this.contextMenu.Items.Add(copyItem);
             this.contextMenu.Items.Add(copyAllItem);
+            this.contextMenu.Items.Add(new ToolStripSeparator());
+            this.contextMenu.Items.Add(clearItem);
 
             // scrollBar - add first so it docks on right
             this.scrollBar.Dock = DockStyle.Right;
@@ -183,17 +214,79 @@ namespace MissionPlanner.Controls
             containerPanel.Invalidate();
         }
 
+        /// <summary>
+        /// Hides the messages shown so far; newer ones keep appearing. The vehicle's own list is left alone, since
+        /// other parts of the app (the HUD's PreArm text) read it.
+        /// </summary>
+        public void ClearMessages()
+        {
+            if (sourceCount > 0)
+                clearedThrough = sourceNewest;
+
+            messages = new List<(DateTime, string, byte)>();
+            selectedIndex = -1;
+            hoverIndex = -1;
+            autoScroll = true;
+            UpdateScrollBar();
+            containerPanel.Invalidate();
+        }
+
+        private static bool SameMessage((DateTime time, string message, byte severity) a,
+            (DateTime time, string message, byte severity) b)
+        {
+            return a.time == b.time && a.severity == b.severity && a.message == b.message;
+        }
+
         public void UpdateMessages(List<(DateTime time, string message, byte severity)> newMessages)
         {
             if (newMessages == null)
                 return;
 
-            if (newMessages.Count == lastMessageCount)
-                return;
+            // The MAVLink thread adds to (and trims) the list under the same lock.
+            List<(DateTime time, string message, byte severity)> snapshot;
+            lock (newMessages)
+            {
+                var newest = newMessages.Count > 0 ? newMessages[newMessages.Count - 1] : default((DateTime, string, byte));
+                if (newMessages.Count == sourceCount && SameMessage(newest, sourceNewest))
+                    return;
 
-            messages = new List<(DateTime, string, byte)>(newMessages);
-            lastMessageCount = messages.Count;
+                sourceCount = newMessages.Count;
+                sourceNewest = newest;
+                snapshot = new List<(DateTime, string, byte)>(newMessages);
+            }
 
+            if (clearedThrough.HasValue)
+            {
+                // Drop what was there when the list was cleared. If that message is no longer in the list (trimmed
+                // away, or a new connection's list), everything in it is newer.
+                for (int i = snapshot.Count - 1; i >= 0; i--)
+                {
+                    if (SameMessage(snapshot[i], clearedThrough.Value))
+                    {
+                        snapshot.RemoveRange(0, i + 1);
+                        break;
+                    }
+                }
+            }
+
+            // How many messages dropped off the front (the 1000 cap removes one per new message once full): the
+            // index of the new first message in the old list.
+            int dropped = 0;
+            if (messages.Count > 0 && snapshot.Count > 0)
+            {
+                var first = snapshot[0];
+                dropped = Math.Max(0, messages.FindIndex(m => SameMessage(m, first)));
+            }
+
+            messages = snapshot;
+
+            // Indices move with the dropped messages, so the selection stays on the same message.
+            selectedIndex = selectedIndex - dropped;
+            if (selectedIndex < 0 || selectedIndex >= messages.Count)
+                selectedIndex = -1;
+            hoverIndex = -1;
+
+            int topIndex = TopIndex;
             UpdateScrollBar();
 
             if (autoScroll && messages.Count > 0)
@@ -202,8 +295,32 @@ namespace MissionPlanner.Controls
                 if (scrollBar.Value != maxScroll)
                     scrollBar.Value = maxScroll;
             }
+            else if (dropped > 0)
+            {
+                // Scrolled up reading: keep the same messages in view rather than moving them up a row each time.
+                TopIndex = topIndex - dropped;
+            }
 
             containerPanel.Invalidate();
+        }
+
+        /// <summary>
+        /// Index of the first visible message, like ListBox.TopIndex. Setting it scrolls there; at the bottom the list
+        /// follows new messages again.
+        /// </summary>
+        public int TopIndex
+        {
+            get { return scrollBar.Enabled ? scrollBar.Value : 0; }
+            set
+            {
+                if (!scrollBar.Enabled)
+                    return;
+
+                int maxScroll = Math.Max(0, scrollBar.Maximum - scrollBar.LargeChange + 1);
+                scrollBar.Value = Math.Max(scrollBar.Minimum, Math.Min(maxScroll, value));
+                autoScroll = scrollBar.Value >= scrollBar.Maximum - scrollBar.LargeChange;
+                containerPanel.Invalidate();
+            }
         }
 
         private void UpdateScrollBar()
@@ -246,9 +363,8 @@ namespace MissionPlanner.Controls
                 catch { placeholderColor = Color.Gray; }
 
                 using (var brush = new SolidBrush(Color.FromArgb(128, placeholderColor)))
-                using (var sf = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center })
                 {
-                    g.DrawString("No messages", displayFont, brush, containerPanel.ClientRectangle, sf);
+                    g.DrawString("No messages", displayFont, brush, containerPanel.ClientRectangle, centerFormat);
                 }
                 return;
             }
@@ -339,13 +455,9 @@ namespace MissionPlanner.Controls
                 g.FillRectangle(brush, badgeRect);
             }
             using (var brush = new SolidBrush(Color.White))
-            using (var sf = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center })
             {
                 var badgeRect = new RectangleF(severityX, y, 50, itemHeight);
-                using (var smallFont = new Font(displayFont.FontFamily, displayFont.Size * 0.8f, FontStyle.Bold))
-                {
-                    g.DrawString(severityText, smallFont, brush, badgeRect, sf);
-                }
+                g.DrawString(severityText, badgeFont, brush, badgeRect, centerFormat);
             }
 
             // Draw message
@@ -353,10 +465,7 @@ namespace MissionPlanner.Controls
             using (var brush = new SolidBrush(textColor))
             {
                 var messageRect = new RectangleF(messageX, textY, containerPanel.Width - messageX - padding, displayFont.Height);
-                using (var sf = new StringFormat { Trimming = StringTrimming.EllipsisCharacter, FormatFlags = StringFormatFlags.NoWrap })
-                {
-                    g.DrawString(msg.message, displayFont, brush, messageRect, sf);
-                }
+                g.DrawString(msg.message, displayFont, brush, messageRect, messageFormat);
             }
         }
 
