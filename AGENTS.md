@@ -131,13 +131,18 @@ The solution has ~93 projects; treat `ExtLibs/` as the bulk of the real function
 
 This repository is the Titan Dynamics fork of Mission Planner. `CHANGES.md` is the feature-level
 summary of everything the fork adds over upstream; update it (and `README.md` if user-facing)
-whenever a change lands. `ChangeLog.txt` is upstream's and is not maintained here.
+whenever a change lands. It is not a changelog: it describes what the fork does differently today,
+in short user-facing lines, so a reader can quickly see the major features and fixes. Leave out root
+causes, timings, implementation details and history (no "no longer", "used to", "was removed");
+the git log has those. `ChangeLog.txt` is upstream's and is not maintained here.
 
 - **Upstream sync.** `upstream` = `ArduPilot/MissionPlanner`. Merge `upstream/master` into
   `development`, resolve conflicts in favour of the fork's UI (HUD layout, `FlightDataActions`,
   Motor Setup, Battery Monitor, Radio Calibration, themed tabs) while taking upstream's fixes,
-  then summarise the merge in the "Upstream Sync" section of `CHANGES.md`. Expect upstream's
-  mechanical changes (e.g. the `byte` → `uint` sysid widening) to also apply to fork-only code.
+  then update the "Upstream Base" section of `CHANGES.md` (the date, and upstream capabilities users
+  may notice). Expect upstream's mechanical changes (e.g. the `byte` → `uint` sysid widening) to also
+  apply to fork-only code. Upstream PRs taken before they merge get a line in "Reliability Fixes Over
+  Upstream" naming the PR.
 - **Line endings.** The repo stores a mix of CRLF and LF blobs and `core.autocrlf=true` is in use.
   Before staging, compare `git diff --stat` with `--ignore-cr-at-eol`; a whole-file rewrite means
   the line endings changed, not the code. Files whose HEAD blob is CRLF must be staged as CRLF.

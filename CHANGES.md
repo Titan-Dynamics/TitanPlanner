@@ -52,18 +52,16 @@ The connected vehicle renders in 3D with default STL models per MAV type (plane,
 
 ## Terrain Streaming Engine
 Terrain streams Google Earth style:
-- **Screen-space level of detail.** A tile quadtree is refined until each imagery texel is about a pixel on screen, up to zoom 20, so detail follows what the camera actually sees (the old Map Zoom setting is gone).
+- **Screen-space level of detail.** A tile quadtree is refined until each imagery texel is about a pixel on screen, up to zoom 20, so detail follows what the camera actually sees; there is no zoom setting to manage.
 - **Coarse first, centre outwards.** Load requests are ranked by distance relative to tile size and by angle from the view centre, re-ranked every frame, and dropped when no longer wanted. Tiles out of view are prefetched coarser so turning never shows holes.
 - **No holes or overlaps.** A tile is replaced by its children only once all of them are loaded; skirts hide cracks between levels.
 - **Off the UI thread.** Eight workers fetch imagery, sample elevation once per tile and build meshes; the render thread only uploads finished tiles within a per-frame time budget, with BGRA uploads, mipmaps and anisotropic filtering. A bounded GPU cache keeps recently seen terrain.
-- **Shared imagery cache.** Imagery goes through the 2D map's tile cache, so tiles seen on the 2D map and imported `.mappack` files load instantly and offline mode works. The old separate 3D tile cache is removed.
+- **Shared imagery cache.** Imagery goes through the 2D map's tile cache, so tiles seen on the 2D map and imported `.mappack` files load instantly and offline mode works.
 - **Elevation that always arrives.** Missing SRTM cells are downloaded instead of leaving gaps; tiles start from their parent's heights and are re-meshed when the data lands.
 - **No reloads while flying.** Tiles keep their own UTM origins, so moving the scene origin never discards loaded terrain.
-- **Memory given back on hide, without the reload cost.** Hiding the 3D map frees its terrain (GPU tiles, loader threads, and the SRTM cells it loaded, 26 MB each, once its workers exit), then compacts the heap, so RAM drops back. The control and its GL context are kept, because creating the context took the graphics driver about 1.5 s on the UI thread every time the map was shown; showing it again only rebuilds the terrain. Elevation lookups on the UI thread (opening the map, ground height, mission and ADS-B overlays) only use cells already in memory and never wait on a disk load. The vehicle model is parsed on a worker thread while the GL context is created, once per session, and drawn as soon as it is ready.
+- **Light when hidden, quick to show.** Hiding the 3D map frees its terrain and elevation data so RAM drops back, while the view itself stays ready, so showing it again is near-instant. Elevation lookups never block the UI, and the vehicle model loads in the background.
 - **Idle rendering.** Full frame rate only while something changes (connected vehicle, terrain streaming, markers, ADS-B, input, the 2D map moving, or the stats panel open); otherwise one frame a second.
-- **Stats for nerds** (3D map Settings): a colour-coded panel in the top-right with FPS (current/avg/low), a scrolling frame-time graph with CPU time and 60/30 fps guides, terrain streaming internals (tiles drawn/on GPU, per-zoom histogram, GPU memory, queue, load rate, fetch/mesh times, failures, elevation status), the camera view and fog range, and GPU/memory info. FPS is only shown here.
-
-The code lives in `Controls/Map3D/` (Terrain, Rendering, Overlays, Scene) and is excluded from the Android/Mac library build.
+- **Stats for nerds** (3D map Settings, off by default): a colour-coded panel with FPS and a frame-time graph, terrain streaming internals (tiles, per-zoom histogram, GPU memory, queue, load rate, failures, elevation status), the camera view and GPU info.
 
 ## Camera & Visual Effects
 - **FPV mode** with smooth camera movement and pitch-matched heading lines
@@ -83,7 +81,6 @@ ADS-B traffic is rendered with proper depth testing and pass ordering so it corr
 - Configurable marker size
 - Reset button defaults aligned with settings defaults
 - 2D ↔ 3D map waypoint and position synchronization
-- "Stats for nerds" diagnostics panel, off by default
 - Required-valid-GPS gate before vehicle tracking begins
 - 3D Map cleanly stops on disconnect and tears down before app close
 
@@ -117,10 +114,10 @@ Split percentages on every divider in the main GUI persist across launches, with
 Parameter documentation and ranges (~6000 entries) load asynchronously, eliminating the multi-second freeze on the Full Parameter List screen.
 
 ## Search & Autocomplete
-Themed search bar with suggest-only autocomplete; search resets when navigating away. Removed the warning dialog and obsolete preset feature on the param page.
+Themed search bar with suggest-only autocomplete; search resets when navigating away. No warning dialog or obsolete presets on the param page.
 
 ## Other
-- Removed confirmation dialogs after param writes (kept reboot-required and save-failed)
+- No confirmation dialogs after param writes (reboot-required and save-failed are still shown)
 - Toast notification on successful param write
 - Tree collapsed by default in tab embeddings to save space
 - User params can be set on the Flight Modes page
@@ -136,7 +133,7 @@ Themed search bar with suggest-only autocomplete; search resets when navigating 
 A revamped Servo Output panel with click-or-drag sliders for trim, an "Equidistant" min/max helper, and proper min/max-from-trim handling. The trim slider stays in sync with the combobox.
 
 ## Radio & Calibration
-Visual-stick-controls Radio Calibration UI; proper reversing logic restored to match upstream behavior; accel calibration polished.
+Visual-stick-controls Radio Calibration UI with upstream's reversing logic; polished accel calibration.
 
 ## Other Setup Pages
 GUI cleanups across Compass, Failsafe, Flight Modes, Initial Setup Serial; Battery Monitor pages merged into one unified screen; voltage/current calibration enabled regardless of selected sensor.
@@ -175,8 +172,8 @@ Arm/disarm indicator and a clickable GPS status popup with detailed real-time te
 - Enhanced tooltip with altitude delta and smart distance formatting
 - Speech callouts of proximate aircraft
 - Emitter category support; squawk fixes
-- Live traffic from **[adsb.fi](https://adsb.fi)** by default (personal, non-commercial use), polled about once a second within its 1 request/s limit; settings still on the old adsb.lol default move to it, and adsb.lol or any other ADSBExchange-style API can still be entered
-- **Smooth traffic motion:** each aircraft is carried forward along its track at its ground speed and vertical rate from when its position was measured (up to 10 s), so the 2D map and 3D view move planes continuously between feed updates instead of jumping every few seconds; aircraft on the ground or without a track stay put
+- Live traffic from **[adsb.fi](https://adsb.fi)** by default, about once a second (personal, non-commercial use); adsb.lol or any other ADSBExchange-style API can be used instead
+- **Smooth traffic motion:** aircraft glide along their track between feed updates on the 2D and 3D maps instead of jumping
 
 ---
 
@@ -254,7 +251,6 @@ Built for air-gapped use. Opened from the **Offline Maps** button next to Find L
 
 # Reliability, Performance & Threading
 
-- App-wide **GPU acceleration**
 - `SuspendLayout`/`ResumeLayout` and async loading on heavy tabs (Tuning, Params, Dashboard) to eliminate UI stalls
 - Faster, smoother docking/undocking of flight modes panel
 - Increased debouncing on 2D→3D map sync
@@ -267,15 +263,16 @@ Built for air-gapped use. Opened from the **Offline Maps** button next to Find L
 
 Behaviour that differs from upstream because the fork fixed it:
 
-- The 3D map's paint path locks on a dedicated token, so the intermittent `Destination array was not long enough` crash does not occur
-- Battery monitor calibration no longer reports "Invalid number entered" for DroneCAN-BatteryInfo and other digital monitors, which have no voltage multiplier or amps-per-volt: voltage Calc explains that the monitor itself has to be calibrated, and current Calc scales `BATTx_CURR_MULT` when the firmware has it ([#27](https://github.com/Titan-Dynamics/TitanPlanner/issues/27))
-- The EKF status window no longer fails after a few minutes with "A generic error occurred in GDI+": every themed form made a new window-icon handle and never freed it, and that window re-themed itself ten times a second. Forms now share one icon, and the window only recolours its bars ([#31](https://github.com/Titan-Dynamics/TitanPlanner/issues/31))
-- Mission, fence and rally uploads no longer answer the vehicle's closing MISSION_ACK with one of the planner's own, which the mission protocol only expects from the GCS after a download (upstream PR [#3705](https://github.com/ArduPilot/MissionPlanner/pull/3705), taken ahead of its merge)
-- SSH (the SSH terminal, SCP/SFTP log download, Solo tools) uses SSH.NET 2026.0.0 instead of 2020.0.2, for the key exchanges and ciphers current companion computers expect and the `ScpClient` fixes for GHSA-mggc-4xg6-vcxf and GHSA-q939-rpr3-3284, and the SkiaSharp packages are aligned at 2.88.8 (upstream PR [#3729](https://github.com/ArduPilot/MissionPlanner/pull/3729), which stops at SSH.NET 2024.2.0, taken ahead of its merge)
-- Link quality counts MAVLink packets that arrive late (reordered by UDP over LTE, Starlink, routers or VPNs) as received rather than as 254 lost, and a gap across seq 255 is no longer 256 too many, so the HUD shows the real loss (upstream PR [#3807](https://github.com/ArduPilot/MissionPlanner/pull/3807), taken ahead of its merge)
-- The RF Map (Ctrl+W, Propagation Settings) outline shows how far from home the aircraft stays in line of sight of the ground antenna at its current height, with altitudes in metres whatever the display units and the antenna on the SRTM ground at home; the unused Convergence setting is gone (upstream PR [#3825](https://github.com/ArduPilot/MissionPlanner/pull/3825), taken ahead of its merge)
-- Live ADS-B from adsb.lol works again: its requests send the app's User-Agent (the API now answers 403 "User-Agent too generic" without one) over a shared HTTP client. It polls every 3 s rather than every second (adsb.lol allows 60 requests a minute per IP, and 1 Hz ran into 429s long enough for every plane to expire), waits as long as a 429's Retry-After asks, gives up on a request after 20 s, and returns to the normal rate after a failure instead of staying at the 10 s back-off
-- SRTM elevation cells are read and written under the cache lock everywhere, so the 3D map's loader threads can't corrupt the dictionary under `srtm.getAltitude`, and one slow cell load no longer holds up every other elevation lookup; a paint that arrives while the 3D map is being disposed is ignored
+- The 3D map doesn't hit the intermittent `Destination array was not long enough` crash
+- The Messages tab keeps updating on long flights, keeps your place when scrolled up, and has a right-click **Clear Messages** ([#23](https://github.com/Titan-Dynamics/TitanPlanner/issues/23))
+- Battery monitor calibration handles DroneCAN and other digital monitors: voltage Calc explains they are calibrated on the device, and current Calc scales `BATTx_CURR_MULT` ([#27](https://github.com/Titan-Dynamics/TitanPlanner/issues/27))
+- The EKF status window keeps working on long sessions instead of failing with a GDI+ error ([#31](https://github.com/Titan-Dynamics/TitanPlanner/issues/31))
+- Mission, fence and rally uploads don't send the vehicle an extra MISSION_ACK (upstream PR [#3705](https://github.com/ArduPilot/MissionPlanner/pull/3705))
+- SSH (terminal, SCP/SFTP log download, Solo tools) uses SSH.NET 2026, with current key exchanges and ciphers and the `ScpClient` security fixes; SkiaSharp packages aligned at 2.88.8 (upstream PR [#3729](https://github.com/ArduPilot/MissionPlanner/pull/3729))
+- Link quality counts reordered MAVLink packets (UDP over LTE, Starlink, VPNs) as received, so the HUD shows the real loss (upstream PR [#3807](https://github.com/ArduPilot/MissionPlanner/pull/3807))
+- The RF Map outline (Ctrl+W) shows the real line-of-sight range at the aircraft's current height (upstream PR [#3825](https://github.com/ArduPilot/MissionPlanner/pull/3825))
+- ADS-B from adsb.lol works (it requires a User-Agent) and stays within its rate limit
+- Elevation (SRTM) lookups are thread-safe and never block the UI behind a slow load
 - The Full Parameter List opens without crashing, and Flight Modes populates its `RCx_OPTION` lists on load
 - Starting a camera that another program holds open fails gracefully instead of crashing
 - Dashboard items repaint after context-menu edits, the panel never outgrows its tab, and the default layout has no duplicate "distance to home"
