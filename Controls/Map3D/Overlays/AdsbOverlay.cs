@@ -80,10 +80,10 @@ namespace MissionPlanner.Controls.Scene3D
                 double x, y;
                 frame.ToLocal(plane.Lat, plane.Lng, out x, out y);
                 double z = plane.Alt;
-                if (grounded)
+                double terrain;
+                if (grounded && srtm.TryGetLoadedAltitude(plane.Lat, plane.Lng, out terrain))
                 {
                     // Keep grounded traffic visible above the terrain.
-                    var terrain = srtm.getAltitude(plane.Lat, plane.Lng).alt;
                     z = Math.Max(z, terrain + 10);
                 }
 

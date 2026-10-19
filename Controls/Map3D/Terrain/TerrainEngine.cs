@@ -402,6 +402,12 @@ namespace MissionPlanner.Controls.Scene3D
             GL.BindBuffer(BufferTarget.ElementArrayBuffer, 0);
         }
 
+        /// <summary>After <see cref="Dispose"/>, waits for the loader threads to exit. Blocks, so not for the UI thread.</summary>
+        public bool WaitForLoaderExit(int timeoutMs)
+        {
+            return _loader.WaitForWorkers(timeoutMs);
+        }
+
         public void Dispose()
         {
             _loader.Dispose();

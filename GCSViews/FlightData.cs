@@ -2630,7 +2630,9 @@ namespace MissionPlanner.GCSViews
                     if (gMapControl1 != null && gMapControl1.Position.Lat != 0 && gMapControl1.Position.Lng != 0)
                     {
                         var pos = gMapControl1.Position;
-                        var terrainAlt = srtm.getAltitude(pos.Lat, pos.Lng).alt;
+                        // Non-blocking: showing the map must not wait on a 26 MB elevation cell load.
+                        double terrainAlt;
+                        srtm.TryGetLoadedAltitude(pos.Lat, pos.Lng, out terrainAlt);
                         map3DControl.LocationCenter = new PointLatLngAlt(pos.Lat, pos.Lng, terrainAlt + 100, "init");
                     }
                 }

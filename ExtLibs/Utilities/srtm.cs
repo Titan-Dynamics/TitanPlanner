@@ -64,6 +64,8 @@ namespace MissionPlanner.Utilities
 
         static HashSet<string> badcells = new HashSet<string>();
 
+        static HashSet<string> backgroundLoads = new HashSet<string>();
+
         static Dictionary<string, short[,]> cache = new Dictionary<string, short[,]>();
 
 
@@ -166,8 +168,11 @@ namespace MissionPlanner.Utilities
             try
             {
                 // marked as a oceantile
-                if (oceantile.Contains(filename))
-                    return altresponce.Ocean;
+                lock (oceantile)
+                {
+                    if (oceantile.Contains(filename))
+                        return altresponce.Ocean;
+                }
 
                 // is it in our dl queue
                 lock (objlock)
@@ -178,59 +183,38 @@ namespace MissionPlanner.Utilities
                     }
                 }
 
-                if (cache.ContainsKey(filename) || File.Exists(datadirectory + Path.DirectorySeparatorChar + filename))
+                // The 3D map's loader threads add cells and ReleaseCell removes them, so the cache is only read
+                // under its lock, once, and the grid is used from a local.
+                short[,] celldata;
+                lock (cache)
+                    cache.TryGetValue(filename, out celldata);
+
+                var filePath = datadirectory + Path.DirectorySeparatorChar + filename;
+                if (celldata != null || File.Exists(filePath))
                 {
                     // srtm hgt files
 
                     int size = -1;
 
                     // add to cache
-                    if (!cache.ContainsKey(filename))
+                    if (celldata == null)
                     {
-                        lock (extract)
+                        lock (badcells)
                         {
-                            // Double-check after acquiring lock
-                            if (cache.ContainsKey(filename))
-                                goto afterCache;
-
-                            var filePath = datadirectory + Path.DirectorySeparatorChar + filename;
-                            byte[] fileData = File.ReadAllBytes(filePath);
-
-                            if (fileData.Length == (1201 * 1201 * 2))
-                            {
-                                size = 1201;
-                            }
-                            else if (fileData.Length == (3601 * 3601 * 2))
-                            {
-                                size = 3601;
-                            }
-                            else
+                            if (badcells.Contains(filename))
                                 return srtm.altresponce.Invalid;
-
-                            short[,] altdata = new short[size, size];
-
-                            // Bulk convert - much faster than reading 2 bytes at a time
-                            int idx = 0;
-                            for (int altlng = 0; altlng < size; altlng++)
-                            {
-                                for (int altlat = 0; altlat < size; altlat++)
-                                {
-                                    altdata[altlat, altlng] = (short)((fileData[idx] << 8) | fileData[idx + 1]);
-                                    idx += 2;
-                                }
-                            }
-
-                            lock(cache)
-                                cache[filename] = altdata;
                         }
-                    }
-                    afterCache:
 
-                    if (cache[filename].Length == (1201 * 1201))
+                        celldata = LoadCell(filename, filePath);
+                        if (celldata == null)
+                            return srtm.altresponce.Invalid;
+                    }
+
+                    if (celldata.Length == (1201 * 1201))
                     {
                         size = 1201;
                     }
-                    else if (cache[filename].Length == (3601 * 3601))
+                    else if (celldata.Length == (3601 * 3601))
                     {
                         size = 3601;
                     }
@@ -256,10 +240,10 @@ namespace MissionPlanner.Utilities
 
                     y_int = (size - 2) - y_int;
 
-                    double alt00 = GetAlt(filename, x_int, y_int);
-                    double alt10 = GetAlt(filename, x_int + 1, y_int);
-                    double alt01 = GetAlt(filename, x_int, y_int + 1);
-                    double alt11 = GetAlt(filename, x_int + 1, y_int + 1);
+                    double alt00 = celldata[x_int, y_int];
+                    double alt10 = celldata[x_int + 1, y_int];
+                    double alt01 = celldata[x_int, y_int + 1];
+                    double alt11 = celldata[x_int + 1, y_int + 1];
 
                     double v1 = avg(alt00, alt10, x_frac);
                     double v2 = avg(alt01, alt11, x_frac);
@@ -402,108 +386,6 @@ namespace MissionPlanner.Utilities
             return altresponce.Invalid;
         }
 
-        /// <summary>
-        /// Fast altitude lookup that skips GeoTiff/DTED checks - use when you know SRTM HGT files are the source.
-        /// Much faster for bulk lookups like 3D terrain generation.
-        /// </summary>
-        public static altresponce getAltitudeFast(double lat, double lng)
-        {
-            var filename = GetFilename(lat, lng);
-
-            if (String.IsNullOrEmpty(filename))
-                return altresponce.Invalid;
-
-            // Check ocean tiles
-            if (oceantile.Contains(filename))
-                return altresponce.Ocean;
-
-            // Check if in download queue
-            lock (objlock)
-            {
-                if (queue.Contains(filename))
-                    return altresponce.Invalid;
-            }
-
-            // Check cache or load file
-            if (!cache.ContainsKey(filename))
-            {
-                var filePath = datadirectory + Path.DirectorySeparatorChar + filename;
-                if (!File.Exists(filePath))
-                    return altresponce.Invalid;
-
-                lock (extract)
-                {
-                    // Double-check after acquiring lock
-                    if (!cache.ContainsKey(filename))
-                    {
-                        byte[] fileData = File.ReadAllBytes(filePath);
-                        int size;
-
-                        if (fileData.Length == (1201 * 1201 * 2))
-                            size = 1201;
-                        else if (fileData.Length == (3601 * 3601 * 2))
-                            size = 3601;
-                        else
-                            return altresponce.Invalid;
-
-                        short[,] altdata = new short[size, size];
-                        int idx = 0;
-                        for (int altlng = 0; altlng < size; altlng++)
-                        {
-                            for (int altlat = 0; altlat < size; altlat++)
-                            {
-                                altdata[altlat, altlng] = (short)((fileData[idx] << 8) | fileData[idx + 1]);
-                                idx += 2;
-                            }
-                        }
-
-                        lock (cache)
-                            cache[filename] = altdata;
-                    }
-                }
-            }
-
-            // Get altitude from cache
-            var cacheData = cache[filename];
-            int cacheSize = cacheData.GetLength(0);
-
-            int x = (int)Math.Floor(lng);
-            int y = (int)Math.Floor(lat);
-
-            double latFrac = lat - y;
-            double lngFrac = lng - x;
-
-            double xf = lngFrac * (cacheSize - 1);
-            double yf = latFrac * (cacheSize - 1);
-
-            int x_int = (int)xf;
-            double x_frac = xf - x_int;
-
-            int y_int = (int)yf;
-            double y_frac = yf - y_int;
-
-            y_int = (cacheSize - 2) - y_int;
-
-            double alt00 = cacheData[x_int, y_int];
-            double alt10 = cacheData[x_int + 1, y_int];
-            double alt01 = cacheData[x_int, y_int + 1];
-            double alt11 = cacheData[x_int + 1, y_int + 1];
-
-            double v1 = alt10 * x_frac + alt00 * (1 - x_frac);
-            double v2 = alt11 * x_frac + alt01 * (1 - x_frac);
-            double v = v2 * (1 - y_frac) + v1 * y_frac;
-
-            if (v < -1000)
-                return altresponce.Invalid;
-
-            return new altresponce()
-            {
-                currenttype = tiletype.valid,
-                alt = v,
-                altsource = "SRTM"
-            };
-        }
-
         public enum CellStatus
         {
             Loaded,
@@ -585,45 +467,124 @@ namespace MissionPlanner.Utilities
 
         static short[,] LoadCell(string filename, string filePath)
         {
-            lock (extract)
+            short[,] existing;
+            lock (cache)
             {
-                short[,] existing;
-                lock (cache)
-                {
-                    if (cache.TryGetValue(filename, out existing))
-                        return existing;
-                }
-
-                byte[] fileData = File.ReadAllBytes(filePath);
-                int size;
-                if (fileData.Length == (1201 * 1201 * 2))
-                    size = 1201;
-                else if (fileData.Length == (3601 * 3601 * 2))
-                    size = 3601;
-                else
-                {
-                    log.Warn("Unexpected size " + fileData.Length + " for " + filePath);
-                    lock (badcells)
-                        badcells.Add(filename);
-                    return null;
-                }
-
-                short[,] altdata = new short[size, size];
-                int idx = 0;
-                for (int altlng = 0; altlng < size; altlng++)
-                {
-                    for (int altlat = 0; altlat < size; altlat++)
-                    {
-                        altdata[altlat, altlng] = (short)((fileData[idx] << 8) | fileData[idx + 1]);
-                        idx += 2;
-                    }
-                }
-
-                lock (cache)
-                    cache[filename] = altdata;
-
-                return altdata;
+                if (cache.TryGetValue(filename, out existing))
+                    return existing;
             }
+
+            // Hold the extract lock only while reading, so a half-extracted download is never read. The
+            // conversion runs outside it, so other lookups (including the UI thread's) aren't held up behind it.
+            byte[] fileData;
+            lock (extract)
+                fileData = File.ReadAllBytes(filePath);
+
+            int size;
+            if (fileData.Length == (1201 * 1201 * 2))
+                size = 1201;
+            else if (fileData.Length == (3601 * 3601 * 2))
+                size = 3601;
+            else
+            {
+                log.Warn("Unexpected size " + fileData.Length + " for " + filePath);
+                lock (badcells)
+                    badcells.Add(filename);
+                return null;
+            }
+
+            short[,] altdata = new short[size, size];
+            int idx = 0;
+            for (int altlng = 0; altlng < size; altlng++)
+            {
+                for (int altlat = 0; altlat < size; altlat++)
+                {
+                    altdata[altlat, altlng] = (short)((fileData[idx] << 8) | fileData[idx + 1]);
+                    idx += 2;
+                }
+            }
+
+            lock (cache)
+            {
+                if (cache.TryGetValue(filename, out existing))
+                    return existing;
+                cache[filename] = altdata;
+            }
+
+            return altdata;
+        }
+
+        /// <summary>
+        /// Altitude from an SRTM cell that is already in memory, without touching the disk or waiting on other
+        /// lookups; a cell that isn't loaded yet is loaded in the background and false is returned meanwhile.
+        /// For UI-thread callers, which must never stall on a 26 MB cell load.
+        /// </summary>
+        public static bool TryGetLoadedAltitude(double lat, double lng, out double alt)
+        {
+            alt = 0;
+            var filename = GetFilename(lat, lng);
+            if (String.IsNullOrEmpty(filename))
+                return false;
+
+            lock (oceantile)
+            {
+                if (oceantile.Contains(filename))
+                    return true;
+            }
+
+            short[,] data;
+            lock (cache)
+                cache.TryGetValue(filename, out data);
+
+            if (data != null)
+            {
+                alt = SampleCell(data, lat, lng);
+                if (double.IsNaN(alt))
+                {
+                    alt = 0;
+                    return false;
+                }
+
+                return true;
+            }
+
+            lock (backgroundLoads)
+            {
+                if (!backgroundLoads.Add(filename))
+                    return false;
+            }
+
+            ThreadPool.QueueUserWorkItem(_ =>
+            {
+                try
+                {
+                    short[,] loaded;
+                    GetCell(lat, lng, out loaded);
+                }
+                catch (Exception ex)
+                {
+                    log.Error(ex);
+                }
+                finally
+                {
+                    lock (backgroundLoads)
+                        backgroundLoads.Remove(filename);
+                }
+            });
+            return false;
+        }
+
+        /// <summary>
+        /// Drops the 1x1 degree cell containing lat/lng from memory (26 MB for SRTM1). It is read from disk again
+        /// the next time anything needs it.
+        /// </summary>
+        public static void ReleaseCell(double lat, double lng)
+        {
+            var filename = GetFilename(lat, lng);
+            if (String.IsNullOrEmpty(filename))
+                return;
+            lock (cache)
+                cache.Remove(filename);
         }
 
         /// <summary>
@@ -660,92 +621,9 @@ namespace MissionPlanner.Utilities
             return v;
         }
 
-        /// <summary>
-        /// Batch pre-fetch altitudes for a rectangular region. Returns a 2D array of altitudes.
-        /// Much more efficient than individual lookups for terrain generation.
-        /// </summary>
-        public static double[,] getAltitudeGrid(double latStart, double lngStart, double latEnd, double lngEnd, int gridWidth, int gridHeight)
-        {
-            double[,] altitudes = new double[gridWidth, gridHeight];
-
-            double latStep = (latEnd - latStart) / (gridHeight - 1);
-            double lngStep = (lngEnd - lngStart) / (gridWidth - 1);
-
-            // Pre-load all needed SRTM tiles into cache
-            var neededTiles = new HashSet<string>();
-            for (int y = 0; y < gridHeight; y++)
-            {
-                double lat = latStart + y * latStep;
-                for (int x = 0; x < gridWidth; x++)
-                {
-                    double lng = lngStart + x * lngStep;
-                    var filename = GetFilename(lat, lng);
-                    if (!String.IsNullOrEmpty(filename) && !cache.ContainsKey(filename))
-                        neededTiles.Add(filename);
-                }
-            }
-
-            // Load tiles in parallel
-            System.Threading.Tasks.Parallel.ForEach(neededTiles, filename =>
-            {
-                var filePath = datadirectory + Path.DirectorySeparatorChar + filename;
-                if (File.Exists(filePath) && !cache.ContainsKey(filename))
-                {
-                    lock (extract)
-                    {
-                        if (!cache.ContainsKey(filename))
-                        {
-                            byte[] fileData = File.ReadAllBytes(filePath);
-                            int size;
-
-                            if (fileData.Length == (1201 * 1201 * 2))
-                                size = 1201;
-                            else if (fileData.Length == (3601 * 3601 * 2))
-                                size = 3601;
-                            else
-                                return;
-
-                            short[,] altdata = new short[size, size];
-                            int idx = 0;
-                            for (int altlng = 0; altlng < size; altlng++)
-                            {
-                                for (int altlat = 0; altlat < size; altlat++)
-                                {
-                                    altdata[altlat, altlng] = (short)((fileData[idx] << 8) | fileData[idx + 1]);
-                                    idx += 2;
-                                }
-                            }
-
-                            lock (cache)
-                                cache[filename] = altdata;
-                        }
-                    }
-                }
-            });
-
-            // Now fill the grid using cached data
-            for (int y = 0; y < gridHeight; y++)
-            {
-                double lat = latStart + y * latStep;
-                for (int x = 0; x < gridWidth; x++)
-                {
-                    double lng = lngStart + x * lngStep;
-                    var result = getAltitudeFast(lat, lng);
-                    altitudes[x, y] = result.currenttype == tiletype.valid ? result.alt : 0;
-                }
-            }
-
-            return altitudes;
-        }
-
         private static void StartQueueProcess()
         {
             requestRunner();
-        }
-
-        static double GetAlt(string filename, int x, int y)
-        {
-            return cache[filename][x, y];
         }
 
         static double avg(double v1, double v2, double weight)

@@ -11,6 +11,9 @@ namespace MissionPlanner.Controls
     /// </summary>
     public class STLModelLoader
     {
+        private static readonly Dictionary<string, Tuple<List<float>, List<float>>> _parsedModels =
+            new Dictionary<string, Tuple<List<float>, List<float>>>();
+
         private List<float> _vertices;
         private List<float> _normals;
         private bool _isLoaded = false;
@@ -62,6 +65,24 @@ namespace MissionPlanner.Controls
 
             try
             {
+                // Parsed models are shared, so reopening the 3D map doesn't re-parse a multi-megabyte STL on
+                // the UI thread.
+                string key = usingCustomSTL
+                    ? "file:" + _customSTLPath + "|" + File.GetLastWriteTimeUtc(_customSTLPath).Ticks
+                    : "type:" + currentMavType + (currentMavType == MAVLink.MAV_TYPE.FIXED_WING && IsQuadPlaneByParam() ? "|quadplane" : "");
+                Tuple<List<float>, List<float>> parsed;
+                lock (_parsedModels)
+                    _parsedModels.TryGetValue(key, out parsed);
+                if (parsed != null)
+                {
+                    _vertices = parsed.Item1;
+                    _normals = parsed.Item2;
+                    if (!usingCustomSTL)
+                        _loadedMavType = currentMavType;
+                    _isLoaded = true;
+                    return true;
+                }
+
                 string stlContent;
                 if (usingCustomSTL)
                 {
@@ -80,6 +101,8 @@ namespace MissionPlanner.Controls
                 }
 
                 ParseSTL(stlContent);
+                lock (_parsedModels)
+                    _parsedModels[key] = Tuple.Create(_vertices, _normals);
                 _isLoaded = true;
                 return true;
             }

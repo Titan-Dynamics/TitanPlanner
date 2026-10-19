@@ -166,7 +166,9 @@ namespace MissionPlanner.Controls.Scene3D
                     _done.Add(job.Id);
                 }
 
-                _results.Enqueue(result);
+                // Nobody collects results after Dispose; don't hold on to the mesh and pixels.
+                if (!_stop)
+                    _results.Enqueue(result);
             }
         }
 
@@ -236,6 +238,39 @@ namespace MissionPlanner.Controls.Scene3D
                 _pending.Clear();
                 Monitor.PulseAll(_lock);
             }
+
+            DrainResults();
+        }
+
+        void DrainResults()
+        {
+            TileLoadResult discarded;
+            while (_results.TryDequeue(out discarded))
+            {
+            }
+        }
+
+        /// <summary>
+        /// After <see cref="Dispose"/>, waits up to timeoutMs for the workers to finish their last job. Returns
+        /// false if any is still running. Blocks, so not for the UI thread.
+        /// </summary>
+        public bool WaitForWorkers(int timeoutMs)
+        {
+            var deadline = DateTime.UtcNow.AddMilliseconds(timeoutMs);
+            bool exited = true;
+            foreach (var worker in _workers)
+            {
+                var remaining = deadline - DateTime.UtcNow;
+                if (remaining < TimeSpan.Zero || !worker.Join(remaining))
+                {
+                    exited = false;
+                    break;
+                }
+            }
+
+            // A worker can finish between the stop check and the enqueue.
+            DrainResults();
+            return exited;
         }
     }
 }

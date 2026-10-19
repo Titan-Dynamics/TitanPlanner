@@ -732,5 +732,24 @@ namespace MissionPlanner.Controls.Scene3D.Tests
                 Assert.IsNull(results.Single().Mesh);
             }
         }
+
+        [TestMethod]
+        public void DisposeLetsTheWorkersFinishAndKeepsNoResults()
+        {
+            var imagery = new FakeImagery();
+            imagery.Gate.Reset();
+            var loader = new TileLoader(imagery, 2, (lats, lngs, heights) => DemStatus.Ready);
+            loader.SetRequests(new[] { Request(1, 1), Request(2, 2) });
+            Thread.Sleep(100); // both workers block in Fetch
+
+            loader.Dispose();
+            Assert.IsFalse(loader.WaitForWorkers(50), "workers are still inside Fetch");
+
+            imagery.Gate.Set();
+            Assert.IsTrue(loader.WaitForWorkers(5000));
+
+            TileLoadResult result;
+            Assert.IsFalse(loader.TryGetResult(out result), "jobs finished after Dispose must not be kept");
+        }
     }
 }

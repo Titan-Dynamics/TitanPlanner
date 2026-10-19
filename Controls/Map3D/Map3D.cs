@@ -52,6 +52,9 @@ namespace MissionPlanner.Controls
         private NerdStatsOverlay _nerdStats;
         private bool _glFailed;
 
+        // Set as soon as disposal starts: a paint arriving afterwards must not rebuild the renderers.
+        private bool _disposed;
+
         // Frame timing and a per-frame snapshot for "Stats for nerds".
         private readonly FrameStats _frameStats = new FrameStats(NerdStatsOverlay.GraphSamples);
         private readonly SceneStats _sceneStats = new SceneStats();
@@ -253,6 +256,9 @@ namespace MissionPlanner.Controls
 
         protected override void OnPaint(PaintEventArgs e)
         {
+            if (_disposed)
+                return;
+
             if (!started)
                 timer1.Start();
             started = true;
@@ -272,7 +278,7 @@ namespace MissionPlanner.Controls
 
         public void doPaint()
         {
-            if (DesignMode || _glFailed || Context == null || Width <= 0 || Height <= 0)
+            if (_disposed || IsDisposed || DesignMode || _glFailed || Context == null || Width <= 0 || Height <= 0)
                 return;
 
             try
@@ -499,11 +505,12 @@ namespace MissionPlanner.Controls
             return Math.Max(30000, Math.Min(150000, horizon * 1.15));
         }
 
+        /// <summary>Keeps the last known ground height until the cell's data is in memory; never blocks the UI thread.</summary>
         private void UpdateGroundHeight(PointLatLngAlt position)
         {
-            var ground = srtm.getAltitude(position.Lat, position.Lng);
-            if (ground.currenttype == srtm.tiletype.valid || ground.currenttype == srtm.tiletype.ocean)
-                _groundHeight = ground.alt;
+            double ground;
+            if (srtm.TryGetLoadedAltitude(position.Lat, position.Lng, out ground))
+                _groundHeight = ground;
         }
 
         /// <summary>
@@ -571,6 +578,7 @@ namespace MissionPlanner.Controls
         {
             if (disposing)
             {
+                _disposed = true;
                 try
                 {
                     // Keeps the camera placement the user ended with, including mouse adjustments.
@@ -608,7 +616,30 @@ namespace MissionPlanner.Controls
             }
 
             // The engine stops its loader threads even if GL cleanup fails.
-            _terrain.Dispose();
+            var terrain = _terrain;
+            terrain.Dispose();
+
+            // The terrain's elevation cells (26 MB each) would otherwise stay in memory after the map closes. A
+            // worker may still be loading one, so release them once the workers have exited, off the UI thread.
+            ThreadPool.QueueUserWorkItem(_ =>
+            {
+                try
+                {
+                    terrain.WaitForLoaderExit(30000);
+                    ElevationSampler.ReleaseCells();
+
+                    // The cells and tile buffers sit on the large object heap, which is only collected and
+                    // compacted by a full GC; do one now so the memory goes back to Windows when the map closes.
+                    System.Runtime.GCSettings.LargeObjectHeapCompactionMode =
+                        System.Runtime.GCLargeObjectHeapCompactionMode.CompactOnce;
+                    GC.Collect();
+                }
+                catch (Exception ex)
+                {
+                    log.Error(ex);
+                }
+            });
+
             try
             {
                 _sky.Dispose();

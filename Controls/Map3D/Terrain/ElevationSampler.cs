@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using MissionPlanner.Utilities;
 
 namespace MissionPlanner.Controls.Scene3D
@@ -19,6 +20,26 @@ namespace MissionPlanner.Controls.Scene3D
     /// </summary>
     public static class ElevationSampler
     {
+        /// <summary>Cells (by south-west corner) the 3D map has loaded, released again when it closes.</summary>
+        static readonly HashSet<(int lat, int lng)> _usedCells = new HashSet<(int lat, int lng)>();
+
+        /// <summary>
+        /// Frees the SRTM cells the terrain has loaded (26 MB each). The 3D map looks much further than anything
+        /// else, so without this they would stay in memory after it closes.
+        /// </summary>
+        public static void ReleaseCells()
+        {
+            (int lat, int lng)[] cells;
+            lock (_usedCells)
+            {
+                cells = _usedCells.ToArray();
+                _usedCells.Clear();
+            }
+
+            foreach (var cell in cells)
+                srtm.ReleaseCell(cell.lat + 0.5, cell.lng + 0.5);
+        }
+
         /// <summary>
         /// Fills heights[j * cols + i] for every (rowLats[j], colLngs[i]). Returns Pending without touching
         /// the output if any cell the grid needs is not available yet.
@@ -49,6 +70,11 @@ namespace MissionPlanner.Controls.Scene3D
                     var status = srtm.GetCell(rowLats[j], colLngs[i], out data);
                     if (status == srtm.CellStatus.Pending || status == srtm.CellStatus.Missing)
                         pending = true;
+                    if (status == srtm.CellStatus.Loaded)
+                    {
+                        lock (_usedCells)
+                            _usedCells.Add(((int)Math.Floor(rowLats[j]), (int)Math.Floor(colLngs[i])));
+                    }
 
                     // Ocean cells keep a null grid and sample as sea level.
                     cells[key] = status == srtm.CellStatus.Loaded ? data : null;

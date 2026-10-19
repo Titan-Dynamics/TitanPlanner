@@ -48,6 +48,12 @@ namespace MissionPlanner.Controls.Scene3D
         /// <summary>One graph bar per frame, two pixels wide.</summary>
         public const int GraphSamples = (PanelWidth - 2 * Pad) / 2;
 
+        /// <summary>
+        /// StringFormat.GenericTypographic builds a new GDI+ object on every access; the panel draws and measures
+        /// hundreds of strings per refresh, so keep one.
+        /// </summary>
+        static readonly StringFormat Typographic = StringFormat.GenericTypographic;
+
         static readonly Color Background = Color.FromArgb(214, 13, 15, 19);
         static Color Accent
         {
@@ -72,11 +78,13 @@ namespace MissionPlanner.Controls.Scene3D
         int _texture;
         int _height = 400;
         int _graphTop;
+        bool _disposed;
 
         public void Draw(LineRenderer lines, int viewportWidth, int viewportHeight, FrameStats frames,
             TerrainStats terrain, SceneStats scene)
         {
-            if (viewportWidth <= 0 || viewportHeight <= 0)
+            // The fonts are gone after Dispose; GDI+ would throw "Parameter is not valid" from inside the paint.
+            if (_disposed || viewportWidth <= 0 || viewportHeight <= 0)
                 return;
 
             if (_texture == 0 || !_sinceRefresh.IsRunning || _sinceRefresh.ElapsedMilliseconds >= RefreshMs)
@@ -339,16 +347,16 @@ namespace MissionPlanner.Controls.Scene3D
         static void Text(Graphics g, string text, Font font, Color color, float x, float y)
         {
             using (var brush = new SolidBrush(color))
-                g.DrawString(text, font, brush, x, y, StringFormat.GenericTypographic);
+                g.DrawString(text, font, brush, x, y, Typographic);
         }
 
         static float Width(Graphics g, string text, Font font)
         {
             // GenericTypographic drops trailing spaces from measurements, so measure them separately.
             int trailing = text.Length - text.TrimEnd(' ').Length;
-            float width = g.MeasureString(text, font, PointF.Empty, StringFormat.GenericTypographic).Width;
+            float width = g.MeasureString(text, font, PointF.Empty, Typographic).Width;
             if (trailing > 0)
-                width += trailing * g.MeasureString("x", font, PointF.Empty, StringFormat.GenericTypographic).Width;
+                width += trailing * g.MeasureString("x", font, PointF.Empty, Typographic).Width;
             return width;
         }
 
@@ -462,6 +470,9 @@ namespace MissionPlanner.Controls.Scene3D
 
         public void Dispose()
         {
+            if (_disposed)
+                return;
+            _disposed = true;
             GLTextures.Delete(ref _texture);
             _quads.Dispose();
             _titleFont.Dispose();

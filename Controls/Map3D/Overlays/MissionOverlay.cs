@@ -182,19 +182,19 @@ namespace MissionPlanner.Controls.Scene3D
             if (_terrainCache.TryGetValue(key, out alt))
                 return alt;
 
-            var result = srtm.getAltitude(lat, lng);
-            if (result.currenttype == srtm.tiletype.valid || result.currenttype == srtm.tiletype.ocean)
+            // Non-blocking: until the cell is in memory the point draws at sea level and the plan line retries.
+            if (srtm.TryGetLoadedAltitude(lat, lng, out alt))
             {
                 if (_terrainCache.Count > 5000)
                     _terrainCache.Clear();
-                _terrainCache[key] = result.alt;
+                _terrainCache[key] = alt;
             }
             else
             {
                 _terrainMissing = true;
             }
 
-            return result.alt;
+            return alt;
         }
 
         public void DrawPlanLine(LineRenderer lines, WorldFrame frame, ref Matrix4 projection, ref Matrix4 view)

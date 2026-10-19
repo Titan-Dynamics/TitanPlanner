@@ -59,6 +59,7 @@ Terrain streams Google Earth style:
 - **Shared imagery cache.** Imagery goes through the 2D map's tile cache, so tiles seen on the 2D map and imported `.mappack` files load instantly and offline mode works. The old separate 3D tile cache is removed.
 - **Elevation that always arrives.** Missing SRTM cells are downloaded instead of leaving gaps; tiles start from their parent's heights and are re-meshed when the data lands.
 - **No reloads while flying.** Tiles keep their own UTM origins, so moving the scene origin never discards loaded terrain.
+- **Memory given back on close.** Hiding the 3D map frees the SRTM cells it loaded (26 MB each) and the loader's pending tiles once its workers exit, then compacts the heap, so RAM drops back. Elevation lookups on the UI thread (opening the map, ground height, mission and ADS-B overlays) only use cells already in memory and never wait on a disk load. The vehicle model is parsed once per session.
 - **Idle rendering.** Full frame rate only while something changes (connected vehicle, terrain streaming, markers, ADS-B, input, the 2D map moving, or the stats panel open); otherwise one frame a second.
 - **Stats for nerds** (3D map Settings): a colour-coded panel in the top-right with FPS (current/avg/low), a scrolling frame-time graph with CPU time and 60/30 fps guides, terrain streaming internals (tiles drawn/on GPU, per-zoom histogram, GPU memory, queue, load rate, fetch/mesh times, failures, elevation status), the camera view and fog range, and GPU/memory info. FPS is only shown here.
 
@@ -266,6 +267,7 @@ Built for air-gapped use. Opened from the **Offline Maps** button next to Find L
 Behaviour that differs from upstream because the fork fixed it:
 
 - The 3D map's paint path locks on a dedicated token, so the intermittent `Destination array was not long enough` crash does not occur
+- SRTM elevation cells are read and written under the cache lock everywhere, so the 3D map's loader threads can't corrupt the dictionary under `srtm.getAltitude`, and one slow cell load no longer holds up every other elevation lookup; a paint that arrives while the 3D map is being disposed is ignored
 - The Full Parameter List opens without crashing, and Flight Modes populates its `RCx_OPTION` lists on load
 - Starting a camera that another program holds open fails gracefully instead of crashing
 - Dashboard items repaint after context-menu edits, the panel never outgrows its tab, and the default layout has no duplicate "distance to home"
