@@ -325,14 +325,19 @@ namespace MissionPlanner.Utilities
         {
             public string content;
             public HttpStatusCode status;
+
+            /// <summary>How long the server asked us to wait (Retry-After, e.g. with a 429), if it said.</summary>
+            public TimeSpan? retryAfter;
         }
 
         /// <summary>
-        /// Perform a GET request and return the content and status code
+        /// Perform a GET request and return the content and status code. A timeout cancels the request (the task
+        /// faults) instead of the shared client's 100 s.
         /// </summary>
-        public static async Task<HTTPResult> GetAsyncWithStatus(string uri, string userAgent = null)
+        public static async Task<HTTPResult> GetAsyncWithStatus(string uri, string userAgent = null, TimeSpan? timeout = null)
         {
             using (var request = new HttpRequestMessage(HttpMethod.Get, uri))
+            using (var cancel = timeout.HasValue ? new CancellationTokenSource(timeout.Value) : new CancellationTokenSource())
             {
                 // Some APIs refuse requests without one: adsb.lol answers 403 "User-Agent too generic". Set per
                 // request, since the shared client's default is only added if the app had set it by then.
@@ -340,11 +345,18 @@ namespace MissionPlanner.Utilities
                 if (!String.IsNullOrEmpty(userAgent))
                     request.Headers.TryAddWithoutValidation("User-Agent", userAgent);
 
-                // The shared client: ADS-B polls every second, and a new HttpClient per call leaks sockets.
-                using (var response = await client.SendAsync(request).ConfigureAwait(false))
+                // The shared client: ADS-B polls every few seconds, and a new HttpClient per call leaks sockets.
+                // The body is buffered inside SendAsync, so the timeout covers it too.
+                using (var response = await client.SendAsync(request, cancel.Token).ConfigureAwait(false))
                 {
                     var content = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
-                    return new HTTPResult() { content = content, status = response.StatusCode };
+
+                    TimeSpan? retryAfter = null;
+                    var header = response.Headers.RetryAfter;
+                    if (header != null)
+                        retryAfter = header.Delta ?? (header.Date.HasValue ? header.Date.Value - DateTimeOffset.UtcNow : (TimeSpan?)null);
+
+                    return new HTTPResult() { content = content, status = response.StatusCode, retryAfter = retryAfter };
                 }
             }
         }

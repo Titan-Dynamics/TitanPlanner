@@ -69,14 +69,26 @@ namespace MissionPlanner.Utilities
         private const int CONNECT_TIMEOUT_MILLISECONDS = 25;
 
         /// <summary>
-        /// Loop delay in milliseconds for ADS-B connections to HTTP API endpoints.
+        /// Loop delay in milliseconds for ADS-B connections to HTTP API endpoints. adsb.lol allows 60 requests a
+        /// minute per IP, shared by every GCS behind it; polling every second used all of it and got rate limited
+        /// into gaps long enough for every plane to expire.
         /// </summary>
-        private const int API_LOOP_DELAY_MILLISECONDS = 1000;
+        private const int API_LOOP_DELAY_MILLISECONDS = 3000;
 
         /// <summary>
         /// Maximum loop delay in milliseconds for ADS-B connections to HTTP API endpoints.
         /// </summary>
         private const int API_LOOP_DELAY_MAX_MILLISECONDS = 10000;
+
+        /// <summary>
+        /// Longest Retry-After honoured; adsb.lol's window is a minute.
+        /// </summary>
+        private const int API_RETRY_AFTER_MAX_MILLISECONDS = 60000;
+
+        /// <summary>
+        /// A request that takes longer is abandoned and retried, so one stalled request can't leave the map empty.
+        /// </summary>
+        private static readonly TimeSpan API_REQUEST_TIMEOUT = TimeSpan.FromSeconds(20);
 
         /// <summary>
         /// adsb.lol asks API clients to put contact info in their User-Agent and rejects generic ones.
@@ -150,7 +162,7 @@ namespace MissionPlanner.Utilities
                             var timer = Stopwatch.StartNew();
 
                             string formattedUrl = string.Format(CultureInfo.InvariantCulture, url, server, CurrentPosition.Lat, CurrentPosition.Lng, httpRequestRadius);
-                            var t = Download.GetAsyncWithStatus(formattedUrl, userAgent);
+                            var t = Download.GetAsyncWithStatus(formattedUrl, userAgent, API_REQUEST_TIMEOUT);
                             t.Wait();
 
                             // Check for long running requests
@@ -209,6 +221,10 @@ namespace MissionPlanner.Utilities
                             if (!t.IsFaulted && (int)t.Result.status == 429)
                             {
                                 delay = Math.Min(delay * 2, API_LOOP_DELAY_MAX_MILLISECONDS);
+                                // Retrying sooner than the server says only gets more 429s.
+                                var retryAfter = t.Result.retryAfter;
+                                if (retryAfter.HasValue)
+                                    delay = Math.Max(delay, (int)Math.Min(retryAfter.Value.TotalMilliseconds, API_RETRY_AFTER_MAX_MILLISECONDS));
                                 log.Info("Rate limited, increasing delay to " + delay + "ms");
                             }
                             else
