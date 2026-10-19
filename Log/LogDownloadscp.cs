@@ -23,7 +23,7 @@ namespace MissionPlanner.Log
         uint receivedbytes; // current log file
         uint tallyBytes; // previous downloaded logs
         uint totalBytes; // total expected
-        List<SftpFile> logEntries = new List<SftpFile>();
+        List<ISftpFile> logEntries = new List<ISftpFile>();
         private ConnectionInfo _connectionInfo;
 
         //List<Model> orientation = new List<Model>();
@@ -138,7 +138,7 @@ namespace MissionPlanner.Log
             status = SerialStatus.Done;
         }
 
-        string GetItemCaption(SftpFile item)
+        string GetItemCaption(ISftpFile item)
         {
             return item.LastWriteTime.ToString();
         }
