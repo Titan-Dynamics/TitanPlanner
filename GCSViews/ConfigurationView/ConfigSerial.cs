@@ -339,8 +339,11 @@ namespace MissionPlanner.GCSViews.ConfigurationView
                         mcb.setup(param_name, list);
                         mcb.ValueChanged += (o, x, value) =>
                         {
-                            setParam(param_name, value.ToString());
-                            setLabelOptions(param_name, label1);
+                            setParam(param_name, value.ToString(), ok =>
+                            {
+                                if (!label1.IsDisposed)
+                                    setLabelOptions(param_name, label1);
+                            });
                             mcb.Focus();
                         };
                         var frm = mcb.ShowUserControl();
@@ -406,10 +409,12 @@ namespace MissionPlanner.GCSViews.ConfigurationView
                 if (rule.options > -1)
                 {
                     //set the options
-                    setParam(portName + "_OPTIONS", rule.options.ToString());
                     var optLabel = tableLayoutPanel1.GetControlFromPosition(4, port) as Label;
-                    if (optLabel != null)
-                        setLabelOptions(portName + "_OPTIONS", optLabel);
+                    setParam(portName + "_OPTIONS", rule.options.ToString(), ok =>
+                    {
+                        if (optLabel != null && !optLabel.IsDisposed)
+                            setLabelOptions(portName + "_OPTIONS", optLabel);
+                    });
                 }
                 noteLabel.Text = portName + " : " + rule.comment;
             }
@@ -427,7 +432,7 @@ namespace MissionPlanner.GCSViews.ConfigurationView
                 string protParamName = "SERIAL" + i.ToString() + "_PROTOCOL";
                 if (MainV2.comPort.MAV.param.ContainsKey(protParamName))
                 {
-                    var val = MainV2.comPort.MAV.param[protParamName].Value.ToString();
+                    var val = i == port ? v : MainV2.comPort.MAV.param[protParamName].Value.ToString();
                     if (val == "1" || val == "2")
                     {
                         mavlinkPorts++;
@@ -475,7 +480,10 @@ namespace MissionPlanner.GCSViews.ConfigurationView
             l.Text = string.Join(" / ", binlist.Where(bin => ((uint)param_value & (1 << bin.Key)) > 0).Select(bin => bin.Value));
         }
 
-        public bool setParam(string param_name, string param_value)
+        /// <summary>
+        /// Queue a write off the UI thread; onDone runs on the UI thread once the vehicle has answered (or not).
+        /// </summary>
+        public void setParam(string param_name, string param_value, Action<bool> onDone = null)
         {
 
             double val = 0;
@@ -483,31 +491,11 @@ namespace MissionPlanner.GCSViews.ConfigurationView
 
             if (MainV2.comPort.MAV.param.ContainsKey(param_name))
             {
-                bool ans;
-                try
-                {
-                    ans = MainV2.comPort.setParam(MainV2.comPort.sysidcurrent, (byte)MainV2.comPort.compidcurrent, param_name, val);
-                }
-                catch (TimeoutException)
-                {
-                    // no confirmation from the vehicle, report it below instead of as an unhandled exception
-                    ans = false;
-                }
-
-                if (!ans)
-                {
-                    CustomMessageBox.Show("Unable to set parameter " + param_name);
-                    return false;
-                }
-                else
-                {
-                    return true;
-                }
+                ParamWriteQueue.Write(param_name, val, onDone);
             }
             else
             {
                 Common.MessageShowAgain("Parameter not found", "Parameter " + param_name + " not found");
-                return false;
             }
         }
 

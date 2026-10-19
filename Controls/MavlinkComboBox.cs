@@ -28,6 +28,12 @@ namespace MissionPlanner.Controls
         [System.ComponentModel.Browsable(true)]
         public event EventHandler ValueUpdated;
 
+        /// <summary>
+        /// Write through ParamWriteQueue instead of blocking the UI thread until the vehicle confirms.
+        /// </summary>
+        [System.ComponentModel.Browsable(true)]
+        public bool WriteInBackground { get; set; }
+
         public MavlinkComboBox()
         {
             this.Enabled = false;
@@ -144,6 +150,27 @@ namespace MissionPlanner.Controls
         {
             if (this.SelectedIndexChanged != null)
                 this.SelectedIndexChanged(sender, e);
+
+            if (WriteInBackground && ValueUpdated == null && (_source != null || _source2 != null))
+            {
+                float value;
+                try
+                {
+                    value = _source != null
+                        ? (float)(Int32)Enum.Parse(_source, this.Text)
+                        : (float)(int)this.SelectedValue;
+                }
+                catch
+                {
+                    CustomMessageBox.Show(String.Format(Strings.ErrorSetValueFailed, ParamName), Strings.ERROR);
+                    return;
+                }
+
+                ParamWriteQueue.Write(ParamName, value);
+                if (paramname2 != "")
+                    ParamWriteQueue.Write(paramname2, value > 0 ? 1 : 0);
+                return;
+            }
 
             if (_source != null)
             {

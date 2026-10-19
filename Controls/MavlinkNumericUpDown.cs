@@ -28,6 +28,12 @@ namespace MissionPlanner.Controls
         [System.ComponentModel.Browsable(true)]
         public event EventHandler ValueUpdated;
 
+        /// <summary>
+        /// Write through ParamWriteQueue instead of blocking the UI thread until the vehicle confirms.
+        /// </summary>
+        [System.ComponentModel.Browsable(true)]
+        public bool WriteInBackground { get; set; }
+
         public MavlinkNumericUpDown()
         {
             Min = 0;
@@ -162,6 +168,13 @@ namespace MissionPlanner.Controls
 
         private void Timer_Tick(object sender, EventArgs e)
         {
+            if (WriteInBackground)
+            {
+                timer.Stop();
+                ParamWriteQueue.Write(ParamName, (float)base.Value * (float)_scale);
+                return;
+            }
+
             lock (timer)
             {
                 try

@@ -67,6 +67,7 @@ namespace MissionPlanner.GCSViews.ConfigurationView
             };
             var rev1 = new MissionPlanner.Controls.MavlinkCheckBox()
             {
+                WriteInBackground = true,
                 Enabled = false,
                 AutoSize = false,
                 Height = controlHeight,
@@ -77,6 +78,7 @@ namespace MissionPlanner.GCSViews.ConfigurationView
             };
             var func1 = new MavlinkComboBox()
             {
+                WriteInBackground = true,
                 Enabled = false,
                 DropDownStyle = ComboBoxStyle.DropDownList,
                 Width = 160,
@@ -86,6 +88,7 @@ namespace MissionPlanner.GCSViews.ConfigurationView
             };
             var min1 = new MavlinkNumericUpDown()
             {
+                WriteInBackground = true,
                 Minimum = 800,
                 Maximum = 2200,
                 Value = 1500,
@@ -112,6 +115,7 @@ namespace MissionPlanner.GCSViews.ConfigurationView
             };
             var trim1 = new MavlinkNumericUpDown()
             {
+                WriteInBackground = true,
                 Minimum = 800,
                 Maximum = 2200,
                 Value = 1500,
@@ -123,6 +127,7 @@ namespace MissionPlanner.GCSViews.ConfigurationView
             };
             var max1 = new MavlinkNumericUpDown()
             {
+                WriteInBackground = true,
                 Minimum = 800,
                 Maximum = 2200,
                 Value = 1500,
@@ -423,20 +428,11 @@ namespace MissionPlanner.GCSViews.ConfigurationView
             if (MainV2.comPort.MAV?.param == null)
                 return;
 
-            try
-            {
-                if (MainV2.comPort.MAV.param.ContainsKey(minParam))
-                    MainV2.comPort.setParam(MainV2.comPort.sysidcurrent, (byte)MainV2.comPort.compidcurrent,
-                        minParam, (double)newMin);
+            if (MainV2.comPort.MAV.param.ContainsKey(minParam))
+                ParamWriteQueue.Write(minParam, (double)newMin);
 
-                if (MainV2.comPort.MAV.param.ContainsKey(maxParam))
-                    MainV2.comPort.setParam(MainV2.comPort.sysidcurrent, (byte)MainV2.comPort.compidcurrent,
-                        maxParam, (double)newMax);
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Failed to set {servo} min/max from trim: {ex}");
-            }
+            if (MainV2.comPort.MAV.param.ContainsKey(maxParam))
+                ParamWriteQueue.Write(maxParam, (double)newMax);
         }
 
         public void Activate()

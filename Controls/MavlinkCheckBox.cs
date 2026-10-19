@@ -18,6 +18,12 @@ namespace MissionPlanner.Controls
         [System.ComponentModel.Browsable(true)]
         public string ParamName { get; set; }
 
+        /// <summary>
+        /// Write through ParamWriteQueue instead of blocking the UI thread until the vehicle confirms.
+        /// </summary>
+        [System.ComponentModel.Browsable(true)]
+        public bool WriteInBackground { get; set; }
+
 
         Control _control;
 
@@ -107,6 +113,17 @@ namespace MissionPlanner.Controls
         {
             if (this.CheckedChanged != null)
                 this.CheckedChanged(sender, e);
+
+            if (WriteInBackground)
+            {
+                enableBGControl(this.Checked);
+                ParamWriteQueue.Write(ParamName, this.Checked ? OnValue : OffValue, ok =>
+                {
+                    if (ok)
+                        CallBackOnChange?.Invoke();
+                });
+                return;
+            }
 
             if (this.Checked)
             {
