@@ -2615,33 +2615,41 @@ namespace MissionPlanner.GCSViews
             }
         }
 
+        /// <summary>
+        /// Creates the 3D map 100 ms after it is shown, so the tick and the layout change paint before its GL
+        /// context and renderers are set up on the UI thread.
+        /// </summary>
+        private System.Windows.Forms.Timer _map3DCreateTimer;
+
         public void Toggle3DMap(bool enable)
         {
             if (enable)
             {
+                if (map3DHost != null)
+                    map3DHost.Visible = true;
+
                 if (map3DControl == null || map3DControl.IsDisposed)
                 {
-                    Dispose3DMap();
-                    map3DControl = new Map3D();
-                    map3DControl.Dock = DockStyle.Fill;
-                    ThemeManager.ApplyThemeTo(map3DControl);
-
-                    // Initialize with current 2D map position so tiles load immediately
-                    if (gMapControl1 != null && gMapControl1.Position.Lat != 0 && gMapControl1.Position.Lng != 0)
+                    if (_map3DCreateTimer == null)
                     {
-                        var pos = gMapControl1.Position;
-                        // Non-blocking: showing the map must not wait on a 26 MB elevation cell load.
-                        double terrainAlt;
-                        srtm.TryGetLoadedAltitude(pos.Lat, pos.Lng, out terrainAlt);
-                        map3DControl.LocationCenter = new PointLatLngAlt(pos.Lat, pos.Lng, terrainAlt + 100, "init");
+                        _map3DCreateTimer = new System.Windows.Forms.Timer(components) { Interval = 100 };
+                        _map3DCreateTimer.Tick += (sender, e) =>
+                        {
+                            _map3DCreateTimer.Stop();
+                            Create3DMap();
+                        };
                     }
+
+                    // Restarting it keeps a quick re-toggle to a single creation.
+                    _map3DCreateTimer.Stop();
+                    _map3DCreateTimer.Start();
+                    return;
                 }
 
-                if (map3DHost != null)
+                if (map3DHost != null && !map3DHost.Controls.Contains(map3DControl))
                 {
                     map3DHost.Controls.Clear();
                     map3DHost.Controls.Add(map3DControl);
-                    map3DHost.Visible = true;
                 }
             }
             else
@@ -2655,8 +2663,36 @@ namespace MissionPlanner.GCSViews
             }
         }
 
+        private void Create3DMap()
+        {
+            Dispose3DMap();
+            map3DControl = new Map3D();
+            map3DControl.Dock = DockStyle.Fill;
+            ThemeManager.ApplyThemeTo(map3DControl);
+
+            // Initialize with current 2D map position so tiles load immediately
+            if (gMapControl1 != null && gMapControl1.Position.Lat != 0 && gMapControl1.Position.Lng != 0)
+            {
+                var pos = gMapControl1.Position;
+                // Non-blocking: showing the map must not wait on a 26 MB elevation cell load.
+                double terrainAlt;
+                srtm.TryGetLoadedAltitude(pos.Lat, pos.Lng, out terrainAlt);
+                map3DControl.LocationCenter = new PointLatLngAlt(pos.Lat, pos.Lng, terrainAlt + 100, "init");
+            }
+
+            if (map3DHost != null)
+            {
+                map3DHost.Controls.Clear();
+                map3DHost.Controls.Add(map3DControl);
+                map3DHost.Visible = true;
+            }
+        }
+
         public void Dispose3DMap()
         {
+            // Hidden or closing before the delay ran out: don't create it afterwards.
+            _map3DCreateTimer?.Stop();
+
             if (map3DControl != null)
             {
                 map3DHost?.Controls.Remove(map3DControl);

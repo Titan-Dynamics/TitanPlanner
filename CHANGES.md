@@ -86,6 +86,7 @@ ADS-B traffic is rendered with proper depth testing and pass ordering so it corr
 - "Stats for nerds" diagnostics panel, off by default
 - Required-valid-GPS gate before vehicle tracking begins
 - 3D Map cleanly stops on disconnect and tears down before app close
+- The 3D map is created 100 ms after it is shown, so the checkbox and the layout change paint before its GL setup
 
 ## GPU Acceleration
 GPU acceleration is enabled application-wide, with a registry-level Windows GPU-preference hint to prefer the discrete GPU on hybrid systems.
@@ -268,6 +269,7 @@ Built for air-gapped use. Opened from the **Offline Maps** button next to Find L
 Behaviour that differs from upstream because the fork fixed it:
 
 - The 3D map's paint path locks on a dedicated token, so the intermittent `Destination array was not long enough` crash does not occur
+- The EKF status window no longer fails after a few minutes with "A generic error occurred in GDI+": every themed form made a new window-icon handle and never freed it, and that window re-themed itself ten times a second. Forms now share one icon, and the window only recolours its bars ([#31](https://github.com/Titan-Dynamics/TitanPlanner/issues/31))
 - Mission, fence and rally uploads no longer answer the vehicle's closing MISSION_ACK with one of the planner's own, which the mission protocol only expects from the GCS after a download (upstream PR [#3705](https://github.com/ArduPilot/MissionPlanner/pull/3705), taken ahead of its merge)
 - SSH (the SSH terminal, SCP/SFTP log download, Solo tools) uses SSH.NET 2026.0.0 instead of 2020.0.2, for the key exchanges and ciphers current companion computers expect and the `ScpClient` fixes for GHSA-mggc-4xg6-vcxf and GHSA-q939-rpr3-3284, and the SkiaSharp packages are aligned at 2.88.8 (upstream PR [#3729](https://github.com/ArduPilot/MissionPlanner/pull/3729), which stops at SSH.NET 2024.2.0, taken ahead of its merge)
 - Link quality counts MAVLink packets that arrive late (reordered by UDP over LTE, Starlink, routers or VPNs) as received rather than as 254 lost, and a gap across seq 255 is no longer 256 too many, so the HUD shows the real loss (upstream PR [#3807](https://github.com/ArduPilot/MissionPlanner/pull/3807), taken ahead of its merge)
