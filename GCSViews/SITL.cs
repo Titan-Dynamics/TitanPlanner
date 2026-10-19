@@ -453,7 +453,8 @@ namespace MissionPlanner.GCSViews
             try
             {
                 StartSITL(await exepath, "plane",
-                    BuildHomeLocation(markeroverlay.Markers[0].Position, (int) NUM_heading.Value), "",
+                    BuildHomeLocation(markeroverlay.Markers[0].Position, (int) NUM_heading.Value,
+                        await HomeAltitudeAsync(markeroverlay.Markers[0].Position)), "",
                     (int) num_simspeed.Value);
             }
             catch (Exception ex)
@@ -474,7 +475,8 @@ namespace MissionPlanner.GCSViews
             try
             {
                 StartSITL(await exepath, "rover",
-                    BuildHomeLocation(markeroverlay.Markers[0].Position, (int) NUM_heading.Value), "",
+                    BuildHomeLocation(markeroverlay.Markers[0].Position, (int) NUM_heading.Value,
+                        await HomeAltitudeAsync(markeroverlay.Markers[0].Position)), "",
                     (int) num_simspeed.Value);
             }
             catch (Exception ex)
@@ -495,7 +497,8 @@ namespace MissionPlanner.GCSViews
             try
             {
                 StartSITL(await exepath, "+",
-                    BuildHomeLocation(markeroverlay.Markers[0].Position, (int) NUM_heading.Value), "",
+                    BuildHomeLocation(markeroverlay.Markers[0].Position, (int) NUM_heading.Value,
+                        await HomeAltitudeAsync(markeroverlay.Markers[0].Position)), "",
                     (int) num_simspeed.Value);
             }
             catch (Exception ex)
@@ -516,7 +519,8 @@ namespace MissionPlanner.GCSViews
             try
             {
                 StartSITL(await exepath, "heli",
-                    BuildHomeLocation(markeroverlay.Markers[0].Position, (int) NUM_heading.Value), "",
+                    BuildHomeLocation(markeroverlay.Markers[0].Position, (int) NUM_heading.Value,
+                        await HomeAltitudeAsync(markeroverlay.Markers[0].Position)), "",
                     (int) num_simspeed.Value);
             }
             catch (Exception ex)
@@ -525,10 +529,37 @@ namespace MissionPlanner.GCSViews
             }
         }
 
-        string BuildHomeLocation(PointLatLng homelocation, int heading = 0, int altitude = 10)
+        string BuildHomeLocation(PointLatLng homelocation, int heading, double altitude)
         {
             return String.Format("{0},{1},{2},{3}", homelocation.Lat.ToString(CultureInfo.InvariantCulture), homelocation.Lng.ToString(CultureInfo.InvariantCulture),
-                altitude.ToString(CultureInfo.InvariantCulture), heading.ToString(CultureInfo.InvariantCulture));
+                altitude.ToString("0.##", CultureInfo.InvariantCulture), heading.ToString(CultureInfo.InvariantCulture));
+        }
+
+        /// <summary>Home altitude when there is no elevation data for the home point.</summary>
+        const double FallbackHomeAltitude = 10;
+
+        /// <summary>
+        /// Ground height (MSL) at the home point for SITL's --home. The simulated vehicle starts on the ground at this
+        /// altitude and terrain readings such as terr_curalt compare it with SRTM, so a fixed altitude put home far above
+        /// or below the real ground (issue #28). A cell that is still downloading gets a few seconds; with no elevation
+        /// data for the point at all (e.g. air-gapped) home falls back to <see cref="FallbackHomeAltitude"/>.
+        /// </summary>
+        static async Task<double> HomeAltitudeAsync(PointLatLng home)
+        {
+            var deadline = DateTime.Now.AddSeconds(10);
+            while (true)
+            {
+                // GeoTIFF/DTED/SRTM; loading a cell from disk takes a moment, so off the UI thread.
+                var alt = await Task.Run(() => srtm.getAltitude(home.Lat, home.Lng)).ConfigureAwait(true);
+                if (alt.currenttype == srtm.tiletype.valid || alt.currenttype == srtm.tiletype.ocean)
+                    return alt.alt;
+
+                short[,] cell;
+                if (srtm.GetCell(home.Lat, home.Lng, out cell) != srtm.CellStatus.Pending || DateTime.Now > deadline)
+                    return FallbackHomeAltitude;
+
+                await Task.Delay(250).ConfigureAwait(true);
+            }
         }
 
         [DllImport("libc", SetLastError = true)]
@@ -1165,14 +1196,14 @@ namespace MissionPlanner.GCSViews
                 {
                     extra += String.Format(
 			" -M{4} -s1 --home {3} --instance {0} --serial0 tcp:0 {1} ",
-                        a, "", a + 1, BuildHomeLocation(home, (int)NUM_heading.Value), model);
+                        a, "", a + 1, BuildHomeLocation(home, (int)NUM_heading.Value, await HomeAltitudeAsync(home)), model);
                 }
                 else
                 {
                     extra += String.Format(
 			" -M{4} -s1 --home {3} --instance {0} --serial0 tcp:0 {1} ",
 			a, "" /*"--serial2 tcpclient:127.0.0.1:" + (5770 + 10 * a)*/, a + 1,
-                        BuildHomeLocation(home, (int)NUM_heading.Value), model);
+                        BuildHomeLocation(home, (int)NUM_heading.Value, await HomeAltitudeAsync(home)), model);
                 }
 
                 string simdir = sitldirectory + model + (a + 1) + Path.DirectorySeparatorChar;
@@ -1314,14 +1345,14 @@ SIM_DRIFT_TIME=0
                 {
                     extra += String.Format(
 			" -M{4} -s1 --home {3} --instance {0} --serial0 tcp:0 {1} ",
-                        a, "", a + 1, BuildHomeLocation(home, (int)NUM_heading.Value), model);
+                        a, "", a + 1, BuildHomeLocation(home, (int)NUM_heading.Value, await HomeAltitudeAsync(home)), model);
                 }
                 else
                 {
                     extra += String.Format(
 			" -M{4} -s1 --home {3} --instance {0} --serial0 tcp:0 {1} ",
 			a, "--serial2 tcpclient:127.0.0.1:" + (5772 + 10 * a), a + 1,
-                        BuildHomeLocation(home, (int)NUM_heading.Value), model);
+                        BuildHomeLocation(home, (int)NUM_heading.Value, await HomeAltitudeAsync(home)), model);
                 }
 
                 string simdir = sitldirectory + model + (a + 1) + Path.DirectorySeparatorChar;

@@ -264,6 +264,7 @@ Built for air-gapped use. Opened from the **Offline Maps** button next to Find L
 Behaviour that differs from upstream because the fork fixed it:
 
 - The 3D map doesn't hit the intermittent `Destination array was not long enough` crash
+- SITL starts with home at the ground height of the chosen point, so terrain readings match ([#28](https://github.com/Titan-Dynamics/TitanPlanner/issues/28))
 - The Messages tab keeps updating on long flights, keeps your place when scrolled up, and has a right-click **Clear Messages** ([#23](https://github.com/Titan-Dynamics/TitanPlanner/issues/23))
 - Battery monitor calibration handles DroneCAN and other digital monitors: voltage Calc explains they are calibrated on the device, and current Calc scales `BATTx_CURR_MULT` ([#27](https://github.com/Titan-Dynamics/TitanPlanner/issues/27))
 - The EKF status window keeps working on long sessions instead of failing with a GDI+ error ([#31](https://github.com/Titan-Dynamics/TitanPlanner/issues/31))
