@@ -196,6 +196,11 @@ namespace MissionPlanner
         /// </summary>
         public static event Action<string> ParamWritten;
 
+        /// <summary>
+        /// When a reboot/shutdown command was last sent to any vehicle (UTC), so reconnecting can hold off.
+        /// </summary>
+        public static DateTime LastRebootSent { get; private set; } = DateTime.MinValue;
+
         public event EventHandler MavChanged
         {
             add
@@ -2792,6 +2797,7 @@ Mission Planner waits for 2 valid heartbeat packets before connecting
             }
             else if (actionid == MAV_CMD.PREFLIGHT_REBOOT_SHUTDOWN)
             {
+                LastRebootSent = DateTime.UtcNow;
                 generatePacket((byte) MAVLINK_MSG_ID.COMMAND_LONG, req, sysid, compid);
                 giveComport = false;
                 return true;

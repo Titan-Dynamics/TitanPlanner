@@ -11,6 +11,15 @@ namespace MissionPlanner.Utilities
 
         public int EnumerationDelayMs { get; set; } = 6000;
 
+        /// <summary>
+        /// Extra wait when the board was just rebooted from here: it re-enumerates (bootloader, then
+        /// firmware) and connecting at the usual delay can catch it before it is ready.
+        /// </summary>
+        public int AfterRebootDelayMs { get; set; } = 2000;
+
+        // a reboot this recent counts as the reason the device came back
+        private static readonly TimeSpan RebootWindow = TimeSpan.FromSeconds(30);
+
         private bool _enabled = false;
         private int _connectInProgress = 0;
 
@@ -110,6 +119,12 @@ namespace MissionPlanner.Utilities
                 try
                 {
                     System.Threading.Thread.Sleep(EnumerationDelayMs);
+
+                    if (DateTime.UtcNow - MAVLinkInterface.LastRebootSent < RebootWindow)
+                    {
+                        log.Info("Auto-connect: waiting longer after a reboot");
+                        System.Threading.Thread.Sleep(AfterRebootDelayMs);
+                    }
 
                     if (_shouldBlock() || _isConnected())
                         return;
