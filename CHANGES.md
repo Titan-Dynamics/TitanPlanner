@@ -127,7 +127,7 @@ Themed search bar with suggest-only autocomplete; search resets when navigating 
 # Setup & Configuration Pages
 
 ## Betaflight-Style Motor Setup
-**Motor Setup** (upstream's "Motor Test") is a Betaflight-style page in the Mandatory Hardware section, shown only for copter/quadplane vehicles, with live frame and class type images.
+**Motor Setup** (upstream's "Motor Test") is a Betaflight-style page in the Mandatory Hardware section, shown only for copter/quadplane vehicles, with live frame and class type images. The frame diagrams ship with the app, so they show on air-gapped setups, and are refreshed from ardupilot.org when online.
 
 ## Servo Output Tab
 A revamped Servo Output panel with click-or-drag sliders for trim, an "Equidistant" min/max helper, and proper min/max-from-trim handling. The trim slider stays in sync with the combobox.

@@ -67,6 +67,7 @@ See [Linux/README.md](Linux/README.md) for the upstream build (`./Linux/build.sh
 ## Data Sources
 
 - Live ADS-B traffic: [adsb.fi](https://adsb.fi) open data (personal, non-commercial use)
+- Motor frame diagrams: [ArduPilot documentation](https://ardupilot.org/copter/docs/connect-escs-and-motors.html) (CC BY-SA 3.0), shipped in `MotorFrames/`
 
 ## Upstream
 

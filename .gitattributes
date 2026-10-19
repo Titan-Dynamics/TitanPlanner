@@ -1,2 +1,5 @@
 # CI runs these with bash on Windows runners, where autocrlf would otherwise check them out as CRLF
 .github/scripts/*.sh text eol=lf
+
+# Shipped as downloaded from ardupilot.org; the motor page compares them with fresh downloads byte for byte
+MotorFrames/*.svg -text
