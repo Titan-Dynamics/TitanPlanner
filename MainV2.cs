@@ -1154,7 +1154,7 @@ namespace MissionPlanner
 
             if (Program.IconFile != null)
             {
-                this.Icon = Icon.FromHandle(((Bitmap) Program.IconFile).GetHicon());
+                this.Icon = ThemeManager.FormIcon;
             }
 
             var logoImage = ThemeManager.IsDarkTheme

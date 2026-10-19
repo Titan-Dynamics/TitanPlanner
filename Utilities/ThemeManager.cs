@@ -199,6 +199,47 @@ namespace MissionPlanner.Utilities
 
         public static List<String> ThemeNames;
 
+        [DllImport("user32.dll")]
+        private static extern bool DestroyIcon(IntPtr handle);
+
+        private static Image _formIconSource;
+        private static Icon _formIcon;
+
+        /// <summary>
+        /// The window icon made from <see cref="Program.IconFile"/>, created once and shared by every form.
+        /// Bitmap.GetHicon makes a GDI icon handle that Icon.FromHandle does not own, so making one each time a form
+        /// was themed leaked handles; the EKF window, themed ten times a second, ran the process out of GDI handles
+        /// after a few minutes ("A generic error occurred in GDI+", issue #31).
+        /// </summary>
+        public static Icon FormIcon
+        {
+            get
+            {
+                var source = Program.IconFile as Bitmap;
+                if (source == null)
+                    return null;
+
+                if (!ReferenceEquals(source, _formIconSource))
+                {
+                    IntPtr handle = source.GetHicon();
+                    try
+                    {
+                        // The clone owns a copy of the icon, so the handle can be freed straight away.
+                        using (var borrowed = Icon.FromHandle(handle))
+                            _formIcon = (Icon)borrowed.Clone();
+                    }
+                    finally
+                    {
+                        DestroyIcon(handle);
+                    }
+
+                    _formIconSource = source;
+                }
+
+                return _formIcon;
+            }
+        }
+
         #region Windows Dark Mode Title Bar Support
 
         // Windows API for dark mode title bar (Windows 10 build 17763+ / Windows 11)
@@ -473,7 +514,7 @@ namespace MissionPlanner.Utilities
             {
                 ApplyDarkModeToTitleBar(form);
                 if (Program.IconFile != null)
-                    form.Icon = Icon.FromHandle(((Bitmap)Program.IconFile).GetHicon());
+                    form.Icon = FormIcon;
             }
         }
 
@@ -1099,7 +1140,7 @@ mc:Ignorable=""d""
                     ctl.BackColor = BGColor;
                     ctl.ForeColor = TextColor;
                     if (Program.IconFile != null)
-                        ((Form)ctl).Icon = Icon.FromHandle(((Bitmap)Program.IconFile).GetHicon());
+                        ((Form)ctl).Icon = FormIcon;
                 }
                 else if (ctl.GetType() == typeof(RichTextBox))
                 {
@@ -1427,7 +1468,7 @@ mc:Ignorable=""d""
                     ctl.BackColor = BGColor;
                     ctl.ForeColor = TextColor;
                     if (Program.IconFile != null)
-                        ((Form)ctl).Icon = Icon.FromHandle(((Bitmap)Program.IconFile).GetHicon());
+                        ((Form)ctl).Icon = FormIcon;
                 }
                 else if (ctl.GetType() == typeof(RichTextBox))
                 {

@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Drawing;
 using System.Windows.Forms;
 
@@ -6,13 +7,24 @@ namespace MissionPlanner.Controls
 {
     public partial class EKFStatus : Form
     {
+        /// <summary>Each bar's theme colour, put back when its value drops below the warning levels.</summary>
+        private readonly Dictionary<VerticalProgressBar2, Color> _themeColors = new Dictionary<VerticalProgressBar2, Color>();
+
         public EKFStatus()
         {
             InitializeComponent();
 
             Utilities.ThemeManager.ApplyThemeTo(this);
 
+            foreach (var bar in Bars)
+                _themeColors[bar] = bar.ValueColor;
+
             timer1.Start();
+        }
+
+        private VerticalProgressBar2[] Bars
+        {
+            get { return new[] { ekfvel, ekfposh, ekfposv, ekfcompass, ekfterrain }; }
         }
 
         private void tableLayoutPanel1_Paint(object sender, PaintEventArgs e)
@@ -27,11 +39,12 @@ namespace MissionPlanner.Controls
             ekfcompass.Value = (int)(MainV2.comPort.MAV.cs.ekfcompv * 100);
             ekfterrain.Value = (int)(MainV2.comPort.MAV.cs.ekfteralt * 100);
 
-            // restore colours
-            Utilities.ThemeManager.ApplyThemeTo(this);
-
-            foreach (var item in new VerticalProgressBar2[] { ekfvel, ekfposh, ekfposv, ekfcompass, ekfterrain })
+            // Colours are set here rather than by re-theming the whole form every tick, which was slow and, through
+            // the form icon, leaked a GDI handle each time (issue #31).
+            foreach (var item in Bars)
             {
+                item.ValueColor = _themeColors[item];
+
                 if (item.Value > 50)
                     item.ValueColor = Color.Orange;
 
@@ -48,7 +61,10 @@ namespace MissionPlanner.Controls
 
                 if (flowLayoutPanel1.Controls.Count <= idx)
                 {
-                    flowLayoutPanel1.Controls.Add(new Label() { Height = 13, Width = flowLayoutPanel1.Width });
+                    // themed once as it is added, as the per-tick re-theme used to
+                    var label = new Label() { Height = 13, Width = flowLayoutPanel1.Width };
+                    flowLayoutPanel1.Controls.Add(label);
+                    Utilities.ThemeManager.ApplyThemeTo(label);
                 }
 
                 flowLayoutPanel1.Controls[idx].Text = currentflag.ToString().Replace("EKF_", "").ToLower() + " " +
