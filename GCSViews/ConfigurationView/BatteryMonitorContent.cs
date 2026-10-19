@@ -342,10 +342,41 @@ namespace MissionPlanner.GCSViews.ConfigurationView
             e.Cancel = !float.TryParse(TXT_measuredvoltage.Text, out _);
         }
 
+        private bool HasParam(string name)
+        {
+            return MainV2.comPort.MAV.param.ContainsKey(name) && MainV2.comPort.MAV.param[name] != null;
+        }
+
+        /// <summary>
+        /// Only analog monitors scale their voltage with VOLT_MULT (VOLT_DIVIDER on old firmware). DroneCAN-BatteryInfo,
+        /// SMBus and other digital monitors send the voltage they measure and have no such parameter, so calibrating
+        /// them failed on the empty multiplier with "Invalid number entered" (issue #27).
+        /// </summary>
+        private bool HasVoltageMultiplier()
+        {
+            return HasParam(P("VOLT_MULT")) || (_prefix == "BATT" && HasParam("VOLT_DIVIDER"));
+        }
+
+        /// <summary>Analog current sensing: AMP_PERVLT (AMP_PERVOL for BATT2, AMP_PER_VOLT on old firmware).</summary>
+        private bool HasAmpsPerVolt()
+        {
+            return HasParam(P("AMP_PERVLT")) || HasParam(_prefix == "BATT2" ? P("AMP_PERVOL") : P("AMP_PERVOLT")) ||
+                   (_prefix == "BATT" && HasParam("AMP_PER_VOLT"));
+        }
+
         private void TXT_measuredvoltage_Validated(object sender, EventArgs e)
         {
             if (startup || ((TextBox)sender).Enabled == false)
                 return;
+
+            if (!HasVoltageMultiplier())
+            {
+                CustomMessageBox.Show("This battery monitor type has no voltage multiplier (" + P("VOLT_MULT") +
+                                      "), so its voltage can't be calibrated here. DroneCAN and other digital monitors " +
+                                      "send the voltage they measure; calibrate the monitor itself.", "Battery Monitor");
+                return;
+            }
+
             try
             {
                 var measuredvoltage = float.Parse(TXT_measuredvoltage.Text);
@@ -690,6 +721,21 @@ namespace MissionPlanner.GCSViews.ConfigurationView
         {
             if (startup || ((TextBox)sender).Enabled == false)
                 return;
+
+            if (!HasAmpsPerVolt())
+            {
+                // DroneCAN monitors can scale the current they report with CURR_MULT, when the firmware has it.
+                if (HasParam(P("CURR_MULT")))
+                {
+                    CalibrateCurrentMultiplier();
+                    return;
+                }
+
+                CustomMessageBox.Show("This battery monitor type has no amps-per-volt setting, so its current can't " +
+                                      "be calibrated here. Calibrate the monitor itself.", "Battery Monitor");
+                return;
+            }
+
             try
             {
                 var measuredcurrent = float.Parse(txt_meascurrent.Text);
@@ -716,6 +762,34 @@ namespace MissionPlanner.GCSViews.ConfigurationView
             catch
             {
                 CustomMessageBox.Show("Set " + (_prefix == "BATT" ? P("AMP_PERVOLT") : P("AMP_PERVOL")) + " Failed", Strings.ERROR);
+            }
+        }
+
+        /// <summary>
+        /// Scales CURR_MULT so the reported current matches the measured one. The reported current already includes
+        /// the current multiplier, so the new one is the old one times measured / reported.
+        /// </summary>
+        private void CalibrateCurrentMultiplier()
+        {
+            float measured, reported;
+            if (!float.TryParse(txt_meascurrent.Text, out measured) || !float.TryParse(txt_current.Text, out reported))
+            {
+                CustomMessageBox.Show(Strings.InvalidNumberEntered, Strings.ERROR);
+                return;
+            }
+
+            if (reported == 0)
+                return;
+
+            var name = P("CURR_MULT");
+            var multiplier = MainV2.comPort.MAV.param[name].Value * measured / reported;
+            try
+            {
+                MainV2.comPort.setParam(new[] { name }, multiplier);
+            }
+            catch
+            {
+                CustomMessageBox.Show("Set " + name + " Failed", Strings.ERROR);
             }
         }
     }
