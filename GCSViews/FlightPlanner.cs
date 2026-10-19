@@ -1699,7 +1699,42 @@ namespace MissionPlanner.GCSViews
             writeKML();
         }
 
-        internal static void addpolygonmarker(Control src, string tag, double lng, double lat, int alt, Color? color, GMapOverlay overlay)
+        /// <summary>
+        /// The vehicle's loiter radius in metres, from the same parameters the loiter radius box is filled from
+        /// (LOITER_RADIUS, WP_LOITER_RAD, LOITER_RAD), else that box's saved value. The sign only sets the
+        /// loiter direction, so it is dropped.
+        /// </summary>
+        internal static double? LoiterRadiusMeters()
+        {
+            try
+            {
+                var param = MainV2.comPort?.MAV?.param;
+                if (param != null)
+                {
+                    foreach (var name in new[] { "LOITER_RADIUS", "WP_LOITER_RAD", "LOITER_RAD" })
+                    {
+                        if (!param.ContainsKey(name))
+                            continue;
+                        double radius = Math.Abs((double) param[name]);
+                        if (radius > 0)
+                            return radius;
+                    }
+                }
+
+                double saved;
+                if (double.TryParse(Settings.Instance["TXT_loiterrad"], out saved) && saved != 0)
+                    return Math.Abs(saved) / CurrentState.multiplierdist;
+            }
+            catch
+            {
+            }
+
+            return null;
+        }
+
+        /// <param name="radius">Circle radius in metres; defaults to the waypoint radius.</param>
+        internal static void addpolygonmarker(Control src, string tag, double lng, double lat, int alt, Color? color,
+            GMapOverlay overlay, double? radius = null)
         {
             try
             {
@@ -1719,7 +1754,7 @@ namespace MissionPlanner.GCSViews
 
                     try
                     {
-                        mBorders.wprad =
+                        mBorders.wprad = radius ??
                             (Settings.Instance.GetFloat("TXT_WPRad") / CurrentState.multiplierdist);
                     }
                     catch
@@ -1744,7 +1779,7 @@ namespace MissionPlanner.GCSViews
                         mBorders.InnerMarker = m;
                         try
                         {
-                            mBorders.wprad =
+                            mBorders.wprad = radius ??
                                 (Settings.Instance.GetFloat("TXT_WPRad") / CurrentState.multiplierdist);
                         }
                         catch
@@ -1760,6 +1795,9 @@ namespace MissionPlanner.GCSViews
                     if (src.IsHandleCreated)
                         src.BeginInvoke((Action) delegate
                         {
+                            // Another call may have added it while this one was queued.
+                            if (overlay.Markers.Any(a => Equals(a.Tag, tag)))
+                                return;
                             overlay.Markers.Add(m);
                             overlay.Markers.Add(mBorders);
                         });
@@ -1767,6 +1805,50 @@ namespace MissionPlanner.GCSViews
             }
             catch (Exception)
             {
+            }
+        }
+
+        internal const string GuidedModeTag = "Guided Mode";
+
+        /// <summary>The guided target marker or its loiter circle.</summary>
+        internal static bool IsGuidedMarker(GMapMarker marker)
+        {
+            return Equals(marker.Tag, GuidedModeTag) ||
+                   Equals((marker as GMapMarkerRect)?.InnerMarker?.Tag, GuidedModeTag);
+        }
+
+        /// <summary>
+        /// Clears an overlay's markers except the guided target. The maps clear their marker overlays
+        /// periodically to drop stale markers; re-adding the guided target afterwards made it flash, so it is
+        /// kept and <see cref="UpdateGuidedMarker"/> removes it when guided mode ends. Call on the UI thread.
+        /// </summary>
+        internal static void ClearMarkersExceptGuided(GMapOverlay overlay)
+        {
+            var keep = overlay.Markers.Where(IsGuidedMarker).ToList();
+            overlay.Markers.Clear();
+            foreach (var marker in keep)
+                overlay.Markers.Add(marker);
+        }
+
+        /// <summary>
+        /// Shows the guided target, circled at the vehicle's loiter radius, while in guided mode; removes it
+        /// otherwise.
+        /// </summary>
+        internal static void UpdateGuidedMarker(Control src, GMapOverlay overlay)
+        {
+            var mav = MainV2.comPort.MAV;
+            if (mav.cs.mode.ToLower() == "guided" && mav.GuidedMode.x != 0)
+            {
+                addpolygonmarker(src, GuidedModeTag, mav.GuidedMode.y / 1e7, mav.GuidedMode.x / 1e7,
+                    (int) mav.GuidedMode.z, Color.Blue, overlay, LoiterRadiusMeters());
+            }
+            else if (src.IsHandleCreated && overlay.Markers.Any(IsGuidedMarker))
+            {
+                src.BeginInvoke((Action) delegate
+                {
+                    foreach (var marker in overlay.Markers.Where(IsGuidedMarker).ToList())
+                        overlay.Markers.Remove(marker);
+                });
             }
         }
 
@@ -7022,7 +7104,7 @@ Column 1: Field type (RALLY is the only one at the moment -- may have RALLY_LAND
 
                 // clear every 10 seconds
                 if(DateTime.Now.Second % 10 == 0)
-                    routesoverlay.Markers.Clear();
+                    ClearMarkersExceptGuided(routesoverlay);
 
                 if (MainV2.comPort.MAV.cs.TrackerLocation != MainV2.comPort.MAV.cs.HomeLocation &&
                     MainV2.comPort.MAV.cs.TrackerLocation.Lng != 0)
@@ -7040,12 +7122,7 @@ Column 1: Field type (RALLY is the only one at the moment -- may have RALLY_LAND
                 if(marker != null)
                     routesoverlay.Markers.Add(marker);
 
-                if (MainV2.comPort.MAV.cs.mode.ToLower() == "guided" && MainV2.comPort.MAV.GuidedMode.x != 0)
-                {
-                    addpolygonmarker(this, "Guided Mode", MainV2.comPort.MAV.GuidedMode.y / 1e7,
-                        MainV2.comPort.MAV.GuidedMode.x / 1e7,
-                        (int) MainV2.comPort.MAV.GuidedMode.z, Color.Blue, routesoverlay);
-                }
+                UpdateGuidedMarker(this, routesoverlay);
             }
             catch (Exception ex)
             {

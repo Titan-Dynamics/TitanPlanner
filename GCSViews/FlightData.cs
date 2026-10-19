@@ -5273,14 +5273,7 @@ namespace MissionPlanner.GCSViews
                             // add primary route icon
 
                             // draw guide mode point for only main mav
-                            if (MainV2.comPort.MAV.cs.mode.ToLower() == "guided" &&
-                                MainV2.comPort.MAV.GuidedMode.x != 0)
-                            {
-                                FlightPlanner.addpolygonmarker(this, "Guided Mode", MainV2.comPort.MAV.GuidedMode.y / 1e7,
-                                    MainV2.comPort.MAV.GuidedMode.x / 1e7, (int) MainV2.comPort.MAV.GuidedMode.z,
-                                    Color.Blue,
-                                    routes);
-                            }
+                            FlightPlanner.UpdateGuidedMarker(this, routes);
 
                             // draw all icons for all connected mavs
                             foreach (var port in MainV2.Comports.ToArray())
@@ -7139,7 +7132,7 @@ namespace MissionPlanner.GCSViews
             {
                 polygons.Routes.Clear();
                 polygons.Markers.Clear();
-                routes.Markers.Clear();
+                FlightPlanner.ClearMarkersExceptGuided(routes);
             });
         }
 
