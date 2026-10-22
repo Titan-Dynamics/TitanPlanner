@@ -97,7 +97,7 @@ Replaced the dated FlightData tab bar with a modern themed strip and refreshed i
 ## New / Re-purposed Tabs
 - **Params tab** in FlightData and a Params panel co-located on the map
 - **Tuning tab** in FlightData (vehicle-aware: plane/copter/rover)
-- **Video tab** with USB camera and GStreamer support, plus immediate HUD-overlay toggle
+- **Video tab** with USB camera and GStreamer support, an RTSP field that prefills a low-latency GStreamer pipeline, plus immediate HUD-overlay toggle
 - **Inspector tab** (MAVLink Inspector exposed without `Ctrl+F`)
 - **Logs tab** unifying former Dataflash and Telemetry tabs
 - Working **Status tab** in FlightData

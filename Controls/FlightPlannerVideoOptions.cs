@@ -15,16 +15,22 @@ namespace MissionPlanner.Controls
         private Label labelVideoFormat;
         private Label labelOsdColor;
         private Label labelGStreamer;
+        private Label labelRtsp;
         private ComboBox cmbVideoSources;
         private ComboBox cmbVideoResolutions;
         private ComboBox cmbOsdColor;
         private TextBox txtGStreamerSource;
+        private TextBox txtRtspUrl;
         private MyButton btnGStreamerStart;
         private MyButton btnGStreamerStop;
+        private MyButton btnRtspPrefill;
         private MyButton btnVideoStart;
         private MyButton btnVideoStop;
         private CheckBox chkHudShow;
         private bool startup = true;
+
+        private const string RtspPipeline =
+            "rtspsrc location={0} udp-reconnect=1 timeout=0 do-retransmission=false ! application/x-rtp ! decodebin3 ! queue max-size-buffers=1 leaky=2 ! videoconvert ! video/x-raw,format=BGRA ! appsink name=outsink sync=false";
 
         public FlightPlannerVideoOptions()
         {
@@ -40,6 +46,7 @@ namespace MissionPlanner.Controls
             this.chkHudShow.CheckedChanged += ChkHudShow_CheckedChanged;
             this.btnGStreamerStart.Click += BtnGStreamerStart_Click;
             this.btnGStreamerStop.Click += BtnGStreamerStop_Click;
+            this.btnRtspPrefill.Click += BtnRtspPrefill_Click;
             this.VisibleChanged += FlightPlannerVideoOptions_VisibleChanged;
         }
 
@@ -58,12 +65,15 @@ namespace MissionPlanner.Controls
             this.labelVideoFormat = new System.Windows.Forms.Label();
             this.labelOsdColor = new System.Windows.Forms.Label();
             this.labelGStreamer = new System.Windows.Forms.Label();
+            this.labelRtsp = new System.Windows.Forms.Label();
             this.cmbVideoSources = new System.Windows.Forms.ComboBox();
             this.cmbVideoResolutions = new System.Windows.Forms.ComboBox();
             this.cmbOsdColor = new System.Windows.Forms.ComboBox();
             this.txtGStreamerSource = new System.Windows.Forms.TextBox();
+            this.txtRtspUrl = new System.Windows.Forms.TextBox();
             this.btnGStreamerStart = new MissionPlanner.Controls.MyButton();
             this.btnGStreamerStop = new MissionPlanner.Controls.MyButton();
+            this.btnRtspPrefill = new MissionPlanner.Controls.MyButton();
             this.btnVideoStart = new MissionPlanner.Controls.MyButton();
             this.btnVideoStop = new MissionPlanner.Controls.MyButton();
             this.chkHudShow = new System.Windows.Forms.CheckBox();
@@ -104,7 +114,16 @@ namespace MissionPlanner.Controls
             this.labelGStreamer.Size = new System.Drawing.Size(72, 16);
             this.labelGStreamer.TabIndex = 9;
             this.labelGStreamer.Text = "GStreamer";
-            // 
+            //
+            // labelRtsp
+            //
+            this.labelRtsp.AutoSize = true;
+            this.labelRtsp.Location = new System.Drawing.Point(10, 193);
+            this.labelRtsp.Name = "labelRtsp";
+            this.labelRtsp.Size = new System.Drawing.Size(40, 16);
+            this.labelRtsp.TabIndex = 13;
+            this.labelRtsp.Text = "RTSP";
+            //
             // cmbVideoSources
             // 
             this.cmbVideoSources.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
@@ -148,7 +167,28 @@ namespace MissionPlanner.Controls
             this.txtGStreamerSource.Name = "txtGStreamerSource";
             this.txtGStreamerSource.Size = new System.Drawing.Size(514, 40);
             this.txtGStreamerSource.TabIndex = 10;
-            // 
+            //
+            // txtRtspUrl
+            //
+            this.txtRtspUrl.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left)
+            | System.Windows.Forms.AnchorStyles.Right)));
+            this.txtRtspUrl.AutoSize = false;
+            this.txtRtspUrl.Location = new System.Drawing.Point(120, 190);
+            this.txtRtspUrl.Name = "txtRtspUrl";
+            this.txtRtspUrl.Size = new System.Drawing.Size(514, 23);
+            this.txtRtspUrl.TabIndex = 14;
+            //
+            // btnRtspPrefill
+            //
+            this.btnRtspPrefill.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
+            this.btnRtspPrefill.Location = new System.Drawing.Point(640, 190);
+            this.btnRtspPrefill.Name = "btnRtspPrefill";
+            this.btnRtspPrefill.Size = new System.Drawing.Size(109, 23);
+            this.btnRtspPrefill.TabIndex = 15;
+            this.btnRtspPrefill.Text = "Prefill";
+            this.btnRtspPrefill.TextColorNotEnabled = System.Drawing.Color.FromArgb(((int)(((byte)(64)))), ((int)(((byte)(87)))), ((int)(((byte)(4)))));
+            this.btnRtspPrefill.UseVisualStyleBackColor = true;
+            //
             // btnGStreamerStart
             // 
             this.btnGStreamerStart.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
@@ -221,8 +261,11 @@ namespace MissionPlanner.Controls
             this.Controls.Add(this.txtGStreamerSource);
             this.Controls.Add(this.btnGStreamerStart);
             this.Controls.Add(this.btnGStreamerStop);
+            this.Controls.Add(this.labelRtsp);
+            this.Controls.Add(this.txtRtspUrl);
+            this.Controls.Add(this.btnRtspPrefill);
             this.Name = "FlightPlannerVideoOptions";
-            this.Size = new System.Drawing.Size(760, 200);
+            this.Size = new System.Drawing.Size(760, 225);
             this.ResumeLayout(false);
             this.PerformLayout();
 
@@ -258,6 +301,8 @@ namespace MissionPlanner.Controls
             txtGStreamerSource.Text = Settings.Instance["gstreamer_url"] != null
                 ? Settings.Instance["gstreamer_url"]
                 : @"videotestsrc ! video/x-raw, width=1280, height=720, framerate=30/1 ! videoconvert ! video/x-raw,format=BGRA ! appsink name=outsink";
+
+            txtRtspUrl.Text = Settings.Instance["rtsp_url"] ?? "";
 
             // Setup video start/stop button states
             if (MainV2.cam != null)
@@ -489,6 +534,16 @@ namespace MissionPlanner.Controls
         {
             GCSViews.FlightData.StopHudGStreamer();
             btnGStreamerStart.Enabled = true;
+        }
+
+        private void BtnRtspPrefill_Click(object sender, EventArgs e)
+        {
+            var url = txtRtspUrl.Text.Trim();
+            if (url == "")
+                return;
+
+            Settings.Instance["rtsp_url"] = url;
+            txtGStreamerSource.Text = string.Format(RtspPipeline, url);
         }
 
         private void CmbOsdColor_SelectedIndexChanged(object sender, EventArgs e)
