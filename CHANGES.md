@@ -65,6 +65,7 @@ Terrain streams Google Earth style:
 
 ## Camera & Visual Effects
 - **FPV mode** with smooth camera movement and pitch-matched heading lines
+- **HUD overlay** setting: the DATA tab's HUD, with its items and plugin drawings, over the 3D view without its sky and ground
 - **Orbital camera** mode
 - **Distance haze** that fades terrain into the sky's horizon colour before the edge of the loaded terrain, at every altitude
 - **Sky gradient** that follows the true horizon through pitch and roll

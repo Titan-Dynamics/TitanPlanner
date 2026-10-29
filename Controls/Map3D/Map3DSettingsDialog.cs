@@ -129,6 +129,8 @@ namespace MissionPlanner.Controls
                 numDist.Enabled = !settings.FpvMode;
                 numHeight.Enabled = !settings.FpvMode;
                 addCheckbox(chkFpv);
+                var chkHud = new CheckBox { Text = "HUD overlay", Checked = settings.HudOverlay };
+                addCheckbox(chkHud);
                 var chkStats = new CheckBox { Text = "Stats for nerds", Checked = settings.StatsForNerds };
                 addCheckbox(chkStats);
 
@@ -163,6 +165,7 @@ namespace MissionPlanner.Controls
                     chkTurnRadius.Checked = defaults.ShowTurnRadius;
                     chkTrail.Checked = defaults.ShowTrail;
                     chkFpv.Checked = defaults.FpvMode;
+                    chkHud.Checked = defaults.HudOverlay;
                     chkStats.Checked = defaults.StatsForNerds;
                     settings.CameraAngle = 0.0;
                     dialog.Close();
@@ -192,6 +195,7 @@ namespace MissionPlanner.Controls
                     settings.ShowTurnRadius = chkTurnRadius.Checked;
                     settings.ShowTrail = chkTrail.Checked;
                     settings.FpvMode = chkFpv.Checked;
+                    settings.HudOverlay = chkHud.Checked;
                     settings.StatsForNerds = chkStats.Checked;
                     settings.Save();
                 };

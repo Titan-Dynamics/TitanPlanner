@@ -253,6 +253,61 @@ namespace MissionPlanner.Controls
         /// </summary>
         public event Action<HUD> OnCustomPaint;
 
+        // set on an overlay (CreateOverlay): the on-screen HUD it copies
+        private HUD _overlaySource;
+
+        // What an overlay copies from its source each render: the values and the display options. Not how or
+        // onto what it draws (opengl, VSync), its background (bgon, bgimage) or the MJPEG stream.
+        private static readonly System.Reflection.PropertyInfo[] _overlayCopied = typeof(HUD)
+            .GetProperties(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance |
+                           System.Reflection.BindingFlags.DeclaredOnly)
+            .Where(p => p.CanRead && p.GetSetMethod() != null && p.GetIndexParameters().Length == 0 &&
+                        !new[] { nameof(opengl), nameof(VSync), nameof(bgon), nameof(bgimage), nameof(streamjpg) }
+                            .Contains(p.Name))
+            .ToArray();
+
+        /// <summary>
+        /// An off-screen HUD that draws the same HUD as <paramref name="source"/>, with its values, display options,
+        /// custom items and plugin painters, but no sky or ground, for drawing over another view such as the 3D map.
+        /// </summary>
+        public static HUD CreateOverlay(HUD source)
+        {
+            return new HUD { opengl = false, _overlaySource = source };
+        }
+
+        /// <summary>
+        /// Draws an overlay (CreateOverlay) at the given size and returns the picture: the HUD on a transparent
+        /// background. The bitmap belongs to the HUD and is redrawn by the next call. Call on the UI thread.
+        /// </summary>
+        public Bitmap RenderOverlay(int width, int height)
+        {
+            if (_overlaySource != null)
+            {
+                foreach (var property in _overlayCopied)
+                {
+                    try
+                    {
+                        // only changes: some setters do work (hudcolor makes a new pen)
+                        var value = property.GetValue(_overlaySource);
+                        if (!Equals(property.GetValue(this), value))
+                            property.SetValue(this, value);
+                    }
+                    catch (Exception ex)
+                    {
+                        log.Debug("HUD overlay copy " + property.Name, ex);
+                    }
+                }
+
+                CustomItems = _overlaySource.CustomItems;
+            }
+
+            if (Width != width || Height != height)
+                Size = new Size(width, height);
+
+            doPaint();
+            return objBitmap;
+        }
+
         static HUD()
         {
             log.Info("Static HUD ctor");
@@ -2111,7 +2166,8 @@ namespace MissionPlanner.Controls
                 }
                 else
                 {
-                    bgon = true;
+                    // an overlay has no sky or ground: the view it is drawn over shows through
+                    bgon = _overlaySource == null;
                 }
 
                 // localize it
@@ -3450,7 +3506,8 @@ namespace MissionPlanner.Controls
                 }
                 drawstring(_mode, font, fontsize, _whiteBrush, mode_x, graphicsObject.Height - (fontsize * 1.5f), true);
 
-                OnCustomPaint?.Invoke(this);
+                // plugins subscribe to the on-screen HUD; an overlay runs the same painters on itself
+                (_overlaySource ?? this).OnCustomPaint?.Invoke(this);
 
                 if (DesignMode)
                 {

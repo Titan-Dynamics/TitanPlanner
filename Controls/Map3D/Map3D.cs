@@ -50,6 +50,7 @@ namespace MissionPlanner.Controls
         private MissionOverlay _mission;
         private VehicleOverlay _vehicleOverlay;
         private NerdStatsOverlay _nerdStats;
+        private HudOverlay _hudOverlay;
         private bool _glFailed;
 
         // Set as soon as disposal starts: a paint arriving afterwards must not rebuild the renderers.
@@ -365,6 +366,7 @@ namespace MissionPlanner.Controls
                 _mission = new MissionOverlay();
                 _vehicleOverlay = new VehicleOverlay(_stlLoader);
                 _nerdStats = new NerdStatsOverlay();
+                _hudOverlay = new HudOverlay();
 
                 try
                 {
@@ -485,6 +487,10 @@ namespace MissionPlanner.Controls
                     _vehicleOverlay.DrawModel(_vehicle, _settings.VehicleScale, _settings.VehicleColor,
                         ref overlayProjection, ref _view);
             }
+
+            // under the stats panel, which stays readable over it
+            if (_settings.HudOverlay)
+                _hudOverlay.Draw(GCSViews.FlightData.myhud, Width, Height);
 
             if (_settings.StatsForNerds)
             {
@@ -659,6 +665,7 @@ namespace MissionPlanner.Controls
                 _mission.Dispose();
                 _vehicleOverlay.Dispose();
                 _nerdStats.Dispose();
+                _hudOverlay.Dispose();
                 _settingsButton.Dispose();
             }
             catch (Exception ex)

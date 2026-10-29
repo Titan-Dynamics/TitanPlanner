@@ -31,6 +31,9 @@ namespace MissionPlanner.Controls
 
         /// <summary>The top-right diagnostics panel: frame timing graph, terrain streaming, view and GPU.</summary>
         public bool StatsForNerds;
+
+        /// <summary>The DATA tab's HUD drawn over the 3D view, without its sky and ground.</summary>
+        public bool HudOverlay;
         public double WaypointMarkerSize = 60;
         public double AdsbCircleSize = 500;
 
@@ -52,6 +55,7 @@ namespace MissionPlanner.Controls
                 ShowTrail = s.GetBoolean("map3d_show_trail", false),
                 FpvMode = s.GetBoolean("map3d_fpv_mode", false),
                 StatsForNerds = s.GetBoolean("map3d_stats_for_nerds", false),
+                HudOverlay = s.GetBoolean("map3d_hud_overlay", false),
                 WaypointMarkerSize = s.GetDouble("map3d_waypoint_marker_size", 60),
                 AdsbCircleSize = s.GetDouble("map3d_adsb_size", 500)
             };
@@ -85,6 +89,7 @@ namespace MissionPlanner.Controls
             s["map3d_show_trail"] = ShowTrail.ToString();
             s["map3d_fpv_mode"] = FpvMode.ToString();
             s["map3d_stats_for_nerds"] = StatsForNerds.ToString();
+            s["map3d_hud_overlay"] = HudOverlay.ToString();
             SaveCamera();
         }
 
