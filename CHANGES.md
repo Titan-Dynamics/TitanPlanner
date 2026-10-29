@@ -259,6 +259,7 @@ Built for air-gapped use. Opened from the **Offline Maps** button next to Find L
 
 - `SuspendLayout`/`ResumeLayout` and async loading on heavy tabs (Tuning, Params, Dashboard) to eliminate UI stalls
 - Faster, smoother docking/undocking of flight modes panel
+- The DATA map only keeps the no-fly zones near the view, so zooming and panning stay fast with the worldwide zone files loaded
 - Increased debouncing on 2D→3D map sync
 - Robust GStreamer start/stop handling
 - Resilient QuickView state under churn

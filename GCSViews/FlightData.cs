@@ -4178,6 +4178,8 @@ namespace MissionPlanner.GCSViews
             }
 
             center.Position = gMapControl1.Position;
+
+            UpdateOverlayVisibility();
         }
 
         void gMapControl1_OnMarkerEnter(GMapMarker item)
@@ -5701,6 +5703,8 @@ namespace MissionPlanner.GCSViews
             BeginInvoke((Action) delegate
             {
                 gMapControl1.Overlays.Add(e.NoFlyZones);
+                _noFlyOverlay = e.NoFlyZones;
+                UpdateOverlayVisibility();
             });
         }
 
@@ -7388,7 +7392,42 @@ namespace MissionPlanner.GCSViews
                     else
                         poly.IsVisible = false;
                 }
+
+                if (_noFlyOverlay != null)
+                {
+                    // a view's size of margin on each side covers zooming out within a level and panning between passes
+                    var near = gMapControl1.ViewArea;
+                    near.Inflate(near.HeightLat, near.WidthLng);
+                    // a pixel of the view, so shapes too small to see are left out
+                    double pixelLng = gMapControl1.ViewArea.WidthLng / Math.Max(1, gMapControl1.Width);
+                    double pixelLat = gMapControl1.ViewArea.HeightLat / Math.Max(1, gMapControl1.Height);
+
+                    foreach (var poly in _noFlyOverlay.Polygons.ToArray())
+                        poly.IsVisible = NoFlyShapeShown(poly, near, pixelLng, pixelLat);
+                    foreach (var route in _noFlyOverlay.Routes.ToArray())
+                        route.IsVisible = NoFlyShapeShown(route, near, pixelLng, pixelLat);
+                }
             }
+        }
+
+        // The no-fly zones load as one overlay of shapes from around the world, and the map re-projects every visible
+        // shape on each zoom change (hundreds of thousands of points), so only the shapes near the view are shown.
+        private GMapOverlay _noFlyOverlay;
+        private readonly Dictionary<MapRoute, RectLatLng> _noFlyBounds = new Dictionary<MapRoute, RectLatLng>();
+
+        private bool NoFlyShapeShown(MapRoute shape, RectLatLng near, double pixelLng, double pixelLat)
+        {
+            if (!_noFlyBounds.TryGetValue(shape, out var bounds))
+            {
+                if (shape.Points.Count == 0)
+                    return false;
+
+                bounds = RectLatLng.FromLTRB(shape.Points.Min(a => a.Lng), shape.Points.Max(a => a.Lat),
+                    shape.Points.Max(a => a.Lng), shape.Points.Min(a => a.Lat));
+                _noFlyBounds[shape] = bounds;
+            }
+
+            return bounds.IntersectsWith(near) && (bounds.WidthLng >= pixelLng || bounds.HeightLat >= pixelLat);
         }
 
         private void updatePlayPauseButton(bool playing)

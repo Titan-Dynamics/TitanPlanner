@@ -165,5 +165,7 @@ the git log has those. `ChangeLog.txt` is upstream's and is not maintained here.
   and `GMapControl.Invalidate` is throttled to about 9 fps. The DATA map pans with `Core.DragOffset` plus
   `((Control)map).Invalidate()` (dragging and the autopan timer in `FlightData`). Zoom from user input goes
   through `myGMAP.AnimateZoom` / `SetZoom`, and zoom controls sync to `ZoomTarget`, not `Zoom`, so the
-  write-back doesn't cut the animation short.
+  write-back doesn't cut the animation short. Hidden shapes are skipped by that re-projection, which is why
+  `FlightData.UpdateOverlayVisibility` hides the no-fly shapes (`NoFly/*.kmz`, ~200k points worldwide) away
+  from the view.
 - **Commits.** Messages carry no AI attribution trailers. Do not commit or push unless asked.
