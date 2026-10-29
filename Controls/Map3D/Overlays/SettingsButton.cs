@@ -87,12 +87,7 @@ namespace MissionPlanner.Controls.Scene3D
                     g.SmoothingMode = SmoothingMode.AntiAlias;
 
                     var disc = new RectangleF(1, 1, TextureSize - 2, TextureSize - 2);
-                    using (var fill = new SolidBrush(hover ? Color.FromArgb(205, 18, 20, 24) : Color.FromArgb(140, 18, 20, 24)))
-                        g.FillEllipse(fill, disc);
-                    using (var ring = new Pen(hover ? Color.FromArgb(210, accent) : Color.FromArgb(55, 255, 255, 255), 2f))
-                        g.DrawEllipse(ring, disc);
-
-                    var gearColor = hover ? accent : Color.FromArgb(225, 236, 240, 245);
+                    var gearColor = MapButton.DrawDisc(g, disc, hover, accent, 2f);
                     using (var gear = Gear(TextureSize / 2f, TextureSize / 2f, TextureSize * 0.30f, TextureSize * 0.235f,
                         TextureSize * 0.10f, 8))
                     using (var brush = new SolidBrush(gearColor))

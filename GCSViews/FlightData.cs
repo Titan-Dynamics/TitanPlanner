@@ -178,6 +178,8 @@ namespace MissionPlanner.GCSViews
         // Map scale bar and zoom buttons
         private Controls.MapScaleBar _mapScaleBar;
         private bool _zoomInHover;
+        // the (i) in the map's bottom-right corner that shows the legend of the vehicle's lines
+        private readonly Controls.MapLegendButton _legendButton = new Controls.MapLegendButton();
         private bool _zoomOutHover;
 
         private static readonly ILog log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
@@ -796,9 +798,10 @@ namespace MissionPlanner.GCSViews
             gMapControl1.DoubleClick += (s, e) =>
             {
                 var me = e as MouseEventArgs;
-                if (me != null && (GetZoomInRect().Contains(me.Location) || GetZoomOutRect().Contains(me.Location)))
+                if (me != null && (GetZoomInRect().Contains(me.Location) || GetZoomOutRect().Contains(me.Location) ||
+                                   _legendButton.HitTest(LegendArea(), me.Location)))
                 {
-                    return; // Don't fly-to-here when double-clicking zoom buttons
+                    return; // Don't fly-to-here when double-clicking the map's buttons
                 }
                 if (_doubleClickFlyToHereEnabled)
                 {
@@ -832,8 +835,12 @@ namespace MissionPlanner.GCSViews
                     gMapControl1.Invalidate();
                 }
 
+                bool legendHover = _legendButton.HitTest(LegendArea(), e.Location);
+                if (_legendButton.SetHovered(legendHover))
+                    gMapControl1.Invalidate();
+
                 // Change cursor when over buttons
-                gMapControl1.Cursor = (newZoomInHover || newZoomOutHover) ? Cursors.Hand : Cursors.Default;
+                gMapControl1.Cursor = (newZoomInHover || newZoomOutHover || legendHover) ? Cursors.Hand : Cursors.Default;
             };
 
             gMapControl1.MouseLeave += (s, e) =>
@@ -844,6 +851,9 @@ namespace MissionPlanner.GCSViews
                     _zoomOutHover = false;
                     gMapControl1.Invalidate();
                 }
+
+                if (_legendButton.SetHovered(false))
+                    gMapControl1.Invalidate();
             };
 
             gMapControl1.MouseClick += (s, e) =>
@@ -865,6 +875,11 @@ namespace MissionPlanner.GCSViews
                         TRK_zoom.Value = (float)gMapControl1.Zoom;
                         Zoomlevel.Value = Convert.ToDecimal(gMapControl1.Zoom);
                     }
+                }
+                else if (e.Button == MouseButtons.Left && _legendButton.HitTest(LegendArea(), e.Location))
+                {
+                    _legendButton.Toggle();
+                    gMapControl1.Invalidate();
                 }
             };
 
@@ -5519,6 +5534,19 @@ namespace MissionPlanner.GCSViews
             distanceBar1.DoPaintRemote(e);
             _mapScaleBar?.DoPaintRemote(e, gMapControl1);
             DrawZoomButtons(e);
+            _legendButton.Draw(e.Graphics, LegendArea());
+        }
+
+        /// <summary>
+        /// The part of the map the legend button takes its corner from: left of the zoom slider, which sits on
+        /// top of the map down its right edge.
+        /// </summary>
+        private Size LegendArea()
+        {
+            int right = gMapControl1.Width;
+            if (TRK_zoom.Visible && TRK_zoom.Parent != null)
+                right = Math.Min(right, gMapControl1.PointToClient(TRK_zoom.Parent.PointToScreen(TRK_zoom.Location)).X);
+            return new Size(right, gMapControl1.Height);
         }
 
         private Rectangle GetZoomInRect()

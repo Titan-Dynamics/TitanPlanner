@@ -230,10 +230,6 @@ namespace MissionPlanner.GCSViews
             this.TRK_zoom = new MissionPlanner.Controls.MyTrackBar();
             this.windDir1 = new MissionPlanner.Controls.WindDir();
             this.bindingSource1 = new System.Windows.Forms.BindingSource(this.components);
-            this.label6 = new System.Windows.Forms.Label();
-            this.label5 = new System.Windows.Forms.Label();
-            this.label3 = new System.Windows.Forms.Label();
-            this.label4 = new System.Windows.Forms.Label();
             this.lbl_hdop = new MissionPlanner.Controls.MyLabel();
             this.lbl_sats = new MissionPlanner.Controls.MyLabel();
             this.gMapControl1 = new MissionPlanner.Controls.myGMAP();
@@ -2582,10 +2578,6 @@ namespace MissionPlanner.GCSViews
             this.splitContainer1.Panel2.Controls.Add(this.distanceBar1);
             this.splitContainer1.Panel2.Controls.Add(this.TRK_zoom);
             this.splitContainer1.Panel2.Controls.Add(this.windDir1);
-            this.splitContainer1.Panel2.Controls.Add(this.label6);
-            this.splitContainer1.Panel2.Controls.Add(this.label5);
-            this.splitContainer1.Panel2.Controls.Add(this.label3);
-            this.splitContainer1.Panel2.Controls.Add(this.label4);
             this.splitContainer1.Panel2.Controls.Add(this.gMapControl1);
             this.splitContainer1.Panel2.Resize += new System.EventHandler(this.splitContainer1_Panel2_Resize);
             //
@@ -2860,35 +2852,6 @@ namespace MissionPlanner.GCSViews
             // bindingSource1
             // 
             this.bindingSource1.DataSource = typeof(MissionPlanner.CurrentState);
-            // 
-            // label6
-            // 
-            resources.ApplyResources(this.label6, "label6");
-            this.label6.BackColor = System.Drawing.Color.Black;
-            this.label6.ForeColor = System.Drawing.Color.White;
-            this.label6.Name = "label6";
-            this.label6.Tag = "custom";
-            // 
-            // label5
-            // 
-            resources.ApplyResources(this.label5, "label5");
-            this.label5.ForeColor = System.Drawing.Color.Green;
-            this.label5.Name = "label5";
-            this.label5.Tag = "custom";
-            // 
-            // label3
-            // 
-            resources.ApplyResources(this.label3, "label3");
-            this.label3.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(255)))), ((int)(((byte)(128)))), ((int)(((byte)(0)))));
-            this.label3.Name = "label3";
-            this.label3.Tag = "custom";
-            // 
-            // label4
-            // 
-            resources.ApplyResources(this.label4, "label4");
-            this.label4.ForeColor = System.Drawing.Color.Red;
-            this.label4.Name = "label4";
-            this.label4.Tag = "custom";
             // 
             // lbl_hdop
             //
@@ -3196,10 +3159,6 @@ namespace MissionPlanner.GCSViews
         private System.Windows.Forms.Label label2;
         private System.Windows.Forms.ComboBox comboPlaybackSpeed;
         private Controls.MyButton BUT_logbrowse;
-        private System.Windows.Forms.Label label6;
-        private System.Windows.Forms.Label label5;
-        private System.Windows.Forms.Label label3;
-        private System.Windows.Forms.Label label4;
         public System.Windows.Forms.TabPage tabScripts;
         private Controls.MyButton BUT_edit_selected;
         private System.Windows.Forms.Label labelSelectedScript;

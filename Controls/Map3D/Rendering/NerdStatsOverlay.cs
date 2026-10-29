@@ -184,7 +184,7 @@ namespace MissionPlanner.Controls.Scene3D
                     g.SmoothingMode = SmoothingMode.AntiAlias;
                     g.TextRenderingHint = TextRenderingHint.AntiAliasGridFit;
 
-                    using (var path = RoundedRect(new RectangleF(0.5f, 0.5f, PanelWidth - 1, height - 1), 7))
+                    using (var path = MapButton.RoundedRect(new RectangleF(0.5f, 0.5f, PanelWidth - 1, height - 1), 7))
                     using (var fill = new SolidBrush(Background))
                     using (var border = new Pen(Color.FromArgb(150, Accent), 1f))
                     {
@@ -454,18 +454,6 @@ namespace MissionPlanner.Controls.Scene3D
         {
             text = text ?? "";
             return text.Length > length ? text.Substring(0, length - 1) + "…" : text;
-        }
-
-        static GraphicsPath RoundedRect(RectangleF r, float radius)
-        {
-            var path = new GraphicsPath();
-            float d = radius * 2;
-            path.AddArc(r.X, r.Y, d, d, 180, 90);
-            path.AddArc(r.Right - d, r.Y, d, d, 270, 90);
-            path.AddArc(r.Right - d, r.Bottom - d, d, d, 0, 90);
-            path.AddArc(r.X, r.Bottom - d, d, d, 90, 90);
-            path.CloseFigure();
-            return path;
         }
 
         public void Dispose()
