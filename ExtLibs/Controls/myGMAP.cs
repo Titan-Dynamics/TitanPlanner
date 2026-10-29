@@ -148,7 +148,9 @@ namespace MissionPlanner.Controls
                 if (e.X >= lastx - buffer && e.X <= lastx + buffer && e.Y >= lasty - buffer && e.Y <= lasty + buffer)
                     return;
 
-                if (HoldInvalidation)
+                // While the DATA screen's update loop holds invalidation, hover is skipped, but a drag still moves the
+                // map so it never freezes mid-drag; the repaint follows when the hold ends.
+                if (HoldInvalidation && e.Button == System.Windows.Forms.MouseButtons.None)
                     return;
 
                 lastx = e.X;

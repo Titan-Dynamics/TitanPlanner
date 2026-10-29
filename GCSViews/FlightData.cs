@@ -180,6 +180,15 @@ namespace MissionPlanner.GCSViews
         private bool _zoomInHover;
         // the (i) in the map's bottom-right corner that shows the legend of the vehicle's lines
         private readonly Controls.MapLegendButton _legendButton = new Controls.MapLegendButton();
+
+        // Autopan eases the map towards the vehicle every frame (AutoPanTick) while it is on.
+        private readonly System.Windows.Forms.Timer _autoPanTimer = new System.Windows.Forms.Timer { Interval = 15 };
+        private readonly Stopwatch _autoPanClock = new Stopwatch();
+        // the last position fix and how old it is, to carry the target along between fixes
+        private PointLatLng _autoPanFix;
+        private readonly Stopwatch _autoPanFixAge = new Stopwatch();
+        // what OffsetMap left over below a whole pixel, applied with the next offset
+        private double _offsetCarryX, _offsetCarryY;
         private bool _zoomOutHover;
 
         private static readonly ILog log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
@@ -814,6 +823,8 @@ namespace MissionPlanner.GCSViews
             _mapScaleBar = new Controls.MapScaleBar();
             _mapScaleBar.DrawY = 20;
             _mapScaleBar.SetMapControl(gMapControl1);
+
+            _autoPanTimer.Tick += AutoPanTick;
 
             // Track zoom button states and positions
             _zoomInHover = false;
@@ -2804,8 +2815,76 @@ namespace MissionPlanner.GCSViews
         private void CHK_autopan_CheckedChanged(object sender, EventArgs e)
         {
             Settings.Instance["CHK_autopan"] = CHK_autopan.Checked.ToString();
+            _autoPanTimer.Enabled = CHK_autopan.Checked;
 
             //GCSViews.FlightPlanner.instance.autopan = CHK_autopan.Checked;
+        }
+
+        /// <summary>
+        /// Moves the drawn map by pixels in the map's unrotated space, as GMap's own drag does: the overlays are drawn
+        /// shifted, not re-projected. Setting Position instead re-projects every overlay (fences, KML, no-fly zones)
+        /// and repaints at once, which made dragging this map slow.
+        /// </summary>
+        private void OffsetMap(double x, double y)
+        {
+            _offsetCarryX += x;
+            _offsetCarryY += y;
+            double stepX = Math.Truncate(_offsetCarryX), stepY = Math.Truncate(_offsetCarryY);
+            if (stepX == 0 && stepY == 0)
+                return;
+
+            _offsetCarryX -= stepX;
+            _offsetCarryY -= stepY;
+            gMapControl1.Core.DragOffset(new GPoint((long)stepX, (long)stepY));
+            // Control.Invalidate, not GMap's: GMap's goes through its invalidator, which repaints at most every 111 ms
+            // (about 9 fps). Windows merges pending repaints, so this paints as often as painting allows.
+            ((Control)gMapControl1).Invalidate();
+        }
+
+        /// <summary>
+        /// Autopan: eases the map towards the vehicle each frame. The target is the last fix carried along at the
+        /// vehicle's ground speed and course, so the map glides at the vehicle's pace instead of stepping at the
+        /// telemetry rate; a vehicle far off screen is recentred at once.
+        /// </summary>
+        private void AutoPanTick(object sender, EventArgs e)
+        {
+            double dt = _autoPanClock.IsRunning ? _autoPanClock.Elapsed.TotalSeconds : 0;
+            _autoPanClock.Restart();
+
+            var cs = MainV2.comPort?.MAV?.cs;
+            if (cs == null || (cs.lat == 0 && cs.lng == 0) || !gMapControl1.Visible || gMapControl1.IsDragging ||
+                MouseButtons == MouseButtons.Left && gMapControl1.ClientRectangle.Contains(gMapControl1.PointToClient(MousePosition)))
+                return;
+
+            var fix = new PointLatLng(cs.lat, cs.lng);
+            if (fix != _autoPanFix)
+            {
+                _autoPanFix = fix;
+                _autoPanFixAge.Restart();
+            }
+
+            // carry the fix along for up to a second (the next fix normally arrives well before)
+            double travelled = (cs.groundspeed / CurrentState.multiplierspeed) *
+                               Math.Min(1.0, _autoPanFixAge.Elapsed.TotalSeconds);
+            double course = cs.groundcourse * Math.PI / 180;
+            var target = new PointLatLng(
+                fix.Lat + travelled * Math.Cos(course) / 111320.0,
+                fix.Lng + travelled * Math.Sin(course) / (111320.0 * Math.Max(0.01, Math.Cos(fix.Lat * Math.PI / 180))));
+
+            var core = gMapControl1.Core;
+            var centre = core.FromLatLngToLocal(gMapControl1.Position);
+            var vehicle = core.FromLatLngToLocal(target);
+            double dx = centre.X - vehicle.X, dy = centre.Y - vehicle.Y;
+
+            if (Math.Abs(dx) > gMapControl1.Width || Math.Abs(dy) > gMapControl1.Height)
+            {
+                gMapControl1.Position = target;
+                return;
+            }
+
+            // cover the same share of the gap per second whatever the frame rate (a quarter-second time constant)
+            double share = 1 - Math.Exp(-Math.Min(dt, 0.1) / 0.25);
+            OffsetMap(dx * share, dy * share);
         }
 
         void chk_box_tunningCheckedChanged(object sender, EventArgs e)
@@ -3714,6 +3793,7 @@ namespace MissionPlanner.GCSViews
 
             if (Settings.Instance["CHK_autopan"] != null)
                 CHK_autopan.Checked = Settings.Instance.GetBoolean("CHK_autopan");
+            _autoPanTimer.Enabled = CHK_autopan.Checked;
 
             if (Settings.Instance["CB_tuning"] != null)
                 CB_tuning.Checked = Settings.Instance.GetBoolean("CB_tuning");
@@ -4021,16 +4101,17 @@ namespace MissionPlanner.GCSViews
                 if (dx == 0 && dy == 0)
                     return;
 
-                double absLat = Math.Abs(gMapControl1.Position.Lat);
-                PointLatLng newCenter = gMapControl1.FromLocalToLatLng(
-                    gMapControl1.Width / 2 - dx,
-                    gMapControl1.Height / 2 - dy);
-
-                if (!double.IsNaN(newCenter.Lat) && !double.IsNaN(newCenter.Lng) &&
-                    !double.IsInfinity(newCenter.Lat) && !double.IsInfinity(newCenter.Lng))
+                // Move the drawn map by the mouse's pixels (pixel space has no pole singularity). On a rotated map
+                // the screen delta is turned back into the map's unrotated space: GMap draws it at -Bearing.
+                double x = dx, y = dy;
+                if (gMapControl1.IsRotated)
                 {
-                    gMapControl1.Position = newCenter;
+                    double bearing = gMapControl1.Bearing * Math.PI / 180;
+                    x = dx * Math.Cos(bearing) - dy * Math.Sin(bearing);
+                    y = dx * Math.Sin(bearing) + dy * Math.Cos(bearing);
                 }
+
+                OffsetMap(x, y);
 
                 // consume this step (critical for stable drag)
                 MouseDownStartLocal = e.Location;
@@ -4420,7 +4501,6 @@ namespace MissionPlanner.GCSViews
 
             DateTime tunning = DateTime.Now.AddSeconds(0);
 
-            DateTime mapupdate = DateTime.Now.AddSeconds(0);
 
             DateTime vidrec = DateTime.Now.AddSeconds(0);
 
@@ -5335,11 +5415,10 @@ namespace MissionPlanner.GCSViews
                             // Draw the active aircraft
                             addMAVMarker(MainV2.comPort.MAV);
 
-                            if (route.Points.Count == 0 || route.Points[route.Points.Count - 1].Lat != 0 &&
-                                (mapupdate.AddSeconds(3) < DateTime.Now) && CHK_autopan.Checked)
+                            // autopan follows the vehicle every frame (AutoPanTick) rather than jumping here
+                            if (route.Points.Count == 0)
                             {
                                 updateMapPosition(currentloc);
-                                mapupdate = DateTime.Now;
                             }
 
                             if (route.Points.Count == 1 && gMapControl1.Zoom == 3) // 3 is the default load zoom
