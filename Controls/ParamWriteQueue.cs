@@ -1,7 +1,9 @@
 using log4net;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Reflection;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace MissionPlanner.Controls
@@ -21,15 +23,76 @@ namespace MissionPlanner.Controls
         private static readonly Dictionary<string, (double value, List<Action<bool>> callbacks)> pending =
             new Dictionary<string, (double, List<Action<bool>>)>();
 
+        private class Delayed
+        {
+            public MAVLinkInterface Port;
+            public uint Sysid;
+            public byte Compid;
+            public string ParamName;
+            public double Value;
+            public readonly List<Action<bool>> Callbacks = new List<Action<bool>>();
+        }
+
+        // writes held back by a delay; every new delayed write restarts the one timer
+        private static readonly Dictionary<string, Delayed> delayed = new Dictionary<string, Delayed>();
+        private static Timer delayTimer;
+
         /// <summary>
         /// Queue a write to the current vehicle. A failure is reported to the user; onDone then runs on the UI
-        /// thread with whether the vehicle confirmed the value.
+        /// thread with whether the vehicle confirmed the value. With delayMs, the write waits until no delayed
+        /// write has been queued for that long, then goes out with the others held back.
         /// </summary>
-        public static void Write(string paramName, double value, Action<bool> onDone = null)
+        public static void Write(string paramName, double value, Action<bool> onDone = null, int delayMs = 0)
         {
             var port = MainV2.comPort;
             var sysid = port.sysidcurrent;
             var compid = (byte)port.compidcurrent;
+
+            if (delayMs <= 0)
+            {
+                Enqueue(port, sysid, compid, paramName, value, onDone == null ? null : new[] { onDone });
+                return;
+            }
+
+            var key = sysid + ":" + compid + ":" + paramName;
+            lock (locker)
+            {
+                if (!delayed.TryGetValue(key, out var item))
+                {
+                    item = new Delayed { Port = port, Sysid = sysid, Compid = compid, ParamName = paramName };
+                    delayed[key] = item;
+                }
+
+                item.Value = value;
+                if (onDone != null)
+                    item.Callbacks.Add(onDone);
+
+                if (delayTimer == null)
+                    delayTimer = new Timer(_ => Flush());
+                delayTimer.Change(delayMs, Timeout.Infinite);
+            }
+        }
+
+        /// <summary>
+        /// Send the delayed writes now, e.g. when the page that made them closes.
+        /// </summary>
+        public static void Flush()
+        {
+            List<Delayed> items;
+            lock (locker)
+            {
+                delayTimer?.Change(Timeout.Infinite, Timeout.Infinite);
+                items = delayed.Values.ToList();
+                delayed.Clear();
+            }
+
+            foreach (var item in items)
+                Enqueue(item.Port, item.Sysid, item.Compid, item.ParamName, item.Value, item.Callbacks);
+        }
+
+        private static void Enqueue(MAVLinkInterface port, uint sysid, byte compid, string paramName, double value,
+            IEnumerable<Action<bool>> onDone)
+        {
             var key = sysid + ":" + compid + ":" + paramName;
 
             lock (locker)
@@ -37,14 +100,14 @@ namespace MissionPlanner.Controls
                 if (pending.TryGetValue(key, out var queued))
                 {
                     if (onDone != null)
-                        queued.callbacks.Add(onDone);
+                        queued.callbacks.AddRange(onDone);
                     pending[key] = (value, queued.callbacks);
                     return;
                 }
 
                 var callbacks = new List<Action<bool>>();
                 if (onDone != null)
-                    callbacks.Add(onDone);
+                    callbacks.AddRange(onDone);
                 pending[key] = (value, callbacks);
 
                 tail = tail.ContinueWith(_ => Run(port, sysid, compid, paramName, key), TaskScheduler.Default);

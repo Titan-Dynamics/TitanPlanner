@@ -8,6 +8,9 @@ namespace MissionPlanner.GCSViews.ConfigurationView
 {
     public partial class ConfigRadioOutput : MyUserControl, IActivate, IDeactivate
     {
+        // changes are sent once editing pauses for this long, so stepping a value writes it once
+        private const int WriteDelayMs = 250;
+
         public ConfigRadioOutput()
         {
             InitializeComponent();
@@ -68,6 +71,7 @@ namespace MissionPlanner.GCSViews.ConfigurationView
             var rev1 = new MissionPlanner.Controls.MavlinkCheckBox()
             {
                 WriteInBackground = true,
+                BackgroundWriteDelay = WriteDelayMs,
                 Enabled = false,
                 AutoSize = false,
                 Height = controlHeight,
@@ -79,6 +83,7 @@ namespace MissionPlanner.GCSViews.ConfigurationView
             var func1 = new MavlinkComboBox()
             {
                 WriteInBackground = true,
+                BackgroundWriteDelay = WriteDelayMs,
                 Enabled = false,
                 DropDownStyle = ComboBoxStyle.DropDownList,
                 Width = 160,
@@ -89,6 +94,7 @@ namespace MissionPlanner.GCSViews.ConfigurationView
             var min1 = new MavlinkNumericUpDown()
             {
                 WriteInBackground = true,
+                BackgroundWriteDelay = WriteDelayMs,
                 Minimum = 800,
                 Maximum = 2200,
                 Value = 1500,
@@ -116,6 +122,7 @@ namespace MissionPlanner.GCSViews.ConfigurationView
             var trim1 = new MavlinkNumericUpDown()
             {
                 WriteInBackground = true,
+                BackgroundWriteDelay = WriteDelayMs,
                 Minimum = 800,
                 Maximum = 2200,
                 Value = 1500,
@@ -128,6 +135,7 @@ namespace MissionPlanner.GCSViews.ConfigurationView
             var max1 = new MavlinkNumericUpDown()
             {
                 WriteInBackground = true,
+                BackgroundWriteDelay = WriteDelayMs,
                 Minimum = 800,
                 Maximum = 2200,
                 Value = 1500,
@@ -431,10 +439,10 @@ namespace MissionPlanner.GCSViews.ConfigurationView
                 return;
 
             if (MainV2.comPort.MAV.param.ContainsKey(minParam))
-                ParamWriteQueue.Write(minParam, (double)newMin);
+                ParamWriteQueue.Write(minParam, (double)newMin, null, WriteDelayMs);
 
             if (MainV2.comPort.MAV.param.ContainsKey(maxParam))
-                ParamWriteQueue.Write(maxParam, (double)newMax);
+                ParamWriteQueue.Write(maxParam, (double)newMax, null, WriteDelayMs);
         }
 
         public void Activate()
@@ -445,6 +453,8 @@ namespace MissionPlanner.GCSViews.ConfigurationView
         public void Deactivate()
         {
             timer1.Stop();
+            // leaving the page sends what is still waiting out the write delay
+            ParamWriteQueue.Flush();
         }
 
 

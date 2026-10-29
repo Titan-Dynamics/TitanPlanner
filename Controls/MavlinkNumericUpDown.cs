@@ -34,6 +34,12 @@ namespace MissionPlanner.Controls
         [System.ComponentModel.Browsable(true)]
         public bool WriteInBackground { get; set; }
 
+        /// <summary>
+        /// With WriteInBackground, hold the write until no delayed write has been made for this many ms.
+        /// </summary>
+        [System.ComponentModel.Browsable(true)]
+        public int BackgroundWriteDelay { get; set; }
+
         public MavlinkNumericUpDown()
         {
             Min = 0;
@@ -171,7 +177,7 @@ namespace MissionPlanner.Controls
             if (WriteInBackground)
             {
                 timer.Stop();
-                ParamWriteQueue.Write(ParamName, (float)base.Value * (float)_scale);
+                ParamWriteQueue.Write(ParamName, (float)base.Value * (float)_scale, null, BackgroundWriteDelay);
                 return;
             }
 
