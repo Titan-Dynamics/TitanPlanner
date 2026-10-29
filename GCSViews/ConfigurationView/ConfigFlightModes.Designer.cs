@@ -56,7 +56,6 @@
             this.CMB_fmode2 = new System.Windows.Forms.ComboBox();
             this.labelfm1 = new System.Windows.Forms.Label();
             this.CMB_fmode1 = new System.Windows.Forms.ComboBox();
-            this.BUT_SaveModes = new MissionPlanner.Controls.MyButton();
             this.chk_ss6 = new System.Windows.Forms.CheckBox();
             this.chk_ss5 = new System.Windows.Forms.CheckBox();
             this.chk_ss4 = new System.Windows.Forms.CheckBox();
@@ -236,14 +235,6 @@
             this.CMB_fmode1.Name = "CMB_fmode1";
             this.CMB_fmode1.SelectedIndexChanged += new System.EventHandler(this.flightmode_SelectedIndexChanged);
             // 
-            // BUT_SaveModes
-            // 
-            resources.ApplyResources(this.BUT_SaveModes, "BUT_SaveModes");
-            this.BUT_SaveModes.Name = "BUT_SaveModes";
-            this.BUT_SaveModes.TextColorNotEnabled = System.Drawing.Color.FromArgb(((int)(((byte)(64)))), ((int)(((byte)(87)))), ((int)(((byte)(4)))));
-            this.BUT_SaveModes.UseVisualStyleBackColor = true;
-            this.BUT_SaveModes.Click += new System.EventHandler(this.BUT_SaveModes_Click);
-            // 
             // chk_ss6
             // 
             resources.ApplyResources(this.chk_ss6, "chk_ss6");
@@ -312,7 +303,6 @@
             this.tableLayoutPanel1.Controls.Add(this.CMB_fmode4, 1, 4);
             this.tableLayoutPanel1.Controls.Add(this.CMB_fmode5, 1, 5);
             this.tableLayoutPanel1.Controls.Add(this.CMB_fmode6, 1, 6);
-            this.tableLayoutPanel1.Controls.Add(this.BUT_SaveModes, 1, 7);
             this.tableLayoutPanel1.Controls.Add(this.CB_simple1, 2, 1);
             this.tableLayoutPanel1.Controls.Add(this.CB_simple6, 2, 6);
             this.tableLayoutPanel1.Controls.Add(this.linkLabel1_ss, 3, 7);
@@ -378,7 +368,6 @@
         private System.Windows.Forms.ComboBox CMB_fmode2;
         private System.Windows.Forms.Label labelfm1;
         private System.Windows.Forms.ComboBox CMB_fmode1;
-        private Controls.MyButton BUT_SaveModes;
         private System.Windows.Forms.BindingSource currentStateBindingSource;
         private System.Windows.Forms.CheckBox chk_ss6;
         private System.Windows.Forms.CheckBox chk_ss5;

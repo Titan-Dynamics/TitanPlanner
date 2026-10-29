@@ -25,7 +25,10 @@ namespace MissionPlanner.GCSViews.ConfigurationView
 
         private readonly Timer _timer = new Timer();
         private bool _modeChannelInitializing;
+        // set while Activate fills the controls from the params, so only user changes are written
+        private bool _loading;
         private TableLayoutPanel _userParamsPanel;
+        private GroupBox _rcOptionsGroup;
 
         // User-defined parameters section
         public string[] UserParamOptions { get; set; } = new string[]
@@ -46,34 +49,24 @@ namespace MissionPlanner.GCSViews.ConfigurationView
             {
                 InitializeComponent();
 
-                // Set table margin to 32px top and left
-                tableLayoutPanel1.Margin = new Padding(32, 32, 0, 0);
-                tableLayoutPanel1.Location = new System.Drawing.Point(32, 32);
-                tableLayoutPanel1.AutoSize = true;
-                tableLayoutPanel1.AutoSizeMode = AutoSizeMode.GrowAndShrink;
+                BuildLayout();
 
-                // Add "Flight Modes" header and PWM row at the top - shift all existing controls down by 2 rows
-                foreach (Control ctrl in tableLayoutPanel1.Controls)
-                {
-                    int currentRow = tableLayoutPanel1.GetRow(ctrl);
-                    tableLayoutPanel1.SetRow(ctrl, currentRow + 2);
-                }
-                tableLayoutPanel1.RowCount += 2;
+                CB_simple1.CheckedChanged += simple_CheckedChanged;
+                CB_simple2.CheckedChanged += simple_CheckedChanged;
+                CB_simple3.CheckedChanged += simple_CheckedChanged;
+                CB_simple4.CheckedChanged += simple_CheckedChanged;
+                CB_simple5.CheckedChanged += simple_CheckedChanged;
+                CB_simple6.CheckedChanged += simple_CheckedChanged;
+                chk_ss1.CheckedChanged += simple_CheckedChanged;
+                chk_ss2.CheckedChanged += simple_CheckedChanged;
+                chk_ss3.CheckedChanged += simple_CheckedChanged;
+                chk_ss4.CheckedChanged += simple_CheckedChanged;
+                chk_ss5.CheckedChanged += simple_CheckedChanged;
+                chk_ss6.CheckedChanged += simple_CheckedChanged;
 
-                // Row 0: Flight Modes header
-                var flightModesHeader = new Label
-                {
-                    Text = "Flight Modes",
-                    Font = new System.Drawing.Font(this.Font.FontFamily, 10, System.Drawing.FontStyle.Bold),
-                    AutoSize = true
-                };
-                tableLayoutPanel1.Controls.Add(flightModesHeader, 0, 0);
-                tableLayoutPanel1.SetColumnSpan(flightModesHeader, 5);
-
-                // Row 1: PWM label
-                LBL_flightmodepwm.AutoSize = true;
-                tableLayoutPanel1.Controls.Add(LBL_flightmodepwm, 0, 1);
-                tableLayoutPanel1.SetColumnSpan(LBL_flightmodepwm, 5);
+                // these write as soon as they change, so scrolling the page over one must not change it
+                foreach (var cmb in new[] { CMB_fmode1, CMB_fmode2, CMB_fmode3, CMB_fmode4, CMB_fmode5, CMB_fmode6, CMB_modeChannel })
+                    cmb.MouseWheel += IgnoreWheelUnlessOpen;
 
                 // Load user-defined params from settings
                 if (Settings.Instance.ContainsKey("FlightModeUserParams"))
@@ -85,8 +78,87 @@ namespace MissionPlanner.GCSViews.ConfigurationView
             }
         }
 
+        /// <summary>
+        /// Puts the flight mode table and the RC options in their own boxes, side by side when the page is
+        /// wide enough and stacked when it is not.
+        /// </summary>
+        private void BuildLayout()
+        {
+            SuspendLayout();
+
+            // the mode channel row also shows the channel's live PWM
+            LBL_flightmodepwm.AutoSize = true;
+            LBL_flightmodepwm.Anchor = AnchorStyles.Left;
+            tableLayoutPanel1.Controls.Add(LBL_flightmodepwm, 2, 0);
+            tableLayoutPanel1.SetColumnSpan(LBL_flightmodepwm, 3);
+
+            // Columns fit what they hold, so the PWM ranges sit beside the modes when the Copter-only
+            // simple columns are hidden. The mode dropdowns fill their cell and have no width of their own.
+            tableLayoutPanel1.ColumnStyles.Clear();
+            tableLayoutPanel1.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+            tableLayoutPanel1.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 140));
+            tableLayoutPanel1.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+            tableLayoutPanel1.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+            tableLayoutPanel1.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+
+            // the last row holds only the (wrapping) simple mode link
+            tableLayoutPanel1.RowStyles.Clear();
+            for (var row = 0; row < tableLayoutPanel1.RowCount; row++)
+                tableLayoutPanel1.RowStyles.Add(row < tableLayoutPanel1.RowCount - 1
+                    ? new RowStyle(SizeType.Absolute, 28)
+                    : new RowStyle(SizeType.AutoSize));
+            tableLayoutPanel1.SetColumnSpan(linkLabel1_ss, 2);
+
+            tableLayoutPanel1.AutoSize = true;
+            tableLayoutPanel1.AutoSizeMode = AutoSizeMode.GrowAndShrink;
+            tableLayoutPanel1.Dock = DockStyle.Fill;
+            tableLayoutPanel1.Margin = new Padding(0);
+
+            var flightModesGroup = CreateGroupBox("Flight Modes");
+            Controls.Remove(tableLayoutPanel1);
+            flightModesGroup.Controls.Add(tableLayoutPanel1);
+
+            // filled by LoadUserParams on Activate
+            _rcOptionsGroup = CreateGroupBox("RC Options");
+
+            var layoutRoot = new FlowLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                AutoScroll = true,
+                FlowDirection = FlowDirection.LeftToRight,
+                WrapContents = true,
+                Padding = new Padding(10),
+                Margin = new Padding(0)
+            };
+            layoutRoot.Controls.Add(flightModesGroup);
+            layoutRoot.Controls.Add(_rcOptionsGroup);
+            Controls.Add(layoutRoot);
+
+            ResumeLayout(true);
+        }
+
+        private static void IgnoreWheelUnlessOpen(object sender, MouseEventArgs e)
+        {
+            if (!((ComboBox)sender).DroppedDown && e is HandledMouseEventArgs handled)
+                handled.Handled = true;
+        }
+
+        private static GroupBox CreateGroupBox(string title)
+        {
+            return new GroupBox
+            {
+                AutoSize = true,
+                AutoSizeMode = AutoSizeMode.GrowAndShrink,
+                Padding = new Padding(10),
+                Text = title,
+                Margin = new Padding(5)
+            };
+        }
+
         public void Activate()
         {
+            _loading = true;
+
             if (MainV2.comPort.MAV.cs.firmware == Firmwares.ArduPlane ||
                 MainV2.comPort.MAV.cs.firmware == Firmwares.Ateryx) // APM
             {
@@ -274,6 +346,8 @@ namespace MissionPlanner.GCSViews.ConfigurationView
                 }
             }
 
+            _loading = false;
+
             _timer.Tick += timer_Tick;
 
             _timer.Enabled = true;
@@ -287,17 +361,6 @@ namespace MissionPlanner.GCSViews.ConfigurationView
         public void Deactivate()
         {
             _timer.Stop();
-        }
-
-        protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
-        {
-            if (keyData == (Keys.Control | Keys.S))
-            {
-                BUT_SaveModes_Click(null, null);
-                return true;
-            }
-
-            return false;
         }
 
         private void timer_Tick(object sender, EventArgs e)
@@ -397,66 +460,55 @@ namespace MissionPlanner.GCSViews.ConfigurationView
             return 0;
         }
 
-        private void BUT_SaveModes_Click(object sender, EventArgs e)
+        // The mode params by firmware: FLTMODEn, MODEn on Rover, COM_FLTMODEn on PX4. A dropdown writes its
+        // param as soon as the user picks a mode, like the RC Options rows.
+        private void WriteFlightMode(ComboBox cmb)
         {
-            try
+            if (_loading || cmb.SelectedValue == null)
+                return;
+
+            int value;
+            if (!int.TryParse(cmb.SelectedValue.ToString(), out value))
+                return;
+
+            var number = cmb.Name.Substring(cmb.Name.Length - 1);
+            foreach (var prefix in new[] { "FLTMODE", "MODE", "COM_FLTMODE" })
             {
-                if (MainV2.comPort.MAV.param.ContainsKey("FLTMODE1"))
+                var param = prefix + number;
+                if (MainV2.comPort.MAV.param.ContainsKey(param))
                 {
-                    MainV2.comPort.setParam(MainV2.comPort.sysidcurrent, (byte)MainV2.comPort.compidcurrent, "FLTMODE1", int.Parse(CMB_fmode1.SelectedValue.ToString()));
-                    MainV2.comPort.setParam(MainV2.comPort.sysidcurrent, (byte)MainV2.comPort.compidcurrent, "FLTMODE2", int.Parse(CMB_fmode2.SelectedValue.ToString()));
-                    MainV2.comPort.setParam(MainV2.comPort.sysidcurrent, (byte)MainV2.comPort.compidcurrent, "FLTMODE3", int.Parse(CMB_fmode3.SelectedValue.ToString()));
-                    MainV2.comPort.setParam(MainV2.comPort.sysidcurrent, (byte)MainV2.comPort.compidcurrent, "FLTMODE4", int.Parse(CMB_fmode4.SelectedValue.ToString()));
-                    MainV2.comPort.setParam(MainV2.comPort.sysidcurrent, (byte)MainV2.comPort.compidcurrent, "FLTMODE5", int.Parse(CMB_fmode5.SelectedValue.ToString()));
-                    MainV2.comPort.setParam(MainV2.comPort.sysidcurrent, (byte)MainV2.comPort.compidcurrent, "FLTMODE6", int.Parse(CMB_fmode6.SelectedValue.ToString()));
-                }
-                else if (MainV2.comPort.MAV.param.ContainsKey("MODE1"))
-                {
-                    MainV2.comPort.setParam(MainV2.comPort.sysidcurrent, (byte)MainV2.comPort.compidcurrent, "MODE1", int.Parse(CMB_fmode1.SelectedValue.ToString()));
-                    MainV2.comPort.setParam(MainV2.comPort.sysidcurrent, (byte)MainV2.comPort.compidcurrent, "MODE2", int.Parse(CMB_fmode2.SelectedValue.ToString()));
-                    MainV2.comPort.setParam(MainV2.comPort.sysidcurrent, (byte)MainV2.comPort.compidcurrent, "MODE3", int.Parse(CMB_fmode3.SelectedValue.ToString()));
-                    MainV2.comPort.setParam(MainV2.comPort.sysidcurrent, (byte)MainV2.comPort.compidcurrent, "MODE4", int.Parse(CMB_fmode4.SelectedValue.ToString()));
-                    MainV2.comPort.setParam(MainV2.comPort.sysidcurrent, (byte)MainV2.comPort.compidcurrent, "MODE5", int.Parse(CMB_fmode5.SelectedValue.ToString()));
-                    MainV2.comPort.setParam(MainV2.comPort.sysidcurrent, (byte)MainV2.comPort.compidcurrent, "MODE6", int.Parse(CMB_fmode6.SelectedValue.ToString()));
-                }
-                else if (MainV2.comPort.MAV.param.ContainsKey("COM_FLTMODE1"))
-                {
-                    MainV2.comPort.setParam(MainV2.comPort.sysidcurrent, (byte)MainV2.comPort.compidcurrent, "COM_FLTMODE1", int.Parse(CMB_fmode1.SelectedValue.ToString()));
-                    MainV2.comPort.setParam(MainV2.comPort.sysidcurrent, (byte)MainV2.comPort.compidcurrent, "COM_FLTMODE2", int.Parse(CMB_fmode2.SelectedValue.ToString()));
-                    MainV2.comPort.setParam(MainV2.comPort.sysidcurrent, (byte)MainV2.comPort.compidcurrent, "COM_FLTMODE3", int.Parse(CMB_fmode3.SelectedValue.ToString()));
-                    MainV2.comPort.setParam(MainV2.comPort.sysidcurrent, (byte)MainV2.comPort.compidcurrent, "COM_FLTMODE4", int.Parse(CMB_fmode4.SelectedValue.ToString()));
-                    MainV2.comPort.setParam(MainV2.comPort.sysidcurrent, (byte)MainV2.comPort.compidcurrent, "COM_FLTMODE5", int.Parse(CMB_fmode5.SelectedValue.ToString()));
-                    MainV2.comPort.setParam(MainV2.comPort.sysidcurrent, (byte)MainV2.comPort.compidcurrent, "COM_FLTMODE6", int.Parse(CMB_fmode6.SelectedValue.ToString()));
-                }
-
-                if (MainV2.comPort.MAV.cs.firmware == Firmwares.ArduCopter2) // ac2
-                {
-                    // simple
-                    var value = (float)(CB_simple1.Checked ? (int)SimpleMode.Simple1 : 0) +
-                                (CB_simple2.Checked ? (int)SimpleMode.Simple2 : 0) +
-                                (CB_simple3.Checked ? (int)SimpleMode.Simple3 : 0)
-                                + (CB_simple4.Checked ? (int)SimpleMode.Simple4 : 0) +
-                                (CB_simple5.Checked ? (int)SimpleMode.Simple5 : 0) +
-                                (CB_simple6.Checked ? (int)SimpleMode.Simple6 : 0);
-                    if (MainV2.comPort.MAV.param.ContainsKey("SIMPLE"))
-                        MainV2.comPort.setParam(MainV2.comPort.sysidcurrent, (byte)MainV2.comPort.compidcurrent, "SIMPLE", value);
-
-                    // supersimple
-                    value = (float)(chk_ss1.Checked ? (int)SimpleMode.Simple1 : 0) +
-                            (chk_ss2.Checked ? (int)SimpleMode.Simple2 : 0) +
-                            (chk_ss3.Checked ? (int)SimpleMode.Simple3 : 0)
-                            + (chk_ss4.Checked ? (int)SimpleMode.Simple4 : 0) +
-                            (chk_ss5.Checked ? (int)SimpleMode.Simple5 : 0) +
-                            (chk_ss6.Checked ? (int)SimpleMode.Simple6 : 0);
-                    if (MainV2.comPort.MAV.param.ContainsKey("SUPER_SIMPLE"))
-                        MainV2.comPort.setParam(MainV2.comPort.sysidcurrent, (byte)MainV2.comPort.compidcurrent, "SUPER_SIMPLE", value);
+                    ParamWriteQueue.Write(param, value);
+                    return;
                 }
             }
-            catch
+        }
+
+        // SIMPLE and SUPER_SIMPLE (Copter) hold one bit per flight mode slot
+        private void simple_CheckedChanged(object sender, EventArgs e)
+        {
+            if (_loading || MainV2.comPort.MAV.cs.firmware != Firmwares.ArduCopter2)
+                return;
+
+            if (Array.IndexOf(new[] { CB_simple1, CB_simple2, CB_simple3, CB_simple4, CB_simple5, CB_simple6 },
+                    sender) >= 0)
+                WriteSimpleMask("SIMPLE", CB_simple1, CB_simple2, CB_simple3, CB_simple4, CB_simple5, CB_simple6);
+            else
+                WriteSimpleMask("SUPER_SIMPLE", chk_ss1, chk_ss2, chk_ss3, chk_ss4, chk_ss5, chk_ss6);
+        }
+
+        private static void WriteSimpleMask(string param, params CheckBox[] slots)
+        {
+            if (!MainV2.comPort.MAV.param.ContainsKey(param))
+                return;
+
+            var value = 0;
+            for (var i = 0; i < slots.Length; i++)
             {
-                CustomMessageBox.Show(Strings.ErrorSettingParameter, Strings.ERROR);
+                if (slots[i].Checked)
+                    value |= 1 << i;
             }
-            BUT_SaveModes.Text = "Complete";
+
+            ParamWriteQueue.Write(param, value);
         }
 
         private void updateDropDown(ComboBox ctl, string param)
@@ -510,6 +562,8 @@ namespace MissionPlanner.GCSViews.ConfigurationView
                     findandenableordisable("chk_ss" + number, false);
                 }
             }
+
+            WriteFlightMode((ComboBox)sender);
         }
 
         private void findandenableordisable(string ctl, bool enable)
@@ -578,38 +632,24 @@ namespace MissionPlanner.GCSViews.ConfigurationView
             // Remove existing panel if present
             if (_userParamsPanel != null)
             {
-                this.Controls.Remove(_userParamsPanel);
+                _rcOptionsGroup.Controls.Remove(_userParamsPanel);
                 _userParamsPanel.Dispose();
             }
 
-            // Create user params panel
+            // Create user params panel; the "RC Options" box is its title
             _userParamsPanel = new TableLayoutPanel
             {
                 ColumnCount = 2,
                 AutoSize = true,
                 AutoSizeMode = AutoSizeMode.GrowAndShrink,
-                Padding = new System.Windows.Forms.Padding(0, 10, 0, 0)
+                Dock = DockStyle.Fill,
+                Margin = new Padding(0)
             };
             _userParamsPanel.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
             _userParamsPanel.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
 
-            // Position and add the panel to the form first, before adding child controls
-            _userParamsPanel.Location = new System.Drawing.Point(
-                tableLayoutPanel1.Location.X,
-                tableLayoutPanel1.Location.Y + tableLayoutPanel1.Height + 10);
-            this.Controls.Add(_userParamsPanel);
-
-            // Add header/separator
-            var headerLabel = new Label
-            {
-                Text = "RC Options",
-                Font = new System.Drawing.Font(this.Font.FontFamily, 10, System.Drawing.FontStyle.Bold),
-                AutoSize = true,
-                Padding = new System.Windows.Forms.Padding(0, 5, 0, 5)
-            };
-            _userParamsPanel.RowCount++;
-            _userParamsPanel.Controls.Add(headerLabel, 0, _userParamsPanel.RowCount - 1);
-            _userParamsPanel.SetColumnSpan(headerLabel, 2);
+            // Add the panel to its box first, before adding child controls
+            _rcOptionsGroup.Controls.Add(_userParamsPanel);
 
             // Add Modify button
             var modifyButton = new MyButton { Text = "Modify", AutoSize = true };
@@ -652,12 +692,6 @@ namespace MissionPlanner.GCSViews.ConfigurationView
                 }
             }
 
-            // Position the panel below the existing tableLayoutPanel1
-            _userParamsPanel.Location = new System.Drawing.Point(
-                tableLayoutPanel1.Location.X,
-                tableLayoutPanel1.Location.Y + tableLayoutPanel1.Height + 10);
-
-            this.Controls.Add(_userParamsPanel);
             ThemeManager.ApplyThemeTo(_userParamsPanel);
         }
     }

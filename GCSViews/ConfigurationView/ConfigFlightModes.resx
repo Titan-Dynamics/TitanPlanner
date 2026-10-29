@@ -918,36 +918,6 @@
   <data name="&gt;&gt;CMB_fmode1.ZOrder" xml:space="preserve">
     <value>4</value>
   </data>
-  <data name="BUT_SaveModes.Dock" type="System.Windows.Forms.DockStyle, System.Windows.Forms">
-    <value>Fill</value>
-  </data>
-  <data name="BUT_SaveModes.ImeMode" type="System.Windows.Forms.ImeMode, System.Windows.Forms">
-    <value>NoControl</value>
-  </data>
-  <data name="BUT_SaveModes.Location" type="System.Drawing.Point, System.Drawing">
-    <value>113, 178</value>
-  </data>
-  <data name="BUT_SaveModes.Size" type="System.Drawing.Size, System.Drawing">
-    <value>104, 41</value>
-  </data>
-  <data name="BUT_SaveModes.TabIndex" type="System.Int32, mscorlib">
-    <value>132</value>
-  </data>
-  <data name="BUT_SaveModes.Text" xml:space="preserve">
-    <value>Save Modes</value>
-  </data>
-  <data name="&gt;&gt;BUT_SaveModes.Name" xml:space="preserve">
-    <value>BUT_SaveModes</value>
-  </data>
-  <data name="&gt;&gt;BUT_SaveModes.Type" xml:space="preserve">
-    <value>MissionPlanner.Controls.MyButton, MissionPlanner.Controls, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null</value>
-  </data>
-  <data name="&gt;&gt;BUT_SaveModes.Parent" xml:space="preserve">
-    <value>tableLayoutPanel1</value>
-  </data>
-  <data name="&gt;&gt;BUT_SaveModes.ZOrder" xml:space="preserve">
-    <value>30</value>
-  </data>
   <data name="chk_ss6.AutoSize" type="System.Boolean, mscorlib">
     <value>True</value>
   </data>
@@ -1252,7 +1222,7 @@
     <value>0</value>
   </data>
   <data name="tableLayoutPanel1.LayoutSettings" type="System.Windows.Forms.TableLayoutSettings, System.Windows.Forms">
-    <value>&lt;?xml version="1.0" encoding="utf-16"?&gt;&lt;TableLayoutSettings&gt;&lt;Controls&gt;&lt;Control Name="labelModeCh" Row="0" RowSpan="1" Column="0" ColumnSpan="1" /&gt;&lt;Control Name="CMB_modeChannel" Row="0" RowSpan="1" Column="1" ColumnSpan="1" /&gt;&lt;Control Name="labelfm1" Row="1" RowSpan="1" Column="0" ColumnSpan="1" /&gt;&lt;Control Name="chk_ss6" Row="6" RowSpan="1" Column="3" ColumnSpan="1" /&gt;&lt;Control Name="CMB_fmode1" Row="1" RowSpan="1" Column="1" ColumnSpan="1" /&gt;&lt;Control Name="chk_ss5" Row="5" RowSpan="1" Column="3" ColumnSpan="1" /&gt;&lt;Control Name="label11" Row="6" RowSpan="1" Column="4" ColumnSpan="1" /&gt;&lt;Control Name="chk_ss4" Row="4" RowSpan="1" Column="3" ColumnSpan="1" /&gt;&lt;Control Name="label10" Row="5" RowSpan="1" Column="4" ColumnSpan="1" /&gt;&lt;Control Name="chk_ss1" Row="1" RowSpan="1" Column="3" ColumnSpan="1" /&gt;&lt;Control Name="label9" Row="4" RowSpan="1" Column="4" ColumnSpan="1" /&gt;&lt;Control Name="chk_ss3" Row="3" RowSpan="1" Column="3" ColumnSpan="1" /&gt;&lt;Control Name="label8" Row="3" RowSpan="1" Column="4" ColumnSpan="1" /&gt;&lt;Control Name="label12" Row="1" RowSpan="1" Column="4" ColumnSpan="1" /&gt;&lt;Control Name="label7" Row="2" RowSpan="1" Column="4" ColumnSpan="1" /&gt;&lt;Control Name="chk_ss2" Row="2" RowSpan="1" Column="3" ColumnSpan="1" /&gt;&lt;Control Name="CB_simple5" Row="5" RowSpan="1" Column="2" ColumnSpan="1" /&gt;&lt;Control Name="labelfm2" Row="2" RowSpan="1" Column="0" ColumnSpan="1" /&gt;&lt;Control Name="CB_simple4" Row="4" RowSpan="1" Column="2" ColumnSpan="1" /&gt;&lt;Control Name="CMB_fmode2" Row="2" RowSpan="1" Column="1" ColumnSpan="1" /&gt;&lt;Control Name="CB_simple3" Row="3" RowSpan="1" Column="2" ColumnSpan="1" /&gt;&lt;Control Name="CB_simple2" Row="2" RowSpan="1" Column="2" ColumnSpan="1" /&gt;&lt;Control Name="labelfm3" Row="3" RowSpan="1" Column="0" ColumnSpan="1" /&gt;&lt;Control Name="labelfm4" Row="4" RowSpan="1" Column="0" ColumnSpan="1" /&gt;&lt;Control Name="labelfm5" Row="5" RowSpan="1" Column="0" ColumnSpan="1" /&gt;&lt;Control Name="labelfm6" Row="6" RowSpan="1" Column="0" ColumnSpan="1" /&gt;&lt;Control Name="CMB_fmode3" Row="3" RowSpan="1" Column="1" ColumnSpan="1" /&gt;&lt;Control Name="CMB_fmode4" Row="4" RowSpan="1" Column="1" ColumnSpan="1" /&gt;&lt;Control Name="CMB_fmode5" Row="5" RowSpan="1" Column="1" ColumnSpan="1" /&gt;&lt;Control Name="CMB_fmode6" Row="6" RowSpan="1" Column="1" ColumnSpan="1" /&gt;&lt;Control Name="BUT_SaveModes" Row="7" RowSpan="1" Column="1" ColumnSpan="1" /&gt;&lt;Control Name="CB_simple1" Row="1" RowSpan="1" Column="2" ColumnSpan="1" /&gt;&lt;Control Name="CB_simple6" Row="6" RowSpan="1" Column="2" ColumnSpan="1" /&gt;&lt;Control Name="linkLabel1_ss" Row="7" RowSpan="1" Column="3" ColumnSpan="1" /&gt;&lt;/Controls&gt;&lt;Columns Styles="Absolute,110,Absolute,110,Absolute,110,Absolute,140,Absolute,200" /&gt;&lt;Rows Styles="Absolute,25,Absolute,25,Absolute,25,Absolute,25,Absolute,25,Absolute,25,Absolute,25,Absolute,25" /&gt;&lt;/TableLayoutSettings&gt;</value>
+    <value>&lt;?xml version="1.0" encoding="utf-16"?&gt;&lt;TableLayoutSettings&gt;&lt;Controls&gt;&lt;Control Name="labelModeCh" Row="0" RowSpan="1" Column="0" ColumnSpan="1" /&gt;&lt;Control Name="CMB_modeChannel" Row="0" RowSpan="1" Column="1" ColumnSpan="1" /&gt;&lt;Control Name="labelfm1" Row="1" RowSpan="1" Column="0" ColumnSpan="1" /&gt;&lt;Control Name="chk_ss6" Row="6" RowSpan="1" Column="3" ColumnSpan="1" /&gt;&lt;Control Name="CMB_fmode1" Row="1" RowSpan="1" Column="1" ColumnSpan="1" /&gt;&lt;Control Name="chk_ss5" Row="5" RowSpan="1" Column="3" ColumnSpan="1" /&gt;&lt;Control Name="label11" Row="6" RowSpan="1" Column="4" ColumnSpan="1" /&gt;&lt;Control Name="chk_ss4" Row="4" RowSpan="1" Column="3" ColumnSpan="1" /&gt;&lt;Control Name="label10" Row="5" RowSpan="1" Column="4" ColumnSpan="1" /&gt;&lt;Control Name="chk_ss1" Row="1" RowSpan="1" Column="3" ColumnSpan="1" /&gt;&lt;Control Name="label9" Row="4" RowSpan="1" Column="4" ColumnSpan="1" /&gt;&lt;Control Name="chk_ss3" Row="3" RowSpan="1" Column="3" ColumnSpan="1" /&gt;&lt;Control Name="label8" Row="3" RowSpan="1" Column="4" ColumnSpan="1" /&gt;&lt;Control Name="label12" Row="1" RowSpan="1" Column="4" ColumnSpan="1" /&gt;&lt;Control Name="label7" Row="2" RowSpan="1" Column="4" ColumnSpan="1" /&gt;&lt;Control Name="chk_ss2" Row="2" RowSpan="1" Column="3" ColumnSpan="1" /&gt;&lt;Control Name="CB_simple5" Row="5" RowSpan="1" Column="2" ColumnSpan="1" /&gt;&lt;Control Name="labelfm2" Row="2" RowSpan="1" Column="0" ColumnSpan="1" /&gt;&lt;Control Name="CB_simple4" Row="4" RowSpan="1" Column="2" ColumnSpan="1" /&gt;&lt;Control Name="CMB_fmode2" Row="2" RowSpan="1" Column="1" ColumnSpan="1" /&gt;&lt;Control Name="CB_simple3" Row="3" RowSpan="1" Column="2" ColumnSpan="1" /&gt;&lt;Control Name="CB_simple2" Row="2" RowSpan="1" Column="2" ColumnSpan="1" /&gt;&lt;Control Name="labelfm3" Row="3" RowSpan="1" Column="0" ColumnSpan="1" /&gt;&lt;Control Name="labelfm4" Row="4" RowSpan="1" Column="0" ColumnSpan="1" /&gt;&lt;Control Name="labelfm5" Row="5" RowSpan="1" Column="0" ColumnSpan="1" /&gt;&lt;Control Name="labelfm6" Row="6" RowSpan="1" Column="0" ColumnSpan="1" /&gt;&lt;Control Name="CMB_fmode3" Row="3" RowSpan="1" Column="1" ColumnSpan="1" /&gt;&lt;Control Name="CMB_fmode4" Row="4" RowSpan="1" Column="1" ColumnSpan="1" /&gt;&lt;Control Name="CMB_fmode5" Row="5" RowSpan="1" Column="1" ColumnSpan="1" /&gt;&lt;Control Name="CMB_fmode6" Row="6" RowSpan="1" Column="1" ColumnSpan="1" /&gt;&lt;Control Name="CB_simple1" Row="1" RowSpan="1" Column="2" ColumnSpan="1" /&gt;&lt;Control Name="CB_simple6" Row="6" RowSpan="1" Column="2" ColumnSpan="1" /&gt;&lt;Control Name="linkLabel1_ss" Row="7" RowSpan="1" Column="3" ColumnSpan="1" /&gt;&lt;/Controls&gt;&lt;Columns Styles="Absolute,110,Absolute,110,Absolute,110,Absolute,140,Absolute,200" /&gt;&lt;Rows Styles="Absolute,25,Absolute,25,Absolute,25,Absolute,25,Absolute,25,Absolute,25,Absolute,25,Absolute,25" /&gt;&lt;/TableLayoutSettings&gt;</value>
   </data>
   <metadata name="$this.Localizable" type="System.Boolean, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089">
     <value>True</value>
