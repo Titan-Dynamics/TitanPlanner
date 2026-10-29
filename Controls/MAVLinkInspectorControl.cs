@@ -84,6 +84,10 @@ namespace MissionPlanner.Controls
 
             bool added = false;
 
+            // The tree takes the theme's colours (ThemeManager); the field rows, the values at the bottom of the
+            // tree, are in the accent so they stand out from the vehicle, component and message rows above them.
+            var fieldColor = MapButton.Accent;
+
             foreach (var mavLinkMessage in mavi.GetPacketMessages())
             {
                 TreeNode sysidnode;
@@ -181,13 +185,16 @@ namespace MissionPlanner.Controls
                         }
                     }
 
-                    msgidnode.Nodes[field.Name].Tag = new[]
+                    var fieldnode = msgidnode.Nodes[field.Name];
+                    fieldnode.Tag = new[]
                     {
                         field.Name, value,
                         field.FieldType.ToString()
                     };
-                    msgidnode.Nodes[field.Name].Text = (String.Format("{0,-32} {1,20} {2,-20}", field.Name, value,
+                    fieldnode.Text = (String.Format("{0,-32} {1,20} {2,-20}", field.Name, value,
                         field.FieldType.ToString()));
+                    if (fieldnode.ForeColor != fieldColor)
+                        fieldnode.ForeColor = fieldColor;
                 }
             }
 

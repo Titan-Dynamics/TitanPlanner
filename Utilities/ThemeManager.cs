@@ -1019,7 +1019,7 @@ mc:Ignorable=""d""
                     ctl.BackColor = BGColor;
                     ctl.ForeColor = TextColor;
                 }
-                else if (ctl.GetType() == typeof(TreeView))
+                else if (ctl is TreeView)
                 {
                     ctl.BackColor = BGColor;
                     ctl.ForeColor = TextColor;
@@ -1332,7 +1332,7 @@ mc:Ignorable=""d""
                     but.numberColorBackup = but.numberColor;
                     //return;  //return removed to process all quickView controls
                 }
-                else if (ctl.GetType() == typeof(TreeView))
+                else if (ctl is TreeView)
                 {
                     ctl.BackColor = BGColor;
                     ctl.ForeColor = TextColor;
