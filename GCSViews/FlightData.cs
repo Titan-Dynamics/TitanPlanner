@@ -2852,8 +2852,9 @@ namespace MissionPlanner.GCSViews
             _autoPanClock.Restart();
 
             var cs = MainV2.comPort?.MAV?.cs;
+            // the map holds the mouse capture while the user drags it, even once the pointer leaves the map
             if (cs == null || (cs.lat == 0 && cs.lng == 0) || !gMapControl1.Visible || gMapControl1.IsDragging ||
-                MouseButtons == MouseButtons.Left && gMapControl1.ClientRectangle.Contains(gMapControl1.PointToClient(MousePosition)))
+                gMapControl1.Capture)
                 return;
 
             var fix = new PointLatLng(cs.lat, cs.lng);
@@ -2888,14 +2889,17 @@ namespace MissionPlanner.GCSViews
             // how far the view moves this frame
             double moveX = -dx * share, moveY = -dy * share;
 
-            // Never back the view up along the vehicle's course. A new fix landing behind the carried-along target
-            // would otherwise reverse the pan for a moment; instead the view waits for the vehicle to catch up. The
-            // map's local space is north-up whatever its rotation, so the course gives the direction directly.
+            // Don't back the view up along the vehicle's course for the small steps new fixes make: one landing behind
+            // the carried-along target would otherwise reverse the pan for a moment, so the view waits for the vehicle
+            // to catch up. A vehicle well behind the centre (the map was dragged ahead of it) is panned back to as
+            // usual. The map's local space is north-up whatever its rotation, so the course gives the direction.
             if (cs.groundspeed / CurrentState.multiplierspeed > 0.5)
             {
                 double alongX = Math.Sin(course), alongY = -Math.Cos(course);
+                double behind = dx * alongX + dy * alongY;
+                double jitter = Math.Max(15, Math.Min(gMapControl1.Width, gMapControl1.Height) / 2.0 * 0.1);
                 double along = moveX * alongX + moveY * alongY;
-                if (along < 0)
+                if (along < 0 && behind < jitter)
                 {
                     moveX -= along * alongX;
                     moveY -= along * alongY;
