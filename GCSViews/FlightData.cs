@@ -2835,7 +2835,7 @@ namespace MissionPlanner.GCSViews
 
             _offsetCarryX -= stepX;
             _offsetCarryY -= stepY;
-            gMapControl1.Core.DragOffset(new GPoint((long)stepX, (long)stepY));
+            gMapControl1.Pan(new GPoint((long)stepX, (long)stepY));
             // Control.Invalidate, not GMap's: GMap's goes through its invalidator, which repaints at most every 111 ms
             // (about 9 fps). Windows merges pending repaints, so this paints as often as painting allows.
             ((Control)gMapControl1).Invalidate();
@@ -2872,10 +2872,9 @@ namespace MissionPlanner.GCSViews
                 fix.Lat + travelled * Math.Cos(course) / 111320.0,
                 fix.Lng + travelled * Math.Sin(course) / (111320.0 * Math.Max(0.01, Math.Cos(fix.Lat * Math.PI / 180))));
 
-            var core = gMapControl1.Core;
-            var centre = core.FromLatLngToLocal(gMapControl1.Position);
-            var vehicle = core.FromLatLngToLocal(target);
-            double dx = centre.X - vehicle.X, dy = centre.Y - vehicle.Y;
+            // in the frame the map pans in, with the fractional zoom applied, so the vehicle lands on the centre
+            var vehicle = gMapControl1.FromLatLngToMapLocal(target);
+            double dx = gMapControl1.Core.Width / 2.0 - vehicle.X, dy = gMapControl1.Core.Height / 2.0 - vehicle.Y;
 
             if (Math.Abs(dx) > gMapControl1.Width || Math.Abs(dy) > gMapControl1.Height)
             {

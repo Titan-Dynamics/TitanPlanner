@@ -162,10 +162,16 @@ the git log has those. `ChangeLog.txt` is upstream's and is not maintained here.
   shaders, `Overlays/` the mission, vehicle and ADS-B drawing, `Scene/` the UTM frame, camera and pose
   smoothing. Selection and loading are pure logic with tests in `MissionPlannerTests/Controls/`.
 - **2D maps.** Setting `GMapControl.Position` or `Zoom` re-projects every overlay and repaints synchronously,
-  and `GMapControl.Invalidate` is throttled to about 9 fps. The DATA map pans with `Core.DragOffset` plus
+  and `GMapControl.Invalidate` is throttled to about 9 fps. The DATA map pans with `myGMAP.Pan` plus
   `((Control)map).Invalidate()` (dragging and the autopan timer in `FlightData`). Zoom from user input goes
   through `myGMAP.AnimateZoom` / `SetZoom`, and zoom controls sync to `ZoomTarget`, not `Zoom`, so the
   write-back doesn't cut the animation short. Hidden shapes are skipped by that re-projection, which is why
   `FlightData.UpdateOverlayVisibility` hides the no-fly shapes (`NoFly/*.kmz`, ~200k points worldwide) away
   from the view.
+- **GMap fractional zoom.** A fractional zoom is drawn scaled (and rotated) about `Core.renderOffset`, which
+  is the view centre only after a whole-level zoom or a `Position` set; a `Core.DragOffset` pan moves it, and
+  `Core.FromLocalToLatLng` / `FromLatLngToLocal` leave the scale out. Pan with `myGMAP.Pan` (keeps
+  `Position` on the centre), measure with `myGMAP.FromLatLngToMapLocal`, and zoom through `myGMAP`, which
+  moves the pivot back to the centre first. The DATA update loop changes overlays on its own thread and GMap's
+  collections don't lock, so UI-thread code that walks overlays has to survive a collection changing under it.
 - **Commits.** Messages carry no AI attribution trailers. Do not commit or push unless asked.

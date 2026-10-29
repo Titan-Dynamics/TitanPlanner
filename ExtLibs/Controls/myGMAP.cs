@@ -185,8 +185,75 @@ namespace MissionPlanner.Controls
             else
             {
                 _zoomTimer.Stop();
+                CentreZoomPivot();
                 Zoom = zoom;
             }
+        }
+
+        // GMap draws a fractional zoom scaled (and rotated) about Core.renderOffset, which is the view centre only
+        // after a whole-level zoom change or a Position set. A pan moves it along with the map, so a zoom after a pan
+        // would grow from where the centre used to be, and Core works out Position without the fractional scale.
+
+        /// <summary>
+        /// The scale a fractional zoom draws the whole level it is between at (1 at whole levels).
+        /// </summary>
+        public double FractionalScale => ScaleMode == ScaleModes.Fractional ? Math.Pow(2, Zoom - Core.Zoom) : 1;
+
+        /// <summary>
+        /// A lat/lng in local pixels of the map before rotation (the frame Core.renderOffset and Pan work in), with
+        /// the fractional zoom applied, which Core.FromLatLngToLocal leaves out.
+        /// </summary>
+        public PointF FromLatLngToMapLocal(PointLatLng point)
+        {
+            var local = Core.FromLatLngToLocal(point);
+            var origin = Core.renderOffset;
+            double scale = FractionalScale;
+            return new PointF((float)(origin.X + (local.X - origin.X) * scale),
+                (float)(origin.Y + (local.Y - origin.Y) * scale));
+        }
+
+        /// <summary>
+        /// Moves the map by the offset in pixels (before rotation) without re-projecting the overlays, keeping
+        /// Position on the view centre.
+        /// </summary>
+        public void Pan(GPoint offset)
+        {
+            Core.DragOffset(offset);
+
+            var pixel = CentrePixel();
+            Core.positionPixel = pixel;
+            Core.position = MapProvider.Projection.FromPixelToLatLng(pixel, Core.Zoom);
+        }
+
+        // the world pixel, at the whole level the map is drawn from, under the view centre
+        private GPoint CentrePixel()
+        {
+            var origin = Core.renderOffset;
+            double scale = FractionalScale;
+            return new GPoint(
+                Core.compensationOffset.X + (long)Math.Round((Core.Width / 2 - origin.X) / scale),
+                Core.compensationOffset.Y + (long)Math.Round((Core.Height / 2 - origin.Y) / scale));
+        }
+
+        /// <summary>
+        /// Moves the point a zoom grows from back to the view centre. The overlays need re-projecting after, which
+        /// the zoom change that follows does.
+        /// </summary>
+        private void CentreZoomPivot()
+        {
+            // Before the map starts, Position is only stored (a restored last position, say) and the offsets aren't
+            // laid out yet; starting centres the map on Position.
+            if (!Core.IsStarted || IsDragging)
+                return;
+
+            var centre = new GPoint(Core.Width / 2, Core.Height / 2);
+            if (Core.renderOffset.X == centre.X && Core.renderOffset.Y == centre.Y)
+                return;
+
+            Core.compensationOffset = CentrePixel();
+            Core.renderOffset = centre;
+            // refreshes the tiles to draw and sets Position to the new centre
+            Core.DragOffset(GPoint.Empty);
         }
 
         private void ZoomTick(object sender, EventArgs e)
@@ -209,10 +276,38 @@ namespace MissionPlanner.Controls
             // cover the same share of the gap per second whatever the frame rate
             double gap = _zoomTarget - Zoom;
             double zoom = Math.Abs(gap) < 0.002 ? _zoomTarget : Zoom + gap * (1 - Math.Exp(-dt / ZoomEaseSeconds));
-            if (zoom == _zoomTarget)
-                _zoomTimer.Stop();
 
-            Zoom = zoom;
+            try
+            {
+                if (zoom != Zoom)
+                {
+                    CentreZoomPivot();
+                    Zoom = zoom;
+                }
+                else
+                {
+                    // the last frame set the zoom but its re-projection was cut short: re-project without moving
+                    CentreZoomPivot();
+                    Offset(0, 0);
+                }
+
+                if (zoom == _zoomTarget)
+                    _zoomTimer.Stop();
+            }
+            catch (Exception ex) when (ex is NullReferenceException || ex is InvalidOperationException ||
+                                       ex is ArgumentException || ex is IndexOutOfRangeException)
+            {
+                // The DATA screen's update loop changes overlays on its own thread, and one changed while they were
+                // being re-projected. The zoom is set; the next frame re-projects them again.
+                Debug.WriteLine(ex);
+            }
+            catch
+            {
+                // anything else would come back every frame
+                _zoomTimer.Stop();
+                throw;
+            }
+
             _zoomSet = Zoom;
         }
 
