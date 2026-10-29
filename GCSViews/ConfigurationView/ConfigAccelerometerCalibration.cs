@@ -22,7 +22,83 @@ namespace MissionPlanner.GCSViews.ConfigurationView
         public ConfigAccelerometerCalibration()
         {
             InitializeComponent();
+            ArrangeLayout();
             ClearOrientationImage();
+        }
+
+        /// <summary>
+        /// Each box stacks its description and button the same way and is as tall as its content. The 3 axis
+        /// box puts the vehicle's prompt beside its button and the orientation picture below it, so the button
+        /// stays put when the picture appears. All boxes take the width of the widest description.
+        /// </summary>
+        private void ArrangeLayout()
+        {
+            SuspendLayout();
+
+            BUT_calib_accell.Margin = new Padding(3, 0, 3, 0);
+            lbl_Accel_user.AutoSize = true;
+            lbl_Accel_user.Anchor = AnchorStyles.Left;
+            var buttonRow = new FlowLayoutPanel
+            {
+                FlowDirection = FlowDirection.LeftToRight,
+                WrapContents = false,
+                AutoSize = true,
+                AutoSizeMode = AutoSizeMode.GrowAndShrink,
+                Margin = Padding.Empty
+            };
+            buttonRow.Controls.Add(BUT_calib_accell);
+            buttonRow.Controls.Add(lbl_Accel_user);
+
+            flowLayoutPanelAccel.Controls.Clear();
+            flowLayoutPanelAccel.WrapContents = false;
+            flowLayoutPanelAccel.Margin = Padding.Empty;
+            StyleDescription(label4);
+            flowLayoutPanelAccel.Controls.Add(label4);
+            flowLayoutPanelAccel.Controls.Add(buttonRow);
+            pictureBoxOrientation.Margin = new Padding(3, 8, 3, 0);
+            flowLayoutPanelAccel.Controls.Add(pictureBoxOrientation);
+
+            StackInBox(groupBoxLevel, label1, BUT_level);
+            StackInBox(groupBoxSimple, label2, BUT_simpleAccelCal);
+
+            // shrink to the boxes, or the designer height is handed to the last box
+            tableLayoutPanel1.AutoSizeMode = AutoSizeMode.GrowAndShrink;
+            tableLayoutPanel1.ColumnStyles.Clear();
+            tableLayoutPanel1.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+            foreach (var box in new[] { groupBoxAccelCal, groupBoxLevel, groupBoxSimple })
+            {
+                box.Dock = DockStyle.Fill;
+                box.Padding = new Padding(10);
+            }
+
+            ResumeLayout(true);
+        }
+
+        private static void StyleDescription(Label label)
+        {
+            label.AutoSize = true;
+            label.Anchor = AnchorStyles.Top | AnchorStyles.Left;
+            label.Margin = new Padding(3, 0, 3, 8);
+        }
+
+        private static void StackInBox(GroupBox box, Label description, Control button)
+        {
+            StyleDescription(description);
+            button.Margin = new Padding(3, 0, 3, 0);
+
+            var stack = new FlowLayoutPanel
+            {
+                FlowDirection = FlowDirection.TopDown,
+                WrapContents = false,
+                AutoSize = true,
+                AutoSizeMode = AutoSizeMode.GrowAndShrink,
+                Dock = DockStyle.Fill,
+                Margin = Padding.Empty
+            };
+            box.Controls.Clear();
+            stack.Controls.Add(description);
+            stack.Controls.Add(button);
+            box.Controls.Add(stack);
         }
 
         private void ClearOrientationImage()
