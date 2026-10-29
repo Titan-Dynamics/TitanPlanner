@@ -1320,11 +1320,26 @@ namespace MissionPlanner
             if (this.connectionStatsForm != null && connectionStatsForm.Visible)
             {
                 // else the form is already showing.  reset the stats
-                this.connectionStatsForm.Controls.Clear();
-                _connectionStats = new ConnectionStats(comPort);
-                this.connectionStatsForm.Controls.Add(_connectionStats);
-                ThemeManager.ApplyThemeTo(this.connectionStatsForm);
+                AttachConnectionStats();
             }
+        }
+
+        /// <summary>
+        /// Fills the Link Stats window with a new stats control for the current link and returns the control's
+        /// designed size.
+        /// </summary>
+        private Size AttachConnectionStats()
+        {
+            // disposing (not just removing) the old control stops its updates
+            foreach (var old in this.connectionStatsForm.Controls.Cast<Control>().ToList())
+                old.Dispose();
+
+            _connectionStats = new ConnectionStats(comPort);
+            var size = _connectionStats.Size;
+            _connectionStats.Dock = DockStyle.Fill;
+            this.connectionStatsForm.Controls.Add(_connectionStats);
+            ThemeManager.ApplyThemeTo(this.connectionStatsForm);
+            return size;
         }
 
         private void ShowConnectionStatsForm()
@@ -1334,8 +1349,6 @@ namespace MissionPlanner
                 // If the form has been closed, or never shown before, we need all new stuff
                 this.connectionStatsForm = new Form
                 {
-                    Width = 430,
-                    Height = 320,
                     MaximizeBox = false,
                     MinimizeBox = false,
                     FormBorderStyle = FormBorderStyle.FixedDialog,
@@ -1344,11 +1357,8 @@ namespace MissionPlanner
                 };
                 // Change the connection stats control, so that when/if the connection stats form is showing,
                 // there will be something to see
-                this.connectionStatsForm.Controls.Clear();
-                _connectionStats = new ConnectionStats(comPort);
-                this.connectionStatsForm.Controls.Add(_connectionStats);
-                this.connectionStatsForm.Width = _connectionStats.Width;
-                this.connectionStatsForm.Height = _connectionStats.Height + 40;
+                // size the inside to the stats, so the borders don't cut off the right of the graph
+                this.connectionStatsForm.ClientSize = AttachConnectionStats();
             }
 
             this.connectionStatsForm.Show();
