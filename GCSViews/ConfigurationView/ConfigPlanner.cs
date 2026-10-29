@@ -123,17 +123,6 @@ namespace MissionPlanner.GCSViews.ConfigurationView
 
                 base.OnLayout(levent);
 
-                // A group's preferred height measures wrapping rows at its content's natural widths, which can leave
-                // it taller than its content laid out at the column's width; fit it to that content instead.
-                SuspendLayout();
-                foreach (var group in groups)
-                {
-                    int height = FittedHeight(group);
-                    group.MinimumSize = new Size(columnWidth, height);
-                    group.MaximumSize = new Size(columnWidth, height);
-                }
-                ResumeLayout(false);
-
                 var bottoms = new int[columns];
                 var origin = DisplayRectangle.Location;
                 SuspendLayout();
@@ -147,37 +136,6 @@ namespace MissionPlanner.GCSViews.ConfigurationView
 
                 // the scroll range follows the groups' new places
                 AdjustFormScrollbars(AutoScroll);
-            }
-
-            // the group's height that holds its content as it is laid out now
-            private static int FittedHeight(Control group)
-            {
-                var inner = group.DisplayRectangle;
-                int bottom = 0;
-                foreach (Control child in group.Controls)
-                {
-                    if (!child.Visible)
-                        continue;
-
-                    // a child filling the group is as tall as the group: measure what it holds
-                    bottom = Math.Max(bottom, child.Dock == DockStyle.Fill
-                        ? child.Top + ContentBottom(child)
-                        : child.Bottom + child.Margin.Bottom);
-                }
-
-                return bottom == 0 ? group.Height : bottom + group.Height - inner.Bottom;
-            }
-
-            private static int ContentBottom(Control container)
-            {
-                int bottom = 0;
-                foreach (Control child in container.Controls)
-                {
-                    if (child.Visible)
-                        bottom = Math.Max(bottom, child.Bottom + child.Margin.Bottom);
-                }
-
-                return bottom + container.Padding.Bottom;
             }
         }
 
