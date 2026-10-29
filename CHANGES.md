@@ -319,6 +319,7 @@ Settings, logs, map tiles, offline maps, elevation data and caches live in `Prog
 - Actions tab laid out as a flow layout with the payload controls alongside
 - Revamped Telemetry Log tab
 - Logs tab combining Dataflash + Telemetry views
+- **Open Log Folder** button in the Log Downloader
 - Custom upgrade-path logic so existing original Mission Planner users transition cleanly to the Titan Dynamics edition (theme, default tab visibility, settings migration)
 - No console window behind the main exe
 

@@ -369,6 +369,9 @@
   <data name="BUT_DLall.AutoSize" type="System.Boolean, mscorlib">
     <value>True</value>
   </data>
+  <data name="BUT_DLall.Dock" type="System.Windows.Forms.DockStyle, System.Windows.Forms">
+    <value>Fill</value>
+  </data>
   <data name="BUT_DLall.Location" type="System.Drawing.Point, System.Drawing">
     <value>3, 3</value>
   </data>
@@ -398,6 +401,9 @@
   </data>
   <data name="BUT_clearlogs.AutoSize" type="System.Boolean, mscorlib">
     <value>True</value>
+  </data>
+  <data name="BUT_clearlogs.Dock" type="System.Windows.Forms.DockStyle, System.Windows.Forms">
+    <value>Fill</value>
   </data>
   <data name="BUT_clearlogs.Location" type="System.Drawing.Point, System.Drawing">
     <value>3, 61</value>
@@ -435,6 +441,9 @@
   <data name="BUT_firstperson.AutoSize" type="System.Boolean, mscorlib">
     <value>True</value>
   </data>
+  <data name="BUT_firstperson.Dock" type="System.Windows.Forms.DockStyle, System.Windows.Forms">
+    <value>Fill</value>
+  </data>
   <data name="BUT_firstperson.Location" type="System.Drawing.Point, System.Drawing">
     <value>163, 3</value>
   </data>
@@ -468,6 +477,9 @@
   <data name="BUT_DLthese.AutoSize" type="System.Boolean, mscorlib">
     <value>True</value>
   </data>
+  <data name="BUT_DLthese.Dock" type="System.Windows.Forms.DockStyle, System.Windows.Forms">
+    <value>Fill</value>
+  </data>
   <data name="BUT_DLthese.Location" type="System.Drawing.Point, System.Drawing">
     <value>3, 32</value>
   </data>
@@ -497,6 +509,9 @@
   </data>
   <data name="BUT_bintolog.AutoSize" type="System.Boolean, mscorlib">
     <value>True</value>
+  </data>
+  <data name="BUT_bintolog.Dock" type="System.Windows.Forms.DockStyle, System.Windows.Forms">
+    <value>Fill</value>
   </data>
   <data name="BUT_bintolog.ImeMode" type="System.Windows.Forms.ImeMode, System.Windows.Forms">
     <value>NoControl</value>
@@ -534,6 +549,9 @@
   <data name="BUT_redokml.AutoSize" type="System.Boolean, mscorlib">
     <value>True</value>
   </data>
+  <data name="BUT_redokml.Dock" type="System.Windows.Forms.DockStyle, System.Windows.Forms">
+    <value>Fill</value>
+  </data>
   <data name="BUT_redokml.Location" type="System.Drawing.Point, System.Drawing">
     <value>163, 32</value>
   </data>
@@ -564,14 +582,50 @@
   <data name="&gt;&gt;BUT_redokml.ZOrder" xml:space="preserve">
     <value>5</value>
   </data>
+  <data name="BUT_openlogdir.AutoSize" type="System.Boolean, mscorlib">
+    <value>True</value>
+  </data>
+  <data name="BUT_openlogdir.Dock" type="System.Windows.Forms.DockStyle, System.Windows.Forms">
+    <value>Fill</value>
+  </data>
+  <data name="BUT_openlogdir.Location" type="System.Drawing.Point, System.Drawing">
+    <value>3, 90</value>
+  </data>
+  <data name="BUT_openlogdir.MinimumSize" type="System.Drawing.Size, System.Drawing">
+    <value>136, 23</value>
+  </data>
+  <data name="BUT_openlogdir.Size" type="System.Drawing.Size, System.Drawing">
+    <value>136, 23</value>
+  </data>
+  <data name="BUT_openlogdir.TabIndex" type="System.Int32, mscorlib">
+    <value>13</value>
+  </data>
+  <data name="BUT_openlogdir.Text" xml:space="preserve">
+    <value>Open Log Folder</value>
+  </data>
+  <data name="BUT_openlogdir.ToolTip" xml:space="preserve">
+    <value>Open the folder where downloaded logs are saved.</value>
+  </data>
+  <data name="&gt;&gt;BUT_openlogdir.Name" xml:space="preserve">
+    <value>BUT_openlogdir</value>
+  </data>
+  <data name="&gt;&gt;BUT_openlogdir.Type" xml:space="preserve">
+    <value>MissionPlanner.Controls.MyButton, MissionPlanner.Controls, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null</value>
+  </data>
+  <data name="&gt;&gt;BUT_openlogdir.Parent" xml:space="preserve">
+    <value>tableLayoutPanel3</value>
+  </data>
+  <data name="&gt;&gt;BUT_openlogdir.ZOrder" xml:space="preserve">
+    <value>6</value>
+  </data>
   <data name="tableLayoutPanel3.Location" type="System.Drawing.Point, System.Drawing">
     <value>3, 290</value>
   </data>
   <data name="tableLayoutPanel3.RowCount" type="System.Int32, mscorlib">
-    <value>3</value>
+    <value>4</value>
   </data>
   <data name="tableLayoutPanel3.Size" type="System.Drawing.Size, System.Drawing">
-    <value>321, 87</value>
+    <value>321, 116</value>
   </data>
   <data name="tableLayoutPanel3.TabIndex" type="System.Int32, mscorlib">
     <value>19</value>
@@ -589,7 +643,7 @@
     <value>6</value>
   </data>
   <data name="tableLayoutPanel3.LayoutSettings" type="System.Windows.Forms.TableLayoutSettings, System.Windows.Forms">
-    <value>&lt;?xml version="1.0" encoding="utf-16"?&gt;&lt;TableLayoutSettings&gt;&lt;Controls&gt;&lt;Control Name="BUT_DLall" Row="0" RowSpan="1" Column="0" ColumnSpan="1" /&gt;&lt;Control Name="BUT_clearlogs" Row="2" RowSpan="1" Column="0" ColumnSpan="1" /&gt;&lt;Control Name="BUT_firstperson" Row="0" RowSpan="1" Column="1" ColumnSpan="1" /&gt;&lt;Control Name="BUT_DLthese" Row="1" RowSpan="1" Column="0" ColumnSpan="1" /&gt;&lt;Control Name="BUT_bintolog" Row="2" RowSpan="1" Column="1" ColumnSpan="1" /&gt;&lt;Control Name="BUT_redokml" Row="1" RowSpan="1" Column="1" ColumnSpan="1" /&gt;&lt;/Controls&gt;&lt;Columns Styles="Percent,50,Percent,50" /&gt;&lt;Rows Styles="AutoSize,0,AutoSize,0,AutoSize,0" /&gt;&lt;/TableLayoutSettings&gt;</value>
+    <value>&lt;?xml version="1.0" encoding="utf-16"?&gt;&lt;TableLayoutSettings&gt;&lt;Controls&gt;&lt;Control Name="BUT_DLall" Row="0" RowSpan="1" Column="0" ColumnSpan="1" /&gt;&lt;Control Name="BUT_clearlogs" Row="2" RowSpan="1" Column="0" ColumnSpan="1" /&gt;&lt;Control Name="BUT_firstperson" Row="0" RowSpan="1" Column="1" ColumnSpan="1" /&gt;&lt;Control Name="BUT_DLthese" Row="1" RowSpan="1" Column="0" ColumnSpan="1" /&gt;&lt;Control Name="BUT_bintolog" Row="2" RowSpan="1" Column="1" ColumnSpan="1" /&gt;&lt;Control Name="BUT_redokml" Row="1" RowSpan="1" Column="1" ColumnSpan="1" /&gt;&lt;Control Name="BUT_openlogdir" Row="3" RowSpan="1" Column="0" ColumnSpan="2" /&gt;&lt;/Controls&gt;&lt;Columns Styles="Percent,50,Percent,50" /&gt;&lt;Rows Styles="AutoSize,0,AutoSize,0,AutoSize,0,AutoSize,0" /&gt;&lt;/TableLayoutSettings&gt;</value>
   </data>
   <data name="tableLayoutPanel1.Location" type="System.Drawing.Point, System.Drawing">
     <value>0, 0</value>
@@ -616,7 +670,7 @@
     <value>0</value>
   </data>
   <data name="tableLayoutPanel1.LayoutSettings" type="System.Windows.Forms.TableLayoutSettings, System.Windows.Forms">
-    <value>&lt;?xml version="1.0" encoding="utf-16"?&gt;&lt;TableLayoutSettings&gt;&lt;Controls&gt;&lt;Control Name="TXT_seriallog" Row="1" RowSpan="2" Column="1" ColumnSpan="1" /&gt;&lt;Control Name="CHK_logs" Row="1" RowSpan="1" Column="0" ColumnSpan="1" /&gt;&lt;Control Name="label1" Row="0" RowSpan="1" Column="0" ColumnSpan="1" /&gt;&lt;Control Name="LabelStatus" Row="3" RowSpan="1" Column="1" ColumnSpan="1" /&gt;&lt;Control Name="label2" Row="0" RowSpan="1" Column="1" ColumnSpan="1" /&gt;&lt;Control Name="tableLayoutPanel2" Row="3" RowSpan="1" Column="0" ColumnSpan="1" /&gt;&lt;Control Name="tableLayoutPanel3" Row="2" RowSpan="1" Column="0" ColumnSpan="1" /&gt;&lt;/Controls&gt;&lt;Columns Styles="AutoSize,0,Percent,100" /&gt;&lt;Rows Styles="Absolute,25,Percent,100,Absolute,100,Absolute,25,Absolute,0" /&gt;&lt;/TableLayoutSettings&gt;</value>
+    <value>&lt;?xml version="1.0" encoding="utf-16"?&gt;&lt;TableLayoutSettings&gt;&lt;Controls&gt;&lt;Control Name="TXT_seriallog" Row="1" RowSpan="2" Column="1" ColumnSpan="1" /&gt;&lt;Control Name="CHK_logs" Row="1" RowSpan="1" Column="0" ColumnSpan="1" /&gt;&lt;Control Name="label1" Row="0" RowSpan="1" Column="0" ColumnSpan="1" /&gt;&lt;Control Name="LabelStatus" Row="3" RowSpan="1" Column="1" ColumnSpan="1" /&gt;&lt;Control Name="label2" Row="0" RowSpan="1" Column="1" ColumnSpan="1" /&gt;&lt;Control Name="tableLayoutPanel2" Row="3" RowSpan="1" Column="0" ColumnSpan="1" /&gt;&lt;Control Name="tableLayoutPanel3" Row="2" RowSpan="1" Column="0" ColumnSpan="1" /&gt;&lt;/Controls&gt;&lt;Columns Styles="AutoSize,0,Percent,100" /&gt;&lt;Rows Styles="Absolute,25,Percent,100,Absolute,130,Absolute,25,Absolute,0" /&gt;&lt;/TableLayoutSettings&gt;</value>
   </data>
   <data name="TXT_seriallog.ScrollBars" type="System.Windows.Forms.ScrollBars, System.Windows.Forms">
     <value>Vertical</value>

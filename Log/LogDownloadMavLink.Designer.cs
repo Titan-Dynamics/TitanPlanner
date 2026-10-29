@@ -38,6 +38,7 @@
             this.BUT_redokml = new MissionPlanner.Controls.MyButton();
             this.BUT_firstperson = new MissionPlanner.Controls.MyButton();
             this.BUT_bintolog = new MissionPlanner.Controls.MyButton();
+            this.BUT_openlogdir = new MissionPlanner.Controls.MyButton();
             this.tableLayoutPanel1 = new System.Windows.Forms.TableLayoutPanel();
             this.label1 = new System.Windows.Forms.Label();
             this.LabelStatus = new System.Windows.Forms.Label();
@@ -111,7 +112,16 @@
             this.toolTip1.SetToolTip(this.BUT_bintolog, resources.GetString("BUT_bintolog.ToolTip"));
             this.BUT_bintolog.UseVisualStyleBackColor = true;
             this.BUT_bintolog.Click += new System.EventHandler(this.BUT_bintolog_Click);
-            // 
+            //
+            // BUT_openlogdir
+            //
+            resources.ApplyResources(this.BUT_openlogdir, "BUT_openlogdir");
+            this.BUT_openlogdir.Name = "BUT_openlogdir";
+            this.tableLayoutPanel3.SetColumnSpan(this.BUT_openlogdir, 2);
+            this.toolTip1.SetToolTip(this.BUT_openlogdir, resources.GetString("BUT_openlogdir.ToolTip"));
+            this.BUT_openlogdir.UseVisualStyleBackColor = true;
+            this.BUT_openlogdir.Click += new System.EventHandler(this.BUT_openlogdir_Click);
+            //
             // tableLayoutPanel1
             // 
             resources.ApplyResources(this.tableLayoutPanel1, "tableLayoutPanel1");
@@ -166,6 +176,7 @@
             this.tableLayoutPanel3.Controls.Add(this.BUT_DLthese, 0, 1);
             this.tableLayoutPanel3.Controls.Add(this.BUT_bintolog, 1, 2);
             this.tableLayoutPanel3.Controls.Add(this.BUT_redokml, 1, 1);
+            this.tableLayoutPanel3.Controls.Add(this.BUT_openlogdir, 0, 3);
             this.tableLayoutPanel3.Name = "tableLayoutPanel3";
             // 
             // toolTip1
@@ -200,6 +211,7 @@
         private System.Windows.Forms.TextBox TXT_seriallog;
         private Controls.MyButton BUT_firstperson;
         private Controls.MyButton BUT_bintolog;
+        private Controls.MyButton BUT_openlogdir;
         private System.Windows.Forms.TableLayoutPanel tableLayoutPanel1;
         private System.Windows.Forms.Label label1;
         private System.Windows.Forms.Label LabelStatus;
