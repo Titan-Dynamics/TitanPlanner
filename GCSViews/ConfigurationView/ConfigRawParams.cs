@@ -52,15 +52,74 @@ namespace MissionPlanner.GCSViews.ConfigurationView
         private readonly System.Timers.Timer _metadataLoadTimer =
             new System.Timers.Timer { Interval = 50, AutoReset = false };
 
+        // the link whose new parameter lists reload this page (subscribed on Activate)
+        private MAVLinkInterface _paramsPort;
+
         public ConfigRawParams()
         {
             InitializeComponent();
             _metadataLoadTimer.Elapsed += MetadataLoadTimerOnElapsed;
             Params.Sorted += (s, e) => ScheduleVisibleMetadataLoad();
+
+            // Reset (to defaults) is the one destructive button: apart from the others at the toolbar's right edge, and
+            // plain (Activate styles it). The toolbar keeps room for it, so its buttons wrap before they reach it.
+            var toolbar = tableLayoutPanel1;
+            var reset = BUT_reset_params;
+            toolbar.Controls.Remove(reset);
+            toolbar.Parent.Controls.Add(reset);
+            reset.Anchor = AnchorStyles.Top | AnchorStyles.Right;
+            reset.Location = new Point(toolbar.Right - toolbar.Padding.Right - reset.Margin.Right - reset.Width,
+                toolbar.Top + toolbar.Padding.Top + reset.Margin.Top);
+            toolbar.Padding = new Padding(toolbar.Padding.Left, toolbar.Padding.Top,
+                toolbar.Padding.Right + reset.Margin.Horizontal + reset.Width, toolbar.Padding.Bottom);
+            reset.BringToFront();
+
+            Disposed += (s, e) =>
+            {
+                if (_paramsPort != null)
+                    _paramsPort.ParamListChanged -= ParamsPort_ParamListChanged;
+            };
+        }
+
+        /// <summary>
+        /// A complete parameter list (after connecting, a refresh, a background load) reloads the page while it shows.
+        /// Pages already showing, such as the panel docked under the DATA map, otherwise keep the few params that had
+        /// arrived when they were first filled.
+        /// </summary>
+        private void ParamsPort_ParamListChanged(object sender, EventArgs e)
+        {
+            if (IsDisposed || !IsHandleCreated)
+                return;
+
+            BeginInvoke((Action)(() =>
+            {
+                if (!IsDisposed && Visible)
+                    ReloadFromParams();
+            }));
+        }
+
+        /// <summary>Rebuilds the table and tree from the vehicle's current parameter list.</summary>
+        private void ReloadFromParams()
+        {
+            startup = true;
+
+            processToScreen();
+
+            FilterTimerOnElapsed(null, null);
+
+            startup = false;
         }
 
         public void Activate()
         {
+            if (_paramsPort != MainV2.comPort)
+            {
+                if (_paramsPort != null)
+                    _paramsPort.ParamListChanged -= ParamsPort_ParamListChanged;
+                _paramsPort = MainV2.comPort;
+                _paramsPort.ParamListChanged += ParamsPort_ParamListChanged;
+            }
+
             if ((rowlist.Count == 0) || (!Settings.Instance.GetBoolean("SlowMachine", false))) startup = true;
             //If we connected to another vehicle the do a full refresh
             if (rowlist.Count != MainV2.comPort.MAV.param.Count()) startup = true;
@@ -75,6 +134,7 @@ namespace MissionPlanner.GCSViews.ConfigurationView
 
             // Apply theming to ensure controls are themed when dynamically added
             ThemeManager.ApplyThemeTo(this);
+            ThemeManager.ApplyPlainButtonTheme(BUT_reset_params);
 
             Params.Enabled = false;
 
@@ -95,7 +155,7 @@ namespace MissionPlanner.GCSViews.ConfigurationView
             splitContainer1.SplitterDistance = Settings.Instance.GetInt32("rawparam_splitterdistance", 180);
             // Use InitialTreeCollapsed if set, otherwise use saved setting (default false)
             splitContainer1.Panel1Collapsed = InitialTreeCollapsed ?? Settings.Instance.GetBoolean("rawparam_panel1collapsed", false);
-            but_collapse.Text = splitContainer1.Panel1Collapsed ? "▶" : "◀";
+            but_collapse.Arrow = splitContainer1.Panel1Collapsed ? ButtonArrow.Right : ButtonArrow.Left;
 
             processToScreen();
 
@@ -406,6 +466,7 @@ namespace MissionPlanner.GCSViews.ConfigurationView
 
                 try
                 {
+                    // raises ParamListChanged when done, which reloads this page (ParamsPort_ParamListChanged)
                     MainV2.comPort.getParamList();
                 }
                 catch (Exception ex)
@@ -416,14 +477,6 @@ namespace MissionPlanner.GCSViews.ConfigurationView
 
 
                 ((Control)sender).Enabled = true;
-
-                startup = true;
-
-                processToScreen();
-
-                FilterTimerOnElapsed(null, null);
-
-                startup = false;
             }
         }
 
@@ -1143,13 +1196,13 @@ namespace MissionPlanner.GCSViews.ConfigurationView
         {
             if (splitContainer1.Panel1Collapsed)
             {
-                but_collapse.Text = "◀";
+                but_collapse.Arrow = ButtonArrow.Left;
                 splitContainer1.Panel1Collapsed = false;
                 BuildTree();
             }
             else
             {
-                but_collapse.Text = "▶";
+                but_collapse.Arrow = ButtonArrow.Right;
                 splitContainer1.Panel1Collapsed = true;
                 filterPrefix = "";
                 FilterTimerOnElapsed(null, null);

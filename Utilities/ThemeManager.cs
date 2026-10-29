@@ -495,6 +495,23 @@ namespace MissionPlanner.Utilities
         }
 
         /// <summary>
+        /// Styles a button that should not draw the eye, such as a destructive one, on the page's background with the
+        /// page's text colour and the button border. ApplyThemeTo leaves it alone (IgnoreTheme).
+        /// </summary>
+        public static void ApplyPlainButtonTheme(MyButton but)
+        {
+            but.IgnoreTheme = true;
+            but.BGGradTop = BGColor;
+            but.BGGradBot = BGColor;
+            but.TextColor = TextColor;
+            but.TextColorNotEnabled = ButtonTextColorNotEnabled;
+            but.Outline = ButBorder;
+            but.ColorMouseDown = ColorMouseDown;
+            but.ColorMouseOver = ColorMouseOver;
+            but.ColorNotEnabled = ColorNotEnabled;
+        }
+
+        /// <summary>
         /// Will recursively apply the current theme to 'control' unless the control has the
         /// PreventTheming attribute
         /// </summary>

@@ -1758,6 +1758,7 @@ namespace MissionPlanner
                         File.ReadAllText(comPort.MAV.ParamCachePath).FromJSON<MAVLink.MAVLinkParamList>()
                             .ForEach(a => comPort.MAV.param.Add(a));
                         comPort.MAV.param.TotalReported = comPort.MAV.param.TotalReceived;
+                        comPort.OnParamListChanged();
                     }
                     else
                     {
@@ -1768,6 +1769,8 @@ namespace MissionPlanner
                                 try
                                 {
                                     comPort.getParamListMavftp(comPort.MAV.sysid, comPort.MAV.compid);
+                                    // pages showing params reload on this, as after a getParamList
+                                    this.BeginInvokeIfRequired(() => comPort.OnParamListChanged());
                                 }
                                 catch
                                 {

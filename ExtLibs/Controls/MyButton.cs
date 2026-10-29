@@ -11,6 +11,16 @@ using System.Drawing.Drawing2D;
 
 namespace MissionPlanner.Controls
 {
+    /// <summary>The way a MyButton's drawn arrow points (MyButton.Arrow).</summary>
+    public enum ButtonArrow
+    {
+        None,
+        Left,
+        Right,
+        Up,
+        Down
+    }
+
     public class MyButton : Button
     {
         bool _mouseover = false;
@@ -56,6 +66,16 @@ namespace MissionPlanner.Controls
         [System.ComponentModel.Browsable(true), System.ComponentModel.Category("Behavior")]
         [DefaultValue(false)]
         public bool IgnoreTheme { get; set; } = false;
+
+        private ButtonArrow _arrow = ButtonArrow.None;
+
+        /// <summary>
+        /// Draws a filled triangle pointing this way, in the text colour, instead of the text. Font arrows (◄ ►) are a
+        /// few jagged pixels on a small button and differ from font to font.
+        /// </summary>
+        [System.ComponentModel.Browsable(true), System.ComponentModel.Category("Appearance")]
+        [DefaultValue(ButtonArrow.None)]
+        public ButtonArrow Arrow { get { return _arrow; } set { _arrow = value; this.Invalidate(); } }
 
         protected override Size DefaultSize => base.DefaultSize;
 
@@ -145,20 +165,55 @@ namespace MissionPlanner.Controls
                 }
 
 
-                StringFormat stringFormat = new StringFormat();
-                stringFormat.Alignment = StringAlignment.Center;
-                stringFormat.LineAlignment = StringAlignment.Center;
+                if (_arrow != ButtonArrow.None)
+                {
+                    DrawArrow(gr, mybrush);
+                }
+                else
+                {
+                    StringFormat stringFormat = new StringFormat();
+                    stringFormat.Alignment = StringAlignment.Center;
+                    stringFormat.LineAlignment = StringAlignment.Center;
 
-                string display = this.Text;
-                int amppos = display.IndexOf('&');
-                if (amppos != -1)
-                    display = display.Remove(amppos, 1);
+                    string display = this.Text;
+                    int amppos = display.IndexOf('&');
+                    if (amppos != -1)
+                        display = display.Remove(amppos, 1);
 
-                gr.DrawString(display, this.Font, mybrush, outside, stringFormat);
+                    gr.DrawString(display, this.Font, mybrush, outside, stringFormat);
+                }
             }
             catch { }
 
             inOnPaint = false;
+        }
+
+        /// <summary>A triangle in the middle of the button, two fifths of its smaller side long.</summary>
+        private void DrawArrow(Graphics gr, Brush brush)
+        {
+            float cx = this.Width / 2f, cy = this.Height / 2f;
+            float half = Math.Min(this.Width, this.Height) / 5f;
+            // the point sits a third of the way past the centre, so the triangle's area is centred
+            float tip = half * 4 / 3f, back = half * 2 / 3f;
+
+            PointF[] points;
+            switch (_arrow)
+            {
+                case ButtonArrow.Left:
+                    points = new[] { new PointF(cx - tip, cy), new PointF(cx + back, cy - half), new PointF(cx + back, cy + half) };
+                    break;
+                case ButtonArrow.Right:
+                    points = new[] { new PointF(cx + tip, cy), new PointF(cx - back, cy - half), new PointF(cx - back, cy + half) };
+                    break;
+                case ButtonArrow.Up:
+                    points = new[] { new PointF(cx, cy - tip), new PointF(cx - half, cy + back), new PointF(cx + half, cy + back) };
+                    break;
+                default:
+                    points = new[] { new PointF(cx, cy + tip), new PointF(cx - half, cy - back), new PointF(cx + half, cy - back) };
+                    break;
+            }
+
+            gr.FillPolygon(brush, points);
         }
 
         protected override void OnClick(EventArgs e)

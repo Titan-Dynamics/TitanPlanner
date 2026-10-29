@@ -120,7 +120,9 @@ Themed search bar with suggest-only autocomplete; search resets when navigating 
 ## Other
 - No confirmation dialogs after param writes (reboot-required and save-failed are still shown)
 - Toast notification on successful param write
-- Tree collapsed by default in tab embeddings to save space
+- Tree collapsed by default in tab embeddings to save space, with a drawn arrow on its show/hide button
+- Param lists that are showing, including the one docked under the DATA map, reload once the full list has arrived after connecting
+- **Reset** (to defaults) sits apart at the toolbar's right edge as a plain button
 - User params can be set on the Flight Modes page
 
 ---

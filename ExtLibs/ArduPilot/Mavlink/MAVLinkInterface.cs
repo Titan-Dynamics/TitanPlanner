@@ -1850,6 +1850,15 @@ Mission Planner waits for 2 valid heartbeat packets before connecting
             _ParamListChanged?.Invoke(this, null);
         }
 
+        /// <summary>
+        /// Raises ParamListChanged for a parameter list loaded without getParamList (the background MAVFTP load,
+        /// cached params). Call on the UI thread, where Open and getParamList raise it.
+        /// </summary>
+        public void OnParamListChanged()
+        {
+            _ParamListChanged?.Invoke(this, null);
+        }
+
         private void FrmProgressReporterGetParams(IProgressReporterDialogue sender)
         {
             getParamListMavftp(MAV.sysid, MAV.compid);
