@@ -156,7 +156,7 @@ ELRS airport support added.
 # Mode Selector & Vehicle State Toolbar
 
 ## Top-Bar Mode Selector
-A compact mode selector lives in the top menu bar. Users pin the modes they want as toolbar buttons (persisted in `ModeSelectorPinned`). The dropdown shows the vehicle's configured `FLTMODE1`–`FLTMODE6` (`MODE1`–`MODE6` on Rover) in a "Configured modes" section on top, then the full "Flight modes" list with favorite stars; it refreshes on connect and whenever a flight-mode parameter is written rather than polling. The selector auto-sizes based on available space and hides when not connected.
+A compact mode selector lives in the top menu bar. Users pin the modes they want as toolbar buttons (persisted in `ModeSelectorPinned`). The dropdown shows the vehicle's configured `FLTMODE1`–`FLTMODE6` (`MODE1`–`MODE6` on Rover) in a "Configured modes" section on top, whose remembered **Pin All** option puts them all first on the toolbar ahead of the user's own pins, then the full "Flight modes" list with favorite stars; it refreshes on connect and whenever a flight-mode parameter is written rather than polling. The selector auto-sizes based on available space and hides when not connected.
 
 ## Vehicle State Toolbar
 Arm/disarm indicator and a clickable GPS status popup with detailed real-time telemetry, with values that update live.

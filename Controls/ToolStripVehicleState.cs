@@ -40,6 +40,9 @@ namespace MissionPlanner.Controls
         private Timer _updateTimer;
         private const string PinnedSettingsKey = "ModeSelectorPinned";
         private const string FavoritesSettingsKey = "ModeSelectorFavorites";
+        private const string PinAllSettingsKey = "ModeSelectorPinAll";
+        // Pin All: the configured FLTMODEs lead the toolbar, ahead of the user's own pins
+        private bool _pinAllFltModes = false;
         private int _visiblePinnedCount = 0;
         private MenuStrip _parentMenuStrip = null;
         private MAVLinkInterface _subscribedComPort = null;
@@ -187,7 +190,7 @@ namespace MissionPlanner.Controls
 
             // Calculate width needed for all pinned buttons
             var pinnedButtonWidths = new List<int>();
-            foreach (var mode in _pinnedModes)
+            foreach (var mode in ToolbarModes())
             {
                 int btnWidth = TextRenderer.MeasureText(mode, new Font("Segoe UI", 9F)).Width + 20;
                 pinnedButtonWidths.Add(btnWidth);
@@ -295,6 +298,7 @@ namespace MissionPlanner.Controls
             _modeDropdown.ModeSelected += ModeDropdown_ModeSelected;
             _modeDropdown.FavoriteToggled += ModeDropdown_FavoriteToggled;
             _modeDropdown.PinToggled += ModeDropdown_PinToggled;
+            _modeDropdown.PinAllToggled += ModeDropdown_PinAllToggled;
 
             // Pinned modes panel (shows in toolbar)
             _pinnedPanel = new TableLayoutPanel
@@ -534,10 +538,30 @@ namespace MissionPlanner.Controls
             }
             SaveSettings();
             // Reset visible count to show all, then recalculate
-            _visiblePinnedCount = _pinnedModes.Count;
+            _visiblePinnedCount = ToolbarModes().Count;
             UpdatePinnedButtons();
             AdjustWidthToAvailableSpace();
             _modeDropdown.SetPinned(_pinnedModes);
+        }
+
+        private void ModeDropdown_PinAllToggled(object sender, bool pinAll)
+        {
+            _pinAllFltModes = pinAll;
+            SaveSettings();
+            _visiblePinnedCount = ToolbarModes().Count;
+            UpdatePinnedButtons();
+            AdjustWidthToAvailableSpace();
+            _modeDropdown.SetPinAll(_pinAllFltModes);
+        }
+
+        /// <summary>
+        /// The modes on the toolbar, each once: with Pin All, the configured FLTMODEs in configured order
+        /// followed by the user's own pins; otherwise just the user's pins.
+        /// </summary>
+        private List<string> ToolbarModes()
+        {
+            var modes = _pinAllFltModes ? _fltModes.Take(6).Concat(_pinnedModes) : _pinnedModes;
+            return modes.Distinct().ToList();
         }
 
         private void LoadSettings()
@@ -548,8 +572,11 @@ namespace MissionPlanner.Controls
             var savedPinned = Settings.Instance.GetString(PinnedSettingsKey, "");
             if (!string.IsNullOrEmpty(savedPinned))
             {
-                _pinnedModes = savedPinned.Split(',').Where(s => !string.IsNullOrWhiteSpace(s)).ToList();
+                _pinnedModes = savedPinned.Split(',').Where(s => !string.IsNullOrWhiteSpace(s)).Distinct().ToList();
             }
+
+            _pinAllFltModes = Settings.Instance.GetBoolean(PinAllSettingsKey, false);
+            _modeDropdown.SetPinAll(_pinAllFltModes);
 
             var savedFavorites = Settings.Instance.GetString(FavoritesSettingsKey, "");
             if (!string.IsNullOrEmpty(savedFavorites))
@@ -566,17 +593,19 @@ namespace MissionPlanner.Controls
         {
             Settings.Instance[PinnedSettingsKey] = string.Join(",", _pinnedModes);
             Settings.Instance[FavoritesSettingsKey] = string.Join(",", _favoriteModes);
+            Settings.Instance[PinAllSettingsKey] = _pinAllFltModes.ToString();
         }
 
         private void UpdatePinnedButtons()
         {
             // Determine how many pinned buttons to show
             // If _visiblePinnedCount is 0 and we haven't calculated yet, show all
+            var toolbarModes = ToolbarModes();
             int maxVisible = _visiblePinnedCount > 0 || _parentMenuStrip != null
                 ? _visiblePinnedCount
-                : _pinnedModes.Count;
+                : toolbarModes.Count;
 
-            var modesToShow = _pinnedModes.Take(maxVisible).ToList();
+            var modesToShow = toolbarModes.Take(maxVisible).ToList();
 
             Color textColor, darkBgColor, greenColor;
             try
@@ -775,6 +804,14 @@ namespace MissionPlanner.Controls
 
             _fltModes = vehicleModes;
             _modeDropdown.SetFltModes(_fltModes);
+
+            // with Pin All the toolbar follows the configured modes
+            if (_pinAllFltModes)
+            {
+                _visiblePinnedCount = ToolbarModes().Count;
+                UpdatePinnedButtons();
+                AdjustWidthToAvailableSpace();
+            }
         }
 
         /// <summary>
@@ -1007,7 +1044,7 @@ namespace MissionPlanner.Controls
                 UpdateArmButtonAppearance(isArmed);
 
                 // Show the user's pinned modes on the toolbar
-                _visiblePinnedCount = _pinnedModes.Count;
+                _visiblePinnedCount = ToolbarModes().Count;
                 UpdatePinnedButtons();
 
                 // Load the vehicle's configured modes (FLTMODE1-6 / MODE1-6) for dropdown ordering
@@ -1161,6 +1198,7 @@ namespace MissionPlanner.Controls
         private List<string> _favorites = new List<string>();
         private List<string> _pinned = new List<string>();
         private List<string> _fltModes = new List<string>();
+        private bool _pinAll = false;
         private string _currentMode = "---";
 
         public string CurrentMode
@@ -1179,6 +1217,7 @@ namespace MissionPlanner.Controls
         public event EventHandler<string> ModeSelected;
         public event EventHandler<string> FavoriteToggled;
         public event EventHandler<string> PinToggled;
+        public event EventHandler<bool> PinAllToggled;
 
         public ModeDropdownButton()
         {
@@ -1217,6 +1256,15 @@ namespace MissionPlanner.Controls
             if (_isDropdownOpen && _popup != null && !_popup.IsDisposed)
             {
                 _popup.SetFltModes(_fltModes);
+            }
+        }
+
+        public void SetPinAll(bool pinAll)
+        {
+            _pinAll = pinAll;
+            if (_isDropdownOpen && _popup != null && !_popup.IsDisposed)
+            {
+                _popup.SetPinAll(_pinAll);
             }
         }
 
@@ -1276,6 +1324,7 @@ namespace MissionPlanner.Controls
             _popup.SetFavorites(_favorites);
             _popup.SetPinned(_pinned);
             _popup.SetFltModes(_fltModes);
+            _popup.SetPinAll(_pinAll);
             _popup.CurrentMode = CurrentMode;
             _popup.ModeSelected += (s, mode) => {
                 ModeSelected?.Invoke(this, mode);
@@ -1288,6 +1337,10 @@ namespace MissionPlanner.Controls
             _popup.PinToggled += (s, mode) => {
                 PinToggled?.Invoke(this, mode);
                 _popup.SetPinned(_pinned);
+            };
+            _popup.PinAllToggled += (s, pinAll) => {
+                // the handler saves the setting and calls SetPinAll, which updates the open popup
+                PinAllToggled?.Invoke(this, pinAll);
             };
             _popup.FormClosed += (s, args) => {
                 _isDropdownOpen = false;
@@ -1382,6 +1435,10 @@ namespace MissionPlanner.Controls
         private List<string> _pinned = new List<string>();
         private List<string> _fltModes = new List<string>();
         private List<KeyValuePair<int, string>> _modes = new List<KeyValuePair<int, string>>();
+        private bool _pinAll = false;
+        // kept across list rebuilds; _settingPinAll stops a programmatic check from raising PinAllToggled
+        private CheckBox _pinAllCheck;
+        private bool _settingPinAll = false;
 
         // Row/title width, sized to fit inside the popup without a horizontal scrollbar
         // (form width minus padding and the vertical scrollbar).
@@ -1392,6 +1449,7 @@ namespace MissionPlanner.Controls
         public event EventHandler<string> ModeSelected;
         public event EventHandler<string> FavoriteToggled;
         public event EventHandler<string> PinToggled;
+        public event EventHandler<bool> PinAllToggled;
 
         public ModeDropdownPopup()
         {
@@ -1423,6 +1481,30 @@ namespace MissionPlanner.Controls
                 _grayColor = Color.FromArgb(128, 128, 128);
                 BackColor = _bgColor;
             }
+
+            // "Pin All" under the configured modes: pins them all to the toolbar
+            _pinAllCheck = new CheckBox
+            {
+                Text = "Pin All",
+                AutoSize = false,
+                Width = RowWidth,
+                Height = 24,
+                ForeColor = _textColor,
+                BackColor = Color.Transparent,
+                Font = new Font("Segoe UI", 9F),
+                Padding = new Padding(8, 0, 0, 0),
+                Margin = new Padding(0, 0, 0, 2),
+                Cursor = Cursors.Hand
+            };
+            _pinAllCheck.CheckedChanged += (s, e) =>
+            {
+                if (_settingPinAll)
+                    return;
+
+                // raised after the click finishes: the handler rebuilds the list this checkbox is in
+                var pinAll = _pinAllCheck.Checked;
+                BeginInvoke((Action)(() => PinAllToggled?.Invoke(this, pinAll)));
+            };
 
             // Scrollable container
             _scrollPanel = new Panel
@@ -1471,6 +1553,12 @@ namespace MissionPlanner.Controls
             RefreshModesList();
         }
 
+        public void SetPinAll(bool pinAll)
+        {
+            _pinAll = pinAll;
+            RefreshModesList();
+        }
+
         public void RefreshCurrentMode()
         {
             RefreshModesList();
@@ -1511,12 +1599,19 @@ namespace MissionPlanner.Controls
                 .ThenBy(m => m.Value)
                 .ToList();
 
-            // "Configured modes" section - always at the top, so no favorite star here.
+            // "Configured modes" section - always at the top, so no favorite star here. With Pin All they
+            // are all on the toolbar, so they have no pin diamond either.
             if (configuredModes.Count > 0)
             {
-                _modesPanel.Controls.Add(CreateSectionTitle("Configured modes"));
+                _modesPanel.Controls.Add(CreateSectionTitle("Configured modes", first: true));
+
+                _settingPinAll = true;
+                _pinAllCheck.Checked = _pinAll;
+                _settingPinAll = false;
+                _modesPanel.Controls.Add(_pinAllCheck);
+
                 foreach (var mode in configuredModes)
-                    _modesPanel.Controls.Add(CreateModeRow(mode, showStar: false));
+                    _modesPanel.Controls.Add(CreateModeRow(mode, showStar: false, showPin: !_pinAll));
             }
 
             // Divider between the two sections (only when both are present).
@@ -1535,7 +1630,7 @@ namespace MissionPlanner.Controls
             // "Flight modes" section - the full selectable list, with favorite stars.
             if (otherModes.Count > 0)
             {
-                _modesPanel.Controls.Add(CreateSectionTitle("Flight modes"));
+                _modesPanel.Controls.Add(CreateSectionTitle("Flight modes", first: configuredModes.Count == 0));
                 foreach (var mode in otherModes)
                     _modesPanel.Controls.Add(CreateModeRow(mode, showStar: true));
             }
@@ -1543,8 +1638,9 @@ namespace MissionPlanner.Controls
             _modesPanel.ResumeLayout(true);
         }
 
-        private Label CreateSectionTitle(string text)
+        private Label CreateSectionTitle(string text, bool first = false)
         {
+            // the top title gets room from the popup's edge
             return new Label
             {
                 Text = text,
@@ -1556,11 +1652,11 @@ namespace MissionPlanner.Controls
                 BackColor = Color.Transparent,
                 Font = new Font("Segoe UI", 8F, FontStyle.Bold),
                 Padding = new Padding(8, 0, 0, 0),
-                Margin = new Padding(0, 2, 0, 0)
+                Margin = new Padding(0, first ? 8 : 2, 0, 0)
             };
         }
 
-        private Panel CreateModeRow(KeyValuePair<int, string> mode, bool showStar)
+        private Panel CreateModeRow(KeyValuePair<int, string> mode, bool showStar, bool showPin = true)
         {
             var row = new Panel
             {
@@ -1646,7 +1742,8 @@ namespace MissionPlanner.Controls
             };
 
             row.Controls.Add(modeLabel);
-            row.Controls.Add(pinLabel);
+            if (showPin)
+                row.Controls.Add(pinLabel);
 
             // Star button (favorite) - only in the "Flight modes" section
             if (showStar)
