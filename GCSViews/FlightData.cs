@@ -871,20 +871,20 @@ namespace MissionPlanner.GCSViews
             {
                 if (GetZoomInRect().Contains(e.Location))
                 {
-                    if (gMapControl1.Zoom < gMapControl1.MaxZoom)
+                    if (gMapControl1.ZoomTarget < gMapControl1.MaxZoom)
                     {
-                        gMapControl1.Zoom += 1;
-                        TRK_zoom.Value = (float)gMapControl1.Zoom;
-                        Zoomlevel.Value = Convert.ToDecimal(gMapControl1.Zoom);
+                        gMapControl1.AnimateZoom(gMapControl1.ZoomTarget + 1);
+                        TRK_zoom.Value = (float)gMapControl1.ZoomTarget;
+                        Zoomlevel.Value = Convert.ToDecimal(gMapControl1.ZoomTarget);
                     }
                 }
                 else if (GetZoomOutRect().Contains(e.Location))
                 {
-                    if (gMapControl1.Zoom > gMapControl1.MinZoom)
+                    if (gMapControl1.ZoomTarget > gMapControl1.MinZoom)
                     {
-                        gMapControl1.Zoom -= 1;
-                        TRK_zoom.Value = (float)gMapControl1.Zoom;
-                        Zoomlevel.Value = Convert.ToDecimal(gMapControl1.Zoom);
+                        gMapControl1.AnimateZoom(gMapControl1.ZoomTarget - 1);
+                        TRK_zoom.Value = (float)gMapControl1.ZoomTarget;
+                        Zoomlevel.Value = Convert.ToDecimal(gMapControl1.ZoomTarget);
                     }
                 }
                 else if (e.Button == MouseButtons.Left && _legendButton.HitTest(LegendArea(), e.Location))
@@ -4169,8 +4169,9 @@ namespace MissionPlanner.GCSViews
             try
             {
                 // Exception System.Runtime.InteropServices.SEHException: External component has thrown an exception.
-                TRK_zoom.Value = (float) gMapControl1.Zoom;
-                Zoomlevel.Value = Convert.ToDecimal(gMapControl1.Zoom);
+                // show where an animated zoom is heading, so a slider being dragged isn't pulled back
+                TRK_zoom.Value = (float) gMapControl1.ZoomTarget;
+                Zoomlevel.Value = Convert.ToDecimal(gMapControl1.ZoomTarget);
             }
             catch
             {
@@ -7162,12 +7163,12 @@ namespace MissionPlanner.GCSViews
             {
                 if (gMapControl1.MaxZoom + 1 == (double) TRK_zoom.Value)
                 {
-                    gMapControl1.Zoom = TRK_zoom.Value - .1;
+                    gMapControl1.AnimateZoom(TRK_zoom.Value - .1);
                     Zoomlevel.Value = Convert.ToDecimal(TRK_zoom.Value - .1);
                 }
                 else
                 {
-                    gMapControl1.Zoom = TRK_zoom.Value;
+                    gMapControl1.AnimateZoom(TRK_zoom.Value);
                     Zoomlevel.Value = Convert.ToDecimal(TRK_zoom.Value);
                 }
 
@@ -7480,14 +7481,15 @@ namespace MissionPlanner.GCSViews
         {
             try
             {
+                // animate what the user types or steps in the box, not the levels written back to it
                 if (gMapControl1.MaxZoom + 1 == (double) Zoomlevel.Value)
                 {
-                    gMapControl1.Zoom = (double) Zoomlevel.Value - .1;
+                    gMapControl1.SetZoom((double) Zoomlevel.Value - .1, Zoomlevel.ContainsFocus);
                     TRK_zoom.Value = (float)Zoomlevel.Value - (float).1;
                 }
                 else
                 {
-                    gMapControl1.Zoom = (double) Zoomlevel.Value;
+                    gMapControl1.SetZoom((double) Zoomlevel.Value, Zoomlevel.ContainsFocus);
                     TRK_zoom.Value = (float)Zoomlevel.Value;
                 }
             }

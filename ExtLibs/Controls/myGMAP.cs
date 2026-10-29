@@ -29,6 +29,7 @@ namespace MissionPlanner.Controls
             this.Text = "Map";
             IgnoreMarkerOnMouseWheel = true;
             GestureHappened += MyGMAP_GestureHappened;
+            _zoomTimer.Tick += ZoomTick;
         }
 
         GMapMarker p1 = new GMarkerGoogle(PointLatLng.Empty, GMarkerGoogleType.blue_small);
@@ -120,23 +121,106 @@ namespace MissionPlanner.Controls
             base.Invalidate();
         }
 
-        // Smooth mouse wheel zoom - 0.1 per scroll tick
+        // Smooth mouse wheel zoom - 0.2 per scroll tick
         private const double ZoomIncrement = 0.2;
 
         protected override void OnMouseWheel(MouseEventArgs e)
         {
             if (!Core.IsDragging)
             {
-                // Calculate zoom change - standard delta is 120, so normalize
-                double zoomChange = (e.Delta / 120.0) * ZoomIncrement;
-                double newZoom = Zoom + zoomChange;
-
-                // Clamp to valid range
-                if (newZoom < MinZoom) newZoom = MinZoom;
-                if (newZoom > MaxZoom) newZoom = MaxZoom;
-
-                Zoom = newZoom;
+                // standard delta is 120, so normalize; ticks during the animation add to where it is heading
+                AnimateZoom(ZoomTarget + (e.Delta / 120.0) * ZoomIncrement);
             }
+        }
+
+        // Zoom animation: the zoom eases to its level over a few frames instead of jumping there
+        private const double ZoomEaseSeconds = 0.06;
+        private readonly Timer _zoomTimer = new Timer { Interval = 15 };
+        private readonly Stopwatch _zoomClock = new Stopwatch();
+        private double _zoomTarget;
+        private double _zoomSet;
+
+        /// <summary>
+        /// The zoom level the map is heading to, or the current one when it isn't animating.
+        /// </summary>
+        public double ZoomTarget => _zoomTimer.Enabled ? _zoomTarget : Zoom;
+
+        /// <summary>
+        /// Eases the zoom to the level about the map centre. A call during the animation changes where it heads.
+        /// </summary>
+        public void AnimateZoom(double zoom)
+        {
+            zoom = Math.Max(MinZoom, Math.Min(MaxZoom, zoom));
+            if (!_zoomTimer.Enabled)
+            {
+                if (zoom == Zoom)
+                    return;
+                if (!Visible || !IsHandleCreated)
+                {
+                    Zoom = zoom;
+                    return;
+                }
+
+                _zoomSet = Zoom;
+                _zoomClock.Restart();
+                _zoomTimer.Start();
+            }
+
+            _zoomTarget = zoom;
+        }
+
+        /// <summary>
+        /// Zooms to the level, easing there when animate is set. A level the zoom is already heading to is left
+        /// alone, so the zoom controls writing the target back don't cut the animation short.
+        /// </summary>
+        public void SetZoom(double zoom, bool animate)
+        {
+            if (Math.Abs(zoom - ZoomTarget) < 1e-6)
+                return;
+
+            if (animate)
+            {
+                AnimateZoom(zoom);
+            }
+            else
+            {
+                _zoomTimer.Stop();
+                Zoom = zoom;
+            }
+        }
+
+        private void ZoomTick(object sender, EventArgs e)
+        {
+            // Something else set the zoom (a zoom to fit, a restored level): leave it there. A zoom slider writing
+            // the level back through its own rounding lands within the tolerance and doesn't count.
+            if (Math.Abs(Zoom - _zoomSet) > 0.01)
+            {
+                _zoomTimer.Stop();
+                return;
+            }
+
+            double dt = Math.Min(_zoomClock.Elapsed.TotalSeconds, 0.1);
+            _zoomClock.Restart();
+
+            // the zoom setter ignores changes mid-drag
+            if (IsDragging)
+                return;
+
+            // cover the same share of the gap per second whatever the frame rate
+            double gap = _zoomTarget - Zoom;
+            double zoom = Math.Abs(gap) < 0.002 ? _zoomTarget : Zoom + gap * (1 - Math.Exp(-dt / ZoomEaseSeconds));
+            if (zoom == _zoomTarget)
+                _zoomTimer.Stop();
+
+            Zoom = zoom;
+            _zoomSet = Zoom;
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing)
+                _zoomTimer.Dispose();
+            base.Dispose(disposing);
         }
 
         protected override void OnMouseMove(System.Windows.Forms.MouseEventArgs e)

@@ -161,4 +161,9 @@ the git log has those. `ChangeLog.txt` is upstream's and is not maintained here.
   uploads and draws them on the render thread. `Rendering/` holds the GL helpers and GLSL 1.10/ES 2.0
   shaders, `Overlays/` the mission, vehicle and ADS-B drawing, `Scene/` the UTM frame, camera and pose
   smoothing. Selection and loading are pure logic with tests in `MissionPlannerTests/Controls/`.
+- **2D maps.** Setting `GMapControl.Position` or `Zoom` re-projects every overlay and repaints synchronously,
+  and `GMapControl.Invalidate` is throttled to about 9 fps. The DATA map pans with `Core.DragOffset` plus
+  `((Control)map).Invalidate()` (dragging and the autopan timer in `FlightData`). Zoom from user input goes
+  through `myGMAP.AnimateZoom` / `SetZoom`, and zoom controls sync to `ZoomTarget`, not `Zoom`, so the
+  write-back doesn't cut the animation short.
 - **Commits.** Messages carry no AI attribution trailers. Do not commit or push unless asked.

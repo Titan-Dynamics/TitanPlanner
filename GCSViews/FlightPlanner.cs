@@ -7125,7 +7125,7 @@ Column 1: Field type (RALLY is the only one at the moment -- may have RALLY_LAND
             {
                 lock (thisLock)
                 {
-                    MainMap.Zoom = TRK_zoom.Value;
+                    MainMap.AnimateZoom(TRK_zoom.Value);
                     SetMapZoomLevel(TRK_zoom.Value);
                 }
             }
@@ -7141,7 +7141,8 @@ Column 1: Field type (RALLY is the only one at the moment -- may have RALLY_LAND
             {
                 lock (thisLock)
                 {
-                    MainMap.Zoom = (double)Zoomlevel.Value;
+                    // animate what the user types or steps in the box, not the levels written back to it
+                    MainMap.SetZoom((double)Zoomlevel.Value, Zoomlevel.ContainsFocus);
                     TRK_zoom.Value = (float)Zoomlevel.Value;
                 }
             }
@@ -8210,8 +8211,9 @@ Column 1: Field type (RALLY is the only one at the moment -- may have RALLY_LAND
             {
                 try
                 {
-                    TRK_zoom.Value = (float)(MainMap.Zoom);
-                    SetMapZoomLevel(MainMap.Zoom);
+                    // show where an animated zoom is heading, so a slider being dragged isn't pulled back
+                    TRK_zoom.Value = (float)(MainMap.ZoomTarget);
+                    SetMapZoomLevel(MainMap.ZoomTarget);
                 }
                 catch (Exception ex)
                 {
