@@ -268,10 +268,7 @@ Behaviour that differs from upstream because the fork fixed it:
 - The Messages tab keeps updating on long flights, keeps your place when scrolled up, and has a right-click **Clear Messages** ([#23](https://github.com/Titan-Dynamics/TitanPlanner/issues/23))
 - Battery monitor calibration handles DroneCAN and other digital monitors: voltage Calc explains they are calibrated on the device, and current Calc scales `BATTx_CURR_MULT` ([#27](https://github.com/Titan-Dynamics/TitanPlanner/issues/27))
 - The EKF status window keeps working on long sessions instead of failing with a GDI+ error ([#31](https://github.com/Titan-Dynamics/TitanPlanner/issues/31))
-- Mission, fence and rally uploads don't send the vehicle an extra MISSION_ACK (upstream PR [#3705](https://github.com/ArduPilot/MissionPlanner/pull/3705))
-- SSH (terminal, SCP/SFTP log download, Solo tools) uses SSH.NET 2026, with current key exchanges and ciphers and the `ScpClient` security fixes; SkiaSharp packages aligned at 2.88.8 (upstream PR [#3729](https://github.com/ArduPilot/MissionPlanner/pull/3729))
-- Link quality counts reordered MAVLink packets (UDP over LTE, Starlink, VPNs) as received, so the HUD shows the real loss (upstream PR [#3807](https://github.com/ArduPilot/MissionPlanner/pull/3807))
-- The RF Map outline (Ctrl+W) shows the real line-of-sight range at the aircraft's current height (upstream PR [#3825](https://github.com/ArduPilot/MissionPlanner/pull/3825))
+- SSH (terminal, SCP/SFTP log download, Solo tools) uses SSH.NET 2026, with current key exchanges and ciphers and the `ScpClient` security fixes (upstream PR [#3729](https://github.com/ArduPilot/MissionPlanner/pull/3729))
 - ADS-B from adsb.lol works (it requires a User-Agent) and stays within its rate limit
 - Elevation (SRTM) lookups are thread-safe and never block the UI behind a slow load
 - The Full Parameter List opens without crashing, and Flight Modes populates its `RCx_OPTION` lists on load
@@ -327,7 +324,7 @@ Settings, logs, map tiles, offline maps, elevation data and caches live in `Prog
 
 # Upstream Base
 
-The fork tracks `upstream/master` and currently includes upstream as of 2026-10-16. Where the two conflict, the fork keeps its own UI (HUD layout, Actions tab, Motor Setup, Battery Monitor, Radio Calibration, themed tabs) and takes upstream's fixes. Upstream capabilities in this build that users may notice:
+The fork tracks `upstream/master` and currently includes upstream as of 2026-10-25. Where the two conflict, the fork keeps its own UI (HUD layout, Actions tab, Motor Setup, Battery Monitor, Radio Calibration, themed tabs) and takes upstream's fixes. Upstream capabilities in this build that users may notice:
 
 - 32-bit MAVLink system IDs everywhere (GCS id, vehicle lists, map markers)
 - Plugins can add actions to the Actions tab dropdown and draw on the HUD (`OnCustomPaint`)
@@ -337,3 +334,12 @@ The fork tracks `upstream/master` and currently includes upstream as of 2026-10-
 - Packaged Linux builds (`Linux/build.sh`, `run.sh`) and a touch-friendly main menu on Linux
 - The WPOverlay2 mission pipeline, `MissionSegmentizer` arcs, and `ThemeManager` theming of ListBox/PropertyGrid
 - Correct behaviour on Turkish-locale systems for `.BIN` log detection, KMZ export and mode changes by name; MSI requires .NET Framework 4.7.2
+- Link quality counts reordered MAVLink packets (UDP over LTE, Starlink, VPNs) as received, so the HUD shows the real loss
+- The RF Map outline (Ctrl+W) shows the real line-of-sight range at the aircraft's current height
+- Mission, fence and rally uploads don't send the vehicle an extra MISSION_ACK
+- A WinForms firmware picker with filters for platform, vehicle type, release and version
+- MAVLink mirrors (MAVLink Output) can be added and stopped safely while connected, and a TCP listener accepts a new client without crashing
+- Saved POIs load once, without duplicates, and are never overwritten by a failed read
+- tlog playback selects the vehicle rather than the recording GCS; the PLAN home box shows altitude in display units
+- COM port lists survive misbehaving Bluetooth drivers; signed driver for Pixhawk 6C
+- SkiaSharp 3 on the desktop and faster drawing on Linux/Mono; Altitude Angel is removed

@@ -19,6 +19,7 @@ namespace MissionPlanner.Controls
             public string Direction { get; set; }
             public string Address { get; set; }
             public bool WriteAccess { get; set; }
+            public MAVLinkInterface ComPort { get; set; }
             public MAVLinkInterface.Mirror Mirror { get; set; }
             public TcpListener Listener { get; set; }
             public int RowIndex { get; set; }
@@ -127,10 +128,11 @@ namespace MissionPlanner.Controls
                                 return;
                             }
 
-                            mirror.MirrorStream = new TcpSerial();
+                            var tcp = new TcpSerial();
+                            mirror.MirrorStream = tcp;
                             listener = new TcpListener(IPAddress.Any, port);
                             listener.Start(0);
-                            listener.BeginAcceptTcpClient(DoAcceptTcpClientCallback, (listener, mirror));
+                            listener.BeginAcceptTcpClient(DoAcceptTcpClientCallback, (listener, tcp));
 
                             address = $":{port}";
                             Log($"TCP listener started on port {port}");
@@ -237,12 +239,15 @@ namespace MissionPlanner.Controls
                         return;
                 }
 
-                // Add to MainV2 mirrors list
-                MainV2.comPort.Mirrors.Add(mirror);
+                // AddMirror replaces the list under the interface's lock: the reader thread enumerates
+                // Mirrors, and the legacy MirrorStream setter may be replacing it from another thread
+                var comPortInterface = MainV2.comPort;
+                comPortInterface.AddMirror(mirror);
 
                 // Add to our tracking list
                 var connInfo = new ConnectionInfo
                 {
+                    ComPort = comPortInterface,
                     Type = type,
                     Direction = direction,
                     Address = address,
@@ -273,31 +278,45 @@ namespace MissionPlanner.Controls
 
         private void DoAcceptTcpClientCallback(IAsyncResult ar)
         {
+            // the listener that accepted the client and the stream the client is handed to
+            var state = (ValueTuple<TcpListener, TcpSerial>)ar.AsyncState;
+            TcpListener listener = state.Item1;
+            TcpSerial tcp = state.Item2;
+
+            TcpClient client = null;
             try
             {
-                var state = (ValueTuple<TcpListener, MAVLinkInterface.Mirror>)ar.AsyncState;
-                TcpListener listener = state.Item1;
-                MAVLinkInterface.Mirror mirror = state.Item2;
+                client = listener.EndAcceptTcpClient(ar);
 
-                TcpClient client = listener.EndAcceptTcpClient(ar);
+                var previous = tcp.client;
+                tcp.client = client;
+                previous?.Close();
 
-                ((TcpSerial)mirror.MirrorStream).client = client;
-
-                // Log on UI thread
-                if (!IsDisposed && IsHandleCreated)
+                // Log on UI thread. The form may have closed (the mirror keeps running), and a failed
+                // log must not reach the catch below, which treats its exceptions as a stopped listener
+                try
                 {
-                    BeginInvoke((Action)(() =>
+                    var remote = client.Client.RemoteEndPoint?.ToString();
+                    if (!IsDisposed && IsHandleCreated)
                     {
-                        Log($"TCP client connected from {client.Client.RemoteEndPoint}");
-                    }));
+                        BeginInvoke((Action)(() =>
+                        {
+                            Log($"TCP client connected from {remote}");
+                        }));
+                    }
+                }
+                catch
+                {
                 }
 
                 // Continue accepting more clients
                 listener.BeginAcceptTcpClient(DoAcceptTcpClientCallback, state);
             }
-            catch (ObjectDisposedException)
+            catch (Exception ex) when (ex is ObjectDisposedException || ex is SocketException || ex is InvalidOperationException)
             {
-                // Listener was stopped, ignore
+                // listener was stopped. StopConnection stops the listener before closing the stream, so a client
+                // accepted while stopping may have been set after the close and has to be closed here
+                client?.Close();
             }
             catch (Exception ex)
             {
@@ -346,10 +365,10 @@ namespace MissionPlanner.Controls
                         catch { }
                     }
 
-                    // Remove from MainV2 mirrors
+                    // Remove from the interface it was added to
                     if (connInfo.Mirror != null)
                     {
-                        MainV2.comPort.Mirrors.Remove(connInfo.Mirror);
+                        (connInfo.ComPort ?? MainV2.comPort).RemoveMirror(connInfo.Mirror);
                     }
 
                     activeConnections.Remove(connInfo);
@@ -427,6 +446,7 @@ namespace MissionPlanner.Controls
 
                     var connInfo = new ConnectionInfo
                     {
+                        ComPort = MainV2.comPort,
                         Type = type,
                         Direction = direction,
                         Address = address,
