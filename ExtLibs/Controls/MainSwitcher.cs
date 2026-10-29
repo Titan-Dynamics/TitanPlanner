@@ -19,6 +19,11 @@ namespace MissionPlanner.Controls
 
         public static event TrackingEventHandler Tracking;
 
+        /// <summary>
+        /// Raised with the screen name once ShowScreen has shown it, however the switch was asked for.
+        /// </summary>
+        public event Action<string> ScreenShown;
+
         public List<Screen> screens = new List<Screen>();
         public Screen current;
         UserControl MainControl = new UserControl();
@@ -195,6 +200,8 @@ namespace MissionPlanner.Controls
             current = nextscreen;
 
             current.Control.Focus();
+
+            ScreenShown?.Invoke(name);
         }
 
         public class Screen

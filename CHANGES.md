@@ -319,6 +319,7 @@ Settings, logs, map tiles, offline maps, elevation data and caches live in `Prog
 - **Open Log Folder** button in the Log Downloader
 - Custom upgrade-path logic so existing original Mission Planner users transition cleanly to the Titan Dynamics edition (theme, default tab visibility, settings migration)
 - No console window behind the main exe
+- The top menu highlights the screen being shown, including after SITL starts and on connect
 
 ---
 

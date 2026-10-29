@@ -3392,6 +3392,9 @@ namespace MissionPlanner
             MyView.AddScreen(new MainSwitcher.Screen("Simulation", Simulation, true));
             MyView.AddScreen(new MainSwitcher.Screen("Help", typeof(GCSViews.Help), false));
 
+            // highlight the tab of whichever screen is shown, including switches made in code (SITL start, connect)
+            MyView.ScreenShown += MyView_ScreenShown;
+
             try
             {
                 if (Control.ModifierKeys == Keys.Shift)
@@ -3416,7 +3419,6 @@ namespace MissionPlanner
             {
                 this.PerformLayout();
                 MenuFlightPlanner_Click(this, e);
-                MainMenu_ItemClicked(this, new ToolStripItemClickedEventArgs(MenuFlightPlanner));
             }
             else
             {
@@ -3424,7 +3426,6 @@ namespace MissionPlanner
                 log.Info("show FlightData");
                 MenuFlightData_Click(this, e);
                 log.Info("show FlightData... Done");
-                MainMenu_ItemClicked(this, new ToolStripItemClickedEventArgs(MenuFlightData));
             }
 
             // for long running tasks using own threads.
@@ -4940,11 +4941,36 @@ namespace MissionPlanner
             DBT_USERDEFINED = 0xFFFF,
         }
 
-        private void MainMenu_ItemClicked(object sender, ToolStripItemClickedEventArgs e)
+        // The tab highlight follows the shown screen rather than the clicked item, so switches made in code
+        // are shown, and Connect, the logo or a refused Setup password leave the current tab highlighted.
+        private void MyView_ScreenShown(string screen)
+        {
+            if (InvokeRequired)
+            {
+                BeginInvoke((Action)(() => MyView_ScreenShown(screen)));
+                return;
+            }
+
+            ToolStripItem tab;
+            switch (screen)
+            {
+                case "FlightData": tab = MenuFlightData; break;
+                case "FlightPlanner": tab = MenuFlightPlanner; break;
+                case "HWConfig": tab = MenuInitConfig; break;
+                case "SWConfig": tab = MenuConfigTune; break;
+                case "Simulation": tab = MenuSimulation; break;
+                case "Help": tab = MenuHelp; break;
+                default: return;
+            }
+
+            HighlightMenuItem(tab);
+        }
+
+        private void HighlightMenuItem(ToolStripItem selected)
         {
             foreach (ToolStripItem item in MainMenu.Items)
             {
-                if (e.ClickedItem == item)
+                if (selected == item)
                 {
                     item.BackColor = ThemeManager.ControlBGColor;
                 }
