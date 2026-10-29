@@ -159,34 +159,12 @@ namespace MissionPlanner.Utilities
 
             PointLatLngAlt pnt = Point;
 
-            string output = NextId(POIs.Select(NameOf)).ToString(CultureInfo.InvariantCulture);
+            string output = "";
 
-            if (DialogResult.OK != InputBox.Show("POI", "Enter ID", ref output))
+            if (DialogResult.OK != InputBox.Show("POI", "POI Name:", ref output))
                 return;
 
             POIAdd(Point, output);
-        }
-
-        /// <summary>
-        /// The ID offered for a new POI: one more than the highest number ending a POI name ("7",
-        /// "POI 7", "Tower7"), or 1 when no name ends in a number.
-        /// </summary>
-        public static int NextId(IEnumerable<string> names)
-        {
-            var highest = 0;
-            foreach (var name in names)
-            {
-                var text = (name ?? "").TrimEnd();
-                var start = text.Length;
-                while (start > 0 && text[start - 1] >= '0' && text[start - 1] <= '9')
-                    start--;
-
-                if (int.TryParse(text.Substring(start), NumberStyles.None, CultureInfo.InvariantCulture, out var id) &&
-                    id > highest)
-                    highest = id;
-            }
-
-            return highest == int.MaxValue ? highest : highest + 1;
         }
 
         public static void POIDelete(GMapMarkerPOI Point)
@@ -213,7 +191,7 @@ namespace MissionPlanner.Utilities
 
             string output = "";
 
-            if (DialogResult.OK != InputBox.Show("POI", "Enter ID", ref output))
+            if (DialogResult.OK != InputBox.Show("POI", "POI Name:", ref output))
                 return;
 
             for (int a = 0; a < POI.POIs.Count; a++)

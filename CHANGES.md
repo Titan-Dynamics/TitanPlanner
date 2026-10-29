@@ -208,7 +208,6 @@ The WPOverlay2 rendering pipeline with its MissionStyleEditor, `MissionSegmentiz
 - Improved mission table UI
 - "Load waypoints on connect" loads them without forcing a switch to the PLAN tab
 - No "New Mission Overlay" announcement when the PLAN tab opens; Edit Style and Use Legacy Overlay live in the map menu
-- Adding a POI offers the next ID: one more than the highest number ending a POI name, or 1
 
 ---
 
