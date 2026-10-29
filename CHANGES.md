@@ -224,6 +224,7 @@ The WPOverlay2 rendering pipeline with its MissionStyleEditor, `MissionSegmentiz
 - Custom SITL locations; Woodley default
 - Larger fonts on Sats/HDOP labels with new VDOP readout
 - Zoom buttons and scale bar on map
+- Smooth dragging on the DATA map, and an autopan that glides after the vehicle instead of jumping every few seconds
 - An **(i)** button in the DATA map's corner toggles the legend of the vehicle's lines (Current Heading, Direction to WP, Target Heading, Ground Track)
 - Clean pixel-perfect bottom-bar layout
 - Auto-pan on parameter button swap

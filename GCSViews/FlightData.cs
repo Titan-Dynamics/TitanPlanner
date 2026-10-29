@@ -2884,7 +2884,25 @@ namespace MissionPlanner.GCSViews
 
             // cover the same share of the gap per second whatever the frame rate (a quarter-second time constant)
             double share = 1 - Math.Exp(-Math.Min(dt, 0.1) / 0.25);
-            OffsetMap(dx * share, dy * share);
+
+            // how far the view moves this frame
+            double moveX = -dx * share, moveY = -dy * share;
+
+            // Never back the view up along the vehicle's course. A new fix landing behind the carried-along target
+            // would otherwise reverse the pan for a moment; instead the view waits for the vehicle to catch up. The
+            // map's local space is north-up whatever its rotation, so the course gives the direction directly.
+            if (cs.groundspeed / CurrentState.multiplierspeed > 0.5)
+            {
+                double alongX = Math.Sin(course), alongY = -Math.Cos(course);
+                double along = moveX * alongX + moveY * alongY;
+                if (along < 0)
+                {
+                    moveX -= along * alongX;
+                    moveY -= along * alongY;
+                }
+            }
+
+            OffsetMap(-moveX, -moveY);
         }
 
         void chk_box_tunningCheckedChanged(object sender, EventArgs e)
