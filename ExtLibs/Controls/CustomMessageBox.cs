@@ -37,6 +37,20 @@ namespace MissionPlanner.MsgBox
 
         public static DialogResult Show(string text, string caption, MessageBoxButtons buttons, MessageBoxIcon icon, string YesText = "Yes", string NoText = "No")
         {
+            return ShowOnUiThread(text, caption, buttons, icon, YesText, NoText, true, null);
+        }
+
+        /// <summary>
+        /// Shows the message with a Copy button that puts copyText on the clipboard, so an error can be pasted into a
+        /// report.
+        /// </summary>
+        public static DialogResult ShowWithCopy(string text, string caption, MessageBoxButtons buttons, string copyText)
+        {
+            return ShowOnUiThread(text, caption, buttons, MessageBoxIcon.None, "Yes", "No", true, copyText);
+        }
+
+        static DialogResult ShowOnUiThread(string text, string caption, MessageBoxButtons buttons, MessageBoxIcon icon, string YesText, string NoText, bool label, string copyText)
+        {
             DialogResult answer = DialogResult.Cancel;
 
             Console.WriteLine("CustomMessageBox thread calling " + System.Threading.Thread.CurrentThread.Name);
@@ -50,7 +64,7 @@ namespace MissionPlanner.MsgBox
                     {
                         Console.WriteLine("CustomMessageBox thread running invoke " +
                                           System.Threading.Thread.CurrentThread.Name);
-                        answer = ShowUI(text, caption, buttons, icon, YesText, NoText);
+                        answer = ShowUI(text, caption, buttons, icon, YesText, NoText, label, copyText);
                     });
                 }
                 catch (Exception ex)
@@ -58,19 +72,19 @@ namespace MissionPlanner.MsgBox
                     Console.WriteLine(ex);
                     // fall back
                     Console.WriteLine("CustomMessageBox thread running " + System.Threading.Thread.CurrentThread.Name);
-                    answer = ShowUI(text, caption, buttons, icon, YesText, NoText);
+                    answer = ShowUI(text, caption, buttons, icon, YesText, NoText, label, copyText);
                 }
             }
             else
             {
                 Console.WriteLine("CustomMessageBox thread running " + System.Threading.Thread.CurrentThread.Name);
-                answer =  ShowUI(text, caption, buttons, icon, YesText, NoText);
+                answer =  ShowUI(text, caption, buttons, icon, YesText, NoText, label, copyText);
             }
 
             return answer;
         }
 
-        static DialogResult ShowUI(string text, string caption, MessageBoxButtons buttons, MessageBoxIcon icon, string YesText = "Yes", string NoText = "No", bool label = true)
+        static DialogResult ShowUI(string text, string caption, MessageBoxButtons buttons, MessageBoxIcon icon, string YesText = "Yes", string NoText = "No", bool label = true, string copyText = null)
         {
             DialogResult answer = DialogResult.Abort;
 
@@ -218,7 +232,13 @@ namespace MissionPlanner.MsgBox
                 }
 
 
+                if (copyText != null)
+                    msgBoxFrm.Width = Math.Max(msgBoxFrm.Width, 75 * 3 + FORM_X_MARGIN * 4);
+
                 AddButtonsToForm(msgBoxFrm, buttons, YesText, NoText);
+
+                if (copyText != null)
+                    AddCopyButton(msgBoxFrm, copyText);
 
                 // display even if theme fails
                 try
@@ -364,6 +384,33 @@ namespace MissionPlanner.MsgBox
             }
         }
 
+        // a Copy button at the left end of the button row; the dialog stays open
+        private static void AddCopyButton(Form msgBoxFrm, string copyText)
+        {
+            var butcopy = new MyButton
+            {
+                Size = new Size(75, 23),
+                Text = "Copy",
+                Left = FORM_X_MARGIN,
+                Top = ((Control) msgBoxFrm.AcceptButton).Top
+            };
+
+            butcopy.Click += delegate
+            {
+                try
+                {
+                    Clipboard.SetText(copyText);
+                    butcopy.Text = "Copied";
+                }
+                catch (Exception ex)
+                {
+                    // another program can be holding the clipboard open
+                    Console.WriteLine(ex);
+                }
+            };
+            msgBoxFrm.Controls.Add(butcopy);
+        }
+
         /// <summary>
         /// Get system icon for MessageBoxIcon.
         /// </summary>
@@ -388,37 +435,7 @@ namespace MissionPlanner.MsgBox
 
         public static DialogResult ShowTextBox(string text, string caption, MessageBoxButtons buttons, MessageBoxIcon icon, string YesText = "Yes", string NoText = "No")
         {
-            DialogResult answer = DialogResult.Cancel;
-
-            Console.WriteLine("CustomMessageBox ShowTextBox thread calling " + System.Threading.Thread.CurrentThread.Name);
-
-            // ensure we run this on the right thread - mono - mac
-            if (Application.OpenForms.Count > 0 && Application.OpenForms[0].InvokeRequired)
-            {
-                try
-                {
-                    Application.OpenForms[0].Invoke((Action)delegate
-                    {
-                        Console.WriteLine("CustomMessageBox ShowTextBox thread running invoke " +
-                                          System.Threading.Thread.CurrentThread.Name);
-                        answer = ShowUI(text, caption, buttons, icon, YesText, NoText, false);
-                    });
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine(ex);
-                    // fall back
-                    Console.WriteLine("CustomMessageBox ShowTextBox thread running " + System.Threading.Thread.CurrentThread.Name);
-                    answer = ShowUI(text, caption, buttons, icon, YesText, NoText, false);
-                }
-            }
-            else
-            {
-                Console.WriteLine("CustomMessageBox ShowTextBox thread running " + System.Threading.Thread.CurrentThread.Name);
-                answer = ShowUI(text, caption, buttons, icon, YesText, NoText, false);
-            }
-
-            return answer;
+            return ShowOnUiThread(text, caption, buttons, icon, YesText, NoText, false, null);
         }
     }
 }

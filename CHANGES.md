@@ -324,6 +324,7 @@ Settings, logs, map tiles, offline maps, elevation data and caches live in `Prog
 - Revamped Telemetry Log tab
 - Logs tab combining Dataflash + Telemetry views
 - **Open Log Folder** button in the Log Downloader
+- **Copy** button on the error dialog: puts the error and the build version on the clipboard for pasting into a report
 - Custom upgrade-path logic so existing original Mission Planner users transition cleanly to the Titan Dynamics edition (theme, default tab visibility, settings migration)
 - No console window behind the main exe
 - The top menu highlights the screen being shown, including after SITL starts and on connect

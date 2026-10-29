@@ -861,10 +861,13 @@ namespace MissionPlanner
 
             log.Info("Th Name " + Thread?.Name);
 
+            // Copy puts the error and the build on the clipboard, for the user to paste into a report
             var dr =
-                CustomMessageBox.Show("An error has occurred\n" + ex.ToString() + "\n\nReport this Error???",
-                    "Send Error", MessageBoxButtons.YesNo);
-            if ((int) DialogResult.Yes == dr)
+                MsgBox.CustomMessageBox.ShowWithCopy("An error has occurred\n" + ex.ToString() + "\n\nReport this Error???",
+                    "Send Error", MessageBoxButtons.YesNo,
+                    Application.ProductName + " " + Application.ProductVersion + " (" + Environment.OSVersion.VersionString +
+                    ")" + Environment.NewLine + ex);
+            if (DialogResult.Yes == dr)
             {
                 try
                 {
