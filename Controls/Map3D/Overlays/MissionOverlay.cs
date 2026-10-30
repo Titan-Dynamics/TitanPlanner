@@ -199,8 +199,9 @@ namespace MissionPlanner.Controls.Scene3D
 
         public void DrawPlanLine(LineRenderer lines, WorldFrame frame, ref Matrix4 projection, ref Matrix4 view)
         {
+            // the line runs from waypoint 1 on, as on the 2D map; home keeps its marker but isn't joined to it
             var waypoints = Waypoints();
-            if (waypoints.Count(a => a != null) < 2)
+            if (waypoints.Count(a => a != null && a.Tag != "H") < 2)
                 return;
 
             // Rebuilt when the mission or origin changes, and every second while terrain heights are still loading.
@@ -211,7 +212,7 @@ namespace MissionPlanner.Controls.Scene3D
                 _planLine.Clear();
                 foreach (var point in waypoints)
                 {
-                    if (point == null)
+                    if (point == null || point.Tag == "H")
                         continue;
                     double x, y;
                     frame.ToLocal(point.Lat, point.Lng, out x, out y);
