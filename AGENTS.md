@@ -41,7 +41,11 @@ GitHub Actions (`.github/workflows/main.yml` = "DotNet Build", plus `android.yml
 `mac.yml`). `main.yml` builds the solution on Windows, runs the `Sysid32Tests`, packages an MSI
 and `TitanPlanner.zip` with `checksums.txt` / `version.txt`, and publishes a `development-build`
 prerelease on pushes to `development` and a `TitanPlanner-<version>` release on pushes to
-`master`; the in-app updater reads those. Release notes (body and the `ChangeLog.txt` asset) come
+`master`; the in-app updater reads those. Its `android`, `linux` and `mac` jobs are copies of the
+build steps in upstream's `android.yml`, `linux.yml` and `mac.yml` (which stay as upstream has them,
+disabled in this repo), and add an APK, a Linux archive and a macOS `.dmg` to the development
+build; the `publish` job waits for them but needs only the Windows build to succeed. When upstream
+changes those workflows' build steps, mirror the change into `main.yml`. Release notes (body and the `ChangeLog.txt` asset) come
 from `.github/scripts/release-notes.sh`: every commit since the channel's previous release, fork
 commits separated from upstream's. The Linux/macOS workflows build but only publish
 releases when running in the upstream ArduPilot repository.
@@ -148,6 +152,15 @@ the git log has those. `ChangeLog.txt` is upstream's and is not maintained here.
 - **Line endings.** The repo stores a mix of CRLF and LF blobs and `core.autocrlf=true` is in use.
   Before staging, compare `git diff --stat` with `--ignore-cr-at-eol`; a whole-file rewrite means
   the line endings changed, not the code. Files whose HEAD blob is CRLF must be staged as CRLF.
+- **Android/macOS/Linux builds.** Android and macOS compile `MissionPlannerLib.csproj` (`LIB`) against the
+  `ExtLibs/mono` WinForms port, whose submodule commit has to match the upstream `ZZZLibShims.cs` it was
+  merged with (take upstream's submodule pointer in a merge). Its own `System.Drawing.Common`
+  (`ExtLibs/MissionPlanner.Drawing.Common`) clashes with the real package, so `MissionPlannerLib.csproj` excludes
+  the one SkiaSharp 2.88 pulls in; Windows-only controls such as WebView2 get a `ZZZLibShims.cs` stand-in. The
+  Linux build compiles the desktop app with `Linux/Build.targets`, which collapses each project to its desktop
+  target except `GMap.NET.Drawing`, kept netstandard too for `MissionPlanner.Utilities`. Check a `LIB` build
+  locally with Visual Studio's MSBuild (`msbuild -restore -p:Configuration=Release MissionPlannerLib.csproj`;
+  `dotnet build` can't build the mono submodule).
 - **Build gotchas.** `MissionPlannerLib.csproj` builds into `obj2\`; `MissionPlanner.csproj` must
   keep its `obj\` / `obj2\` excludes or the Xamarin-generated `FirmwareSelection.xaml.g.cs` is
   compiled twice. Keep `GenerateResourceUsePreserializedResources` on, or `dotnet build`/`dotnet test`

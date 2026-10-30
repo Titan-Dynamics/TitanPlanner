@@ -1119,8 +1119,7 @@ namespace MissionPlanner.Controls
             if (cmbOsdColor.Text != "")
             {
                 Settings.Instance["hudcolor"] = cmbOsdColor.Text;
-                GCSViews.FlightData.myhud.hudcolor =
-                    Color.FromKnownColor((KnownColor)Enum.Parse(typeof(KnownColor), cmbOsdColor.Text));
+                GCSViews.FlightData.myhud.hudcolor = Color.FromName(cmbOsdColor.Text);
             }
         }
 

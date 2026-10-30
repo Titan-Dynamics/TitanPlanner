@@ -215,6 +215,10 @@ namespace MissionPlanner.Utilities
         {
             get
             {
+#if LIB
+                // no window icons on Android and macOS
+                return null;
+#else
                 var source = Program.IconFile as Bitmap;
                 if (source == null)
                     return null;
@@ -237,6 +241,7 @@ namespace MissionPlanner.Utilities
                 }
 
                 return _formIcon;
+#endif
             }
         }
 
@@ -1285,7 +1290,9 @@ mc:Ignorable=""d""
                     pg.ViewForeColor = TextColor;
                     pg.HelpBackColor = BGColor;
                     pg.HelpForeColor = TextColor;
+#if !LIB
                     pg.CategorySplitterColor = BGColor;
+#endif
                     pg.CategoryForeColor = TextColor;
                 }
 

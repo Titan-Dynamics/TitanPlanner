@@ -5,6 +5,12 @@
     <TargetFrameworks Condition="$([System.String]::Copy('$(TargetFrameworks)').Contains('net461'))">net472</TargetFrameworks>
     <TargetFrameworks Condition="$([System.String]::Copy('$(TargetFrameworks)').Contains('netstandard2.0'))">netstandard2.0</TargetFrameworks>
   </PropertyGroup>
+  <!-- MissionPlanner.Utilities is netstandard only and references GMap.NET.Drawing. Its desktop build brings in the
+       real System.Drawing.Common, whose types clash with the netstandard drawing shim, so keep the netstandard build
+       too, as the Windows build does. -->
+  <PropertyGroup Condition="'$(MSBuildProjectName)' == 'GMap.NET.Drawing'">
+    <TargetFrameworks>net472;netstandard2.0</TargetFrameworks>
+  </PropertyGroup>
   <ItemGroup Condition="'$(MSBuildProjectName)' == 'MissionPlanner'">
     <!-- Match the application's managed SkiaSharp version. -->
     <PackageReference Update="SkiaSharp.NativeAssets.Linux.NoDependencies" Version="3.119.4" GeneratePathProperty="true" />

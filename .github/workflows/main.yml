@@ -14,15 +14,17 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: false
 
+env:
+  MSI_NAME: TitanPlanner-Installer.msi
+  ZIP_NAME: TitanPlanner.zip
+  APK_NAME: TitanPlanner-Android.apk
+  LINUX_NAME: TitanPlanner-linux-x86_64.tar.gz
+  DMG_NAME: TitanPlanner-macOS.dmg
+
 jobs:
   build:
     name: Build Release
     runs-on: windows-latest
-    env:
-      IS_DEV: ${{ github.ref == 'refs/heads/development' }}
-      IS_MASTER: ${{ github.ref == 'refs/heads/master' }}
-      MSI_NAME: TitanPlanner-Installer.msi
-      ZIP_NAME: TitanPlanner.zip
 
     steps:
       - uses: actions/checkout@v4
@@ -74,18 +76,261 @@ jobs:
           name: MSI
           path: ${{ env.MSI_NAME }}
 
-      - name: Get version from version.txt
-        id: version
+      # What the release is made of, for the publish job
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-release
+          path: |
+            ${{ env.ZIP_NAME }}
+            ${{ env.MSI_NAME }}
+            checksums.txt
+            version.txt
+          if-no-files-found: error
+
+  # Upstream's Android, Linux and OSX builds (android.yml, linux.yml, mac.yml), kept in step with them. Each adds its
+  # download to the release; one that fails leaves only its own download out.
+  android:
+    name: Build Android APK
+    # Xamarin is not available in the Visual Studio 2026 runner image.
+    runs-on: windows-2022
+    timeout-minutes: 120
+    env:
+      # Without upstream's release key (secrets SIGNING_KEY, ALIAS, KEY_STORE_PASSWORD, KEY_PASSWORD) the APK keeps
+      # the build's own debug signature: it installs, but each build's key differs, so an update means reinstalling.
+      HAS_SIGNING_KEY: ${{ secrets.SIGNING_KEY != '' }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+          fetch-depth: 10
+
+      - name: Install Android SDK Platform 33
+        run: |
+          cd "C:\Program Files (x86)\Android\android-sdk\cmdline-tools\latest\bin"
+          .\sdkmanager.bat "platforms;android-33" "build-tools;31.0.0"
+
+      - name: Cache multiple paths
+        uses: actions/cache@v4
+        with:
+          path: |
+            **/obj/**
+            !**.apk
+            !**.so
+            !**.aab
+            !**.dll
+            !jl
+          key: ${{ runner.os }}-buildAPK
+
+      - name: Build
         shell: pwsh
         run: |
-          $version = Get-Content "version.txt" -Raw
-          $version = $version.Trim()
-          echo "VERSION=$version" >> $env:GITHUB_OUTPUT
+          $msbuildPath = Split-Path (& "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe" -latest -requires Microsoft.Component.MSBuild -find MSBuild\Current\Bin\amd64\MSBuild.exe | Select-Object -First 1) -Parent
+          $env:PATH = $msbuildPath + ';' + $env:PATH
+          nuget locals all -clear
+          $current = Get-Location
+
+          $days = [int]((New-TimeSpan -Start 2020-01-01 -End (Get-Date)).totaldays * 100)
+
+          $manifest = [xml](Get-Content -Path ExtLibs\Xamarin\Xamarin.Android\Properties\AndroidManifest.xml -Raw)
+          $manifest.SelectNodes("manifest") | % { $_.versionCode = ""+$days }
+          $manifest.SelectNodes("manifest") | % { $_.versionName = ""+$days }
+          $manifest.Save($current.Path + "\ExtLibs\Xamarin\Xamarin.Android\Properties\AndroidManifest.xml")
+
+          Set-Content -Path ExtLibs\Xamarin\Xamarin.Android\Xamarin.Android.csproj -Value (Get-Content -Path ExtLibs\Xamarin\Xamarin.Android\Xamarin.Android.csproj -Raw).Replace("<AndroidPackageFormat>aab</AndroidPackageFormat>","<AndroidPackageFormat>apk</AndroidPackageFormat>")
+          Set-Content -Path ExtLibs\Xamarin\Xamarin.Android\Xamarin.Android.csproj -Value (Get-Content -Path ExtLibs\Xamarin\Xamarin.Android\Xamarin.Android.csproj -Raw).Replace("<AotAssemblies>true</AotAssemblies>","<AotAssemblies>false</AotAssemblies>")
+
+          choco install microsoft-openjdk --version=11.0.11.9
+
+          msbuild -v:m -restore -t:SignAndroidPackage -p:Configuration=Release "ExtLibs\Xamarin\Xamarin.Android\Xamarin.Android.csproj"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+          # With a release key, sign the unsigned APK aligned (below) in place of the debug-signed one
+          if ($env:HAS_SIGNING_KEY -eq 'true') {
+            del ExtLibs\Xamarin\Xamarin.Android\bin\Release\*-Signed.apk
+            $apks = Get-ChildItem -include *.apk -path ExtLibs\Xamarin\Xamarin.Android\bin\Release\ -Recurse
+            ForEach($i in $apks) {
+              echo $i.FullName
+              Move-Item -path $i.FullName temp.apk
+              C:\Android\android-sdk\build-tools\31.0.0\zipalign.exe -p -f -v 4 temp.apk $i.FullName
+              Remove-Item temp.apk
+            }
+          }
+
+      - name: Sign APK
+        if: ${{ env.HAS_SIGNING_KEY == 'true' }}
+        uses: r0adkll/sign-android-release@v1
+        with:
+          releaseDirectory: ExtLibs\Xamarin\Xamarin.Android\bin\Release
+          signingKeyBase64: ${{ secrets.SIGNING_KEY }}
+          alias: ${{ secrets.ALIAS }}
+          keyStorePassword: ${{ secrets.KEY_STORE_PASSWORD }}
+          keyPassword: ${{ secrets.KEY_PASSWORD }}
+        env:
+          BUILD_TOOLS_VERSION: "31.0.0"
+
+      # The release-signed APK, or the debug-signed one (both end -signed.apk; Windows ignores the case)
+      - name: Collect APK
+        shell: pwsh
+        run: |
+          $apk = Get-ChildItem -Path ExtLibs\Xamarin\Xamarin.Android\bin\Release -Recurse -Filter *-signed.apk | Select-Object -First 1
+          if (-not $apk) { Write-Error "No signed APK was built"; exit 1 }
+          Copy-Item $apk.FullName ${{ env.APK_NAME }}
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: android-release
+          path: ${{ env.APK_NAME }}
+          if-no-files-found: error
+
+  linux:
+    name: Build Linux x86_64
+    runs-on: ubuntu-22.04
+    timeout-minutes: 30
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: '10.0.x'
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends mono-devel rsync
+      - uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: linux-nuget-${{ hashFiles('**/*.csproj', 'Linux/Build.targets') }}
+          restore-keys: linux-nuget-
+      - name: Build and package
+        run: ./Linux/build.sh 2>&1 | tee linux-build.log
+      - name: Test archive with runtime dependencies only
+        run: ./Linux/test-package.sh 2>&1 | tee linux-runtime-test.log
+      - name: Name the archive
+        run: |
+          cd bin/linux
+          mv MissionPlanner-linux-x86_64.tar.gz "$LINUX_NAME"
+          sha256sum "$LINUX_NAME" > "$LINUX_NAME.sha256"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux-release
+          path: |
+            bin/linux/${{ env.LINUX_NAME }}
+            bin/linux/${{ env.LINUX_NAME }}.sha256
+          if-no-files-found: error
+          compression-level: 0
+      - name: Upload diagnostic logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-build-logs
+          path: |
+            linux-build.log
+            linux-runtime-test.log
+
+  mac:
+    name: Build OSX
+    runs-on: macos-14
+    timeout-minutes: 120
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+          fetch-depth: 10
+
+      - name: Cache multiple paths
+        uses: actions/cache@v4
+        with:
+          path: |
+            **/obj/**
+          key: ${{ runner.os }}-buildOSX
+
+      # The xamarin-* and mono-mdk-for-visual-studio Homebrew casks were
+      # deleted in August/September 2026 (Xamarin is discontinued), so
+      # install the same Microsoft/Mono packages the casks wrapped.
+      - name: Install Mono MDK and Xamarin.Mac
+        shell: bash
+        run: |
+          set -e
+          install_pkg() {
+            url="$1"; sha="$2"; pkg="$(basename "$url")"
+            curl -fsSL -o "$pkg" "$url"
+            echo "$sha  $pkg" | shasum -a 256 -c -
+            sudo installer -pkg "$pkg" -target /
+            rm -f "$pkg"
+          }
+          install_pkg https://download.mono-project.com/archive/6.12.0/macos-10-universal/MonoFramework-MDK-6.12.0.206.macos10.xamarin.universal.pkg 80b0dbfa59ba9ed76dbf1393998e6a2ed2d1ccc8f5850c7a46fbe31a2aea88d8
+          install_pkg https://download.visualstudio.microsoft.com/download/pr/ceb0ea3f-4db8-46b4-8dc3-8049d27c0107/7b04843d469aae253519989fcb8e750f/xamarin.mac-9.3.0.23.pkg 9aa89a4d273e5fc246f779db5d23907c414b98b76fe51e30cb60e8ccd1199956
+
+      - name: Build
+        shell: pwsh
+        run: |
+          msbuild -ver
+          dotnet --version
+          dotnet --list-sdks
+          msbuild -v:m -restore  -p:Configuration=Release "ExtLibs\Xamarin\Xamarin.MacOS\Xamarin.MacOS.csproj"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Package
+        shell: bash
+        run: |
+          npm install --global create-dmg
+          cd ExtLibs/Xamarin/Xamarin.MacOS/bin/Release/
+          # it still writes the image when it can't sign it, which fails the command
+          create-dmg 'Mission Planner.app' --dmg-title='Mission Planner' || true
+          dmg=$(ls ./*.dmg | head -1)
+          if [ -z "$dmg" ]; then echo "No .dmg was made"; exit 1; fi
+          mv "$dmg" "$GITHUB_WORKSPACE/$DMG_NAME"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mac-release
+          path: ${{ env.DMG_NAME }}
+          if-no-files-found: error
+
+  publish:
+    name: Publish
+    needs: [build, android, linux, mac]
+    # The Windows build has to have worked; the others only add their downloads
+    if: ${{ always() && needs.build.result == 'success' && (github.ref == 'refs/heads/development' || github.ref == 'refs/heads/master') }}
+    runs-on: ubuntu-latest
+    env:
+      IS_DEV: ${{ github.ref == 'refs/heads/development' }}
+      IS_MASTER: ${{ github.ref == 'refs/heads/master' }}
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: windows-release
+          path: release
+
+      - name: Download the other platforms' builds
+        if: ${{ env.IS_DEV == 'true' }}
+        uses: actions/download-artifact@v4
+        with:
+          pattern: '*-release'
+          merge-multiple: true
+          path: release
+
+      - name: Get version from version.txt
+        id: version
+        run: |
+          version=$(tr -d '\r\n' < release/version.txt)
+          echo "VERSION=$version" >> "$GITHUB_OUTPUT"
           echo "Found version: $version"
+          ls -la release
+          echo "Android: ${{ needs.android.result }}, Linux: ${{ needs.linux.result }}, OSX: ${{ needs.mac.result }}" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Release notes
-        if: ${{ env.IS_DEV == 'true' || env.IS_MASTER == 'true' }}
-        shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
@@ -121,21 +366,25 @@ jobs:
 
       - name: Publish development build
         if: ${{ env.IS_DEV == 'true' }}
-        shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
         run: |
+          # The other platforms' downloads that built
+          extra=()
+          for f in "$APK_NAME" "$LINUX_NAME" "$LINUX_NAME.sha256" "$DMG_NAME"; do
+            if [ -f "release/$f" ]; then extra+=("release/$f"); fi
+          done
           # Replace the rolling release, and its tag so the new one is created on this commit
           gh release delete development-build --yes --cleanup-tag || true
           gh api -X DELETE "repos/$GH_REPO/git/refs/tags/development-build" > /dev/null 2>&1 || true
           gh release create development-build --target "$GITHUB_SHA" --prerelease --title "Development Build" \
             --notes-file notes/release-notes.md \
-            "$ZIP_NAME" "$MSI_NAME" checksums.txt version.txt notes/ChangeLog.txt
+            "release/$ZIP_NAME" "release/$MSI_NAME" release/checksums.txt release/version.txt notes/ChangeLog.txt \
+            "${extra[@]}"
 
       - name: Publish release
         if: ${{ env.IS_MASTER == 'true' }}
-        shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
@@ -143,7 +392,7 @@ jobs:
         run: |
           gh release create "TitanPlanner-$VERSION" --target "$GITHUB_SHA" --latest --title "TitanPlanner $VERSION" \
             --notes-file notes/release-notes.md \
-            "$ZIP_NAME" "$MSI_NAME" checksums.txt version.txt notes/ChangeLog.txt
+            "release/$ZIP_NAME" "release/$MSI_NAME" release/checksums.txt release/version.txt notes/ChangeLog.txt
 
   buildDebug:
     name: Build Debug

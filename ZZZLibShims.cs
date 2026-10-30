@@ -520,6 +520,16 @@ public class Map3D: OpenGLtest
 {
     public static Map3D instance;
 
+    // the 3D map (Controls\Map3D) is Windows only: never showing, so nothing to suspend or resume
+    public bool IsActive => false;
+
+    public void Resume()
+    {
+    }
+
+    public void Suspend()
+    {
+    }
 }
 
 
@@ -1163,6 +1173,55 @@ namespace System.Management
         {
             public object Name { get; set; }
             public object Value { get; set; }
+        }
+    }
+}
+
+// Android and macOS have no WebView2. The pages that embed one (AM32, Motor Test) build against this, which never
+// gets a browser: CoreWebView2 stays null, which they already handle.
+namespace Microsoft.Web.WebView2.Core
+{
+    public class CoreWebView2
+    {
+        public void Navigate(string uri)
+        {
+        }
+
+        public void NavigateToString(string htmlContent)
+        {
+        }
+    }
+
+    public class CoreWebView2CreationProperties
+    {
+    }
+}
+
+namespace Microsoft.Web.WebView2.WinForms
+{
+    public class WebView2 : System.Windows.Forms.Control, System.ComponentModel.ISupportInitialize
+    {
+        public bool AllowExternalDrop { get; set; }
+
+        public Microsoft.Web.WebView2.Core.CoreWebView2CreationProperties CreationProperties { get; set; }
+
+        public System.Drawing.Color DefaultBackgroundColor { get; set; }
+
+        public double ZoomFactor { get; set; }
+
+        public Microsoft.Web.WebView2.Core.CoreWebView2 CoreWebView2 => null;
+
+        public System.Threading.Tasks.Task EnsureCoreWebView2Async(object environment)
+        {
+            return System.Threading.Tasks.Task.CompletedTask;
+        }
+
+        public void BeginInit()
+        {
+        }
+
+        public void EndInit()
+        {
         }
     }
 }

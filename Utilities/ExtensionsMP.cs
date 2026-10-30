@@ -93,6 +93,7 @@ namespace MissionPlanner.Utilities
             frm.Controls.Add(ctl);
             frm.Load += Frm_Load;
             frm.Closing += Frm_Closing;
+#if !LIB
             // Special-case windowed 3D map: set title/icon to match main app
             if (ctl is MissionPlanner.Controls.Map3D)
             {
@@ -107,6 +108,7 @@ namespace MissionPlanner.Utilities
                 {
                 }
             }
+#endif
 
             ThemeManager.ApplyThemeTo(frm);
             if (showit)
