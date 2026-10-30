@@ -416,7 +416,7 @@ namespace MissionPlanner.Controls
             if (connected)
             {
                 _vehicle.Update(_frame, _viewCenter, centerTime, velocity, attitude, _groundHeight,
-                    cs?.nav_bearing ?? 0, cs?.groundcourse ?? 0);
+                    cs?.nav_bearing ?? 0, cs?.groundcourse ?? 0, _settings.SmoothMovement);
                 _vehicleOverlay.RecordTrail(_frame, _vehicle, _settings.ShowTrail, cs?.armed == true);
 
                 // In FPV the eye stays a metre above the ground under the vehicle, or a landed vehicle would look
@@ -464,7 +464,7 @@ namespace MissionPlanner.Controls
 
             var ownPosition = connected ? (cs?.Location ?? _viewCenter) : _viewCenter;
             _adsb.Draw(_lines, _frame, ownPosition, _settings.AdsbCircleSize, _camera.X, _camera.Y, _camera.Z,
-                _settings.FieldOfView, Width, Height, ref terrainProjection, ref _view);
+                _settings.FieldOfView, Width, Height, _settings.SmoothMovement, ref terrainProjection, ref _view);
 
             // Pass 2: mission and vehicle.
             GL.Clear(ClearBufferMask.DepthBufferBit);
@@ -483,7 +483,8 @@ namespace MissionPlanner.Controls
                 }
 
                 if (_settings.ShowTrail)
-                    _vehicleOverlay.DrawTrail(_lines, _frame, _vehicle, cs?.armed == true, ref overlayProjection, ref _view);
+                    _vehicleOverlay.DrawTrail(_lines, _frame, _vehicle, cs?.armed == true, _settings.SmoothMovement,
+                        velocity.X, velocity.Y, velocity.Z, ref overlayProjection, ref _view);
 
                 if (!_settings.FpvMode)
                     _vehicleOverlay.DrawModel(_vehicle, _settings.VehicleScale, _settings.VehicleColor,

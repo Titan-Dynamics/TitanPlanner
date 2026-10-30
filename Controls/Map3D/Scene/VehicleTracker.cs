@@ -34,9 +34,31 @@ namespace MissionPlanner.Controls.Scene3D
             _initialized = false;
         }
 
+        /// <summary>
+        /// Takes this frame's pose. With smooth off it is the telemetry as it last arrived, unfiltered and not carried
+        /// along between updates.
+        /// </summary>
         public void Update(WorldFrame frame, PointLatLngAlt center, DateTime centerTime, Vector3 velocity,
-            Vector3 attitude, double groundHeight, double rawNavBearing, double rawGpsHeading)
+            Vector3 attitude, double groundHeight, double rawNavBearing, double rawGpsHeading, bool smooth)
         {
+            if (!smooth)
+            {
+                double rawEast, rawNorth;
+                frame.ToAbsolute(center.Lat, center.Lng, out rawEast, out rawNorth);
+                X = rawEast - frame.OriginEasting;
+                Y = rawNorth - frame.OriginNorthing;
+                Z = Math.Max(center.Alt, groundHeight + 1);
+                Roll = (float)attitude.X;
+                Pitch = (float)attitude.Y;
+                Yaw = (float)attitude.Z;
+                NavBearing = rawNavBearing;
+                GpsHeading = rawGpsHeading;
+
+                // smoothing switched back on starts from here, not from where it left off
+                _initialized = false;
+                return;
+            }
+
             var projected = LocationProjection.Project(center, velocity, centerTime, DateTime.Now);
             double east, north;
             frame.ToAbsolute(projected.Lat, projected.Lng, out east, out north);

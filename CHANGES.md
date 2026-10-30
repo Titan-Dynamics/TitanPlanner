@@ -70,7 +70,8 @@ Terrain streams Google Earth style:
 - **Distance haze** that fades terrain into the sky's horizon colour before the edge of the loaded terrain, at every altitude
 - **Sky gradient** that follows the true horizon through pitch and roll
 - **Heading indicators** and dynamic render distance
-- **Trailing flight path** with Kalman-smoothed lines on all axes; render gated on stable telemetry
+- **Trailing flight path** with Kalman-smoothed lines on all axes, curving into the vehicle along its velocity; render gated on stable telemetry
+- **Smooth movement** setting (on by default): the vehicle's position, altitude and attitude, its trail and ADS-B traffic are carried along between telemetry updates and filtered; off, everything is drawn from the raw telemetry
 - **High-altitude rendering** improvements
 
 ## ADS-B in 3D

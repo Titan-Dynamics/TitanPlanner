@@ -36,9 +36,12 @@ namespace MissionPlanner.Controls.Scene3D
         /// <summary>Where each aircraft was drawn last frame, nearest last.</summary>
         public readonly List<ScreenPosition> ScreenPositions = new List<ScreenPosition>();
 
+        /// <summary>
+        /// Draws the traffic, carried forward from its last report when predict is set, else where it was reported.
+        /// </summary>
         public void Draw(LineRenderer lines, WorldFrame frame, PointLatLngAlt ownPosition, double circleDiameter,
             double cameraX, double cameraY, double cameraZ, double fovDegrees, int viewportWidth, int viewportHeight,
-            ref Matrix4 projection, ref Matrix4 view)
+            bool predict, ref Matrix4 projection, ref Matrix4 view)
         {
             ScreenPositions.Clear();
             _planes.Clear();
@@ -58,7 +61,7 @@ namespace MissionPlanner.Controls.Scene3D
                         continue;
 
                     // Carried forward between feed updates so traffic moves at the frame rate.
-                    var position = plane.Predict(now);
+                    var position = predict ? plane.Predict(now) : plane;
                     double distance = ownPosition.GetDistance(position);
                     if (distance <= MaxDistance)
                         _planes.Add(Tuple.Create(plane, position, distance));

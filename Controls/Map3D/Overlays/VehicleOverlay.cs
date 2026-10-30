@@ -20,8 +20,16 @@ namespace MissionPlanner.Controls.Scene3D
         /// <summary>Frames of non-zero altitude to wait for before recording the trail, so it never starts at 0 m.</summary>
         const int TrailStabilityFrames = 30;
 
+        // the trail's moving average spans these many points (altitude, being noisier, more), and the curve into the
+        // vehicle is drawn in this many segments
+        const int TrailWindowXY = 20, TrailWindowZ = 60;
+        const int TailSegments = 24;
+
         readonly VertexList _vertices = new VertexList();
         readonly List<double[]> _trail = new List<double[]>();
+
+        // the smoothed trail, x, y, z per point
+        readonly List<double> _smoothed = new List<double>();
         readonly ModelRenderer _model;
         int _trailZoneVersion = -1;
         int _trailStableFrames;
@@ -143,8 +151,12 @@ namespace MissionPlanner.Controls.Scene3D
             }
         }
 
-        public void DrawTrail(LineRenderer lines, WorldFrame frame, VehicleTracker vehicle, bool armed,
-            ref Matrix4 projection, ref Matrix4 view)
+        /// <summary>
+        /// Draws the trail, smoothed or as recorded. Velocity is the vehicle's in m/s (north, east, down), the
+        /// direction a smoothed trail arrives at it along.
+        /// </summary>
+        public void DrawTrail(LineRenderer lines, WorldFrame frame, VehicleTracker vehicle, bool armed, bool smooth,
+            double velocityNorth, double velocityEast, double velocityDown, ref Matrix4 projection, ref Matrix4 view)
         {
             if (!armed || _trail.Count < 2 || _trailZoneVersion != frame.ZoneVersion)
                 return;
@@ -152,18 +164,107 @@ namespace MissionPlanner.Controls.Scene3D
             // MidnightBlue, as the 2D map's track.
             const float r = 25f / 255f, g = 25f / 255f, b = 112f / 255f, a = 144f / 255f;
 
-            _vertices.Clear();
-            SmoothInto(_trail, 20, 60, frame, (x, y, z) => _vertices.AddColored(x, y, z, r, g, b, a));
-            _vertices.AddColored(vehicle.X, vehicle.Y, vehicle.Z, r, g, b, a);
+            if (!smooth)
+            {
+                _vertices.Clear();
+                foreach (var point in _trail)
+                    _vertices.AddColored(point[0] - frame.OriginEasting, point[1] - frame.OriginNorthing, point[2], r, g, b, a);
+                _vertices.AddColored(vehicle.X, vehicle.Y, vehicle.Z, r, g, b, a);
+                DrawLines(lines, ref projection, ref view);
+                return;
+            }
 
+            _smoothed.Clear();
+            SmoothInto(_trail, TrailWindowXY, TrailWindowZ, frame, (x, y, z) =>
+            {
+                _smoothed.Add(x);
+                _smoothed.Add(y);
+                _smoothed.Add(z);
+            });
+
+            // The newest points have no later ones to average with, so they keep the pose's frame-to-frame wobble.
+            // Draw the trail up to where its average is whole, then bend into the vehicle on a curve that leaves the
+            // trail along it and arrives along the vehicle's velocity.
+            int count = _smoothed.Count / 3;
+            int end = Math.Max(0, count - 1 - TrailWindowZ / 2);
+            _vertices.Clear();
+            for (int i = 0; i <= end; i++)
+                _vertices.AddColored(_smoothed[3 * i], _smoothed[3 * i + 1], _smoothed[3 * i + 2], r, g, b, a);
+            AddTail(end, vehicle, velocityEast, velocityNorth, -velocityDown,
+                (x, y, z) => _vertices.AddColored(x, y, z, r, g, b, a));
+            DrawLines(lines, ref projection, ref view);
+        }
+
+        // the trail's vertices as a translucent line
+        void DrawLines(LineRenderer lines, ref Matrix4 projection, ref Matrix4 view)
+        {
             GL.Enable(EnableCap.Blend);
             GL.BlendFunc(BlendingFactorSrc.SrcAlpha, BlendingFactorDest.OneMinusSrcAlpha);
             lines.Draw(_vertices, PrimitiveType.LineStrip, 5f, ref projection, ref view);
             GL.Disable(EnableCap.Blend);
         }
 
+        // a cubic Hermite from the smoothed trail's point at end to the vehicle; velocity is east, north, up (scene axes)
+        void AddTail(int end, VehicleTracker vehicle, double velocityX, double velocityY, double velocityZ,
+            Action<double, double, double> emit)
+        {
+            double x0 = _smoothed[3 * end], y0 = _smoothed[3 * end + 1], z0 = _smoothed[3 * end + 2];
+            double x1 = vehicle.X, y1 = vehicle.Y, z1 = vehicle.Z;
+            double dx = x1 - x0, dy = y1 - y0, dz = z1 - z0;
+            double chord = Math.Sqrt(dx * dx + dy * dy + dz * dz);
+            if (chord < 0.01)
+            {
+                emit(x1, y1, z1);
+                return;
+            }
+
+            // leaving: the trail's direction over its last few points; arriving: the vehicle's velocity, or straight
+            // in while it barely moves. Both scaled to the gap, for an even curve.
+            int back = Math.Max(0, end - 5);
+            double ax = x0 - _smoothed[3 * back], ay = y0 - _smoothed[3 * back + 1], az = z0 - _smoothed[3 * back + 2];
+            Scale(ref ax, ref ay, ref az, chord, dx, dy, dz);
+
+            double bx = velocityX, by = velocityY, bz = velocityZ;
+            if (Math.Sqrt(bx * bx + by * by + bz * bz) < 0.5)
+            {
+                bx = dx;
+                by = dy;
+                bz = dz;
+            }
+
+            Scale(ref bx, ref by, ref bz, chord, dx, dy, dz);
+
+            for (int k = 1; k <= TailSegments; k++)
+            {
+                double t = (double)k / TailSegments, t2 = t * t, t3 = t2 * t;
+                double h00 = 2 * t3 - 3 * t2 + 1, h10 = t3 - 2 * t2 + t, h01 = -2 * t3 + 3 * t2, h11 = t3 - t2;
+                emit(h00 * x0 + h10 * ax + h01 * x1 + h11 * bx,
+                    h00 * y0 + h10 * ay + h01 * y1 + h11 * by,
+                    h00 * z0 + h10 * az + h01 * z1 + h11 * bz);
+            }
+        }
+
+        // scales a direction to a length; a zero one takes the fallback's direction
+        static void Scale(ref double x, ref double y, ref double z, double length, double fx, double fy, double fz)
+        {
+            double size = Math.Sqrt(x * x + y * y + z * z);
+            if (size < 1e-9)
+            {
+                x = fx;
+                y = fy;
+                z = fz;
+                size = Math.Sqrt(x * x + y * y + z * z);
+            }
+
+            x *= length / size;
+            y *= length / size;
+            z *= length / size;
+        }
+
         /// <summary>
-        /// Centred moving average (wider for altitude, which is noisier), computed with running sums.
+        /// Centred moving average (wider for altitude, which is noisier), computed with running sums. Near the ends
+        /// the window narrows on both sides so it stays centred: one cut off at the newest point would average only
+        /// older ones, lagging behind the vehicle and leaving a kink where the line meets it.
         /// </summary>
         static void SmoothInto(List<double[]> points, int windowXY, int windowZ, WorldFrame frame, Action<double, double, double> emit)
         {
@@ -178,20 +279,14 @@ namespace MissionPlanner.Controls.Scene3D
                 sumZ[i + 1] = sumZ[i] + points[i][2];
             }
 
-            bool smooth = n >= Math.Max(windowXY, windowZ);
             for (int i = 0; i < n; i++)
             {
-                if (!smooth)
-                {
-                    emit(points[i][0] - frame.OriginEasting, points[i][1] - frame.OriginNorthing, points[i][2]);
-                    continue;
-                }
-
-                int lo = Math.Max(0, i - windowXY / 2), hi = Math.Min(n - 1, i + windowXY / 2);
-                int loZ = Math.Max(0, i - windowZ / 2), hiZ = Math.Min(n - 1, i + windowZ / 2);
-                emit((sumX[hi + 1] - sumX[lo]) / (hi - lo + 1),
-                    (sumY[hi + 1] - sumY[lo]) / (hi - lo + 1),
-                    (sumZ[hiZ + 1] - sumZ[loZ]) / (hiZ - loZ + 1));
+                int toEnd = Math.Min(i, n - 1 - i);
+                int half = Math.Min(windowXY / 2, toEnd);
+                int halfZ = Math.Min(windowZ / 2, toEnd);
+                emit((sumX[i + half + 1] - sumX[i - half]) / (2 * half + 1),
+                    (sumY[i + half + 1] - sumY[i - half]) / (2 * half + 1),
+                    (sumZ[i + halfZ + 1] - sumZ[i - halfZ]) / (2 * halfZ + 1));
             }
         }
 
