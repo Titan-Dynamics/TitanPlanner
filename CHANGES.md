@@ -281,6 +281,8 @@ Behaviour that differs from upstream because the fork fixed it:
 - Battery monitor calibration handles DroneCAN and other digital monitors: voltage Calc explains they are calibrated on the device, and current Calc scales `BATTx_CURR_MULT` ([#27](https://github.com/Titan-Dynamics/TitanPlanner/issues/27))
 - The EKF status window keeps working on long sessions instead of failing with a GDI+ error ([#31](https://github.com/Titan-Dynamics/TitanPlanner/issues/31))
 - SSH (terminal, SCP/SFTP log download, Solo tools) uses SSH.NET 2026, with current key exchanges and ciphers and the `ScpClient` security fixes (upstream PR [#3729](https://github.com/ArduPilot/MissionPlanner/pull/3729))
+- The Actions tab's **Parachute_Release** releases the parachute; upstream's Do_Parachute sends it as Disable, which turns the parachute off until a reboot (upstream PR [#3854](https://github.com/ArduPilot/MissionPlanner/pull/3854))
+- The Actions tab's commands send the reserved param3 as 0 (Preflight_Calibration still sets it); upstream sends 1, which an autopilot strict about reserved params refuses and Loiter_Unlim reads as a 1 m radius (upstream PR [#3853](https://github.com/ArduPilot/MissionPlanner/pull/3853))
 - ADS-B from adsb.lol works (it requires a User-Agent) and stays within its rate limit
 - Elevation (SRTM) lookups are thread-safe and never block the UI behind a slow load
 - The Full Parameter List opens without crashing, and Flight Modes populates its `RCx_OPTION` lists on load
