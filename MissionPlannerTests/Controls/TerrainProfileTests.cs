@@ -133,7 +133,6 @@ namespace MissionPlanner.Controls.TerrainProfile.Tests
         [TestMethod]
         public void ClearanceNextToHomeAndTheLandingDoesNotCount()
         {
-            // home sits a little below the terrain data, as SRTM's error often puts it
             Func<double, double, double> ground = (lat, lng) => 105;
             var profile = MissionProfile.Build(Home, new List<Locationwp>
             {
@@ -141,7 +140,36 @@ namespace MissionPlanner.Controls.TerrainProfile.Tests
             }, true, ground);
 
             Assert.IsFalse(profile.HasConflict);
-            Assert.AreEqual(45, profile.MinClearance, 0.5);
+            Assert.AreEqual(50, profile.MinClearance, 0.5);
+        }
+
+        [TestMethod]
+        public void HomeSitsOnTheTerrainWhateverAltitudeItReports()
+        {
+            // a simulator's home at 0 m, over ground 300 m up
+            Func<double, double, double> ground = (lat, lng) => 300;
+            var profile = MissionProfile.Build(new PointLatLngAlt(Origin, Origin, 0), new List<Locationwp>
+            {
+                Takeoff(50), Item(MAVLink.MAV_CMD.WAYPOINT, Leg, 50)
+            }, true, ground);
+
+            Assert.AreEqual(300, profile.Waypoints[0].Altitude, 0.01, "home");
+            Assert.AreEqual(350, profile.Samples.Last().Altitude, 0.01, "50 m above home");
+            Assert.IsFalse(profile.HasConflict);
+        }
+
+        [TestMethod]
+        public void HomesReportedAltitudeStandsInUntilTheTerrainLoads()
+        {
+            Func<double, double, double> loading = (lat, lng) => double.NaN;
+            var profile = MissionProfile.Build(new PointLatLngAlt(Origin, Origin, 250), new List<Locationwp>
+            {
+                Takeoff(50), Item(MAVLink.MAV_CMD.WAYPOINT, Leg, 50)
+            }, true, loading);
+
+            Assert.AreEqual(250, profile.Waypoints[0].Altitude, 0.01);
+            Assert.AreEqual(300, profile.Samples.Last().Altitude, 0.01);
+            Assert.IsFalse(profile.TerrainComplete);
         }
 
         [TestMethod]

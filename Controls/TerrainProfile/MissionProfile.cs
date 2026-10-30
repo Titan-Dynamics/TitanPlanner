@@ -119,13 +119,11 @@ namespace MissionPlanner.Controls.TerrainProfile
             double? reference = null;
             if (hasHome)
             {
-                double homeAlt = home.Alt;
-                if (homeAlt == 0)
-                {
-                    double ground = terrain(home.Lat, home.Lng);
-                    if (!double.IsNaN(ground))
-                        homeAlt = ground;
-                }
+                // The vehicle takes off from the ground at home and its relative altitudes count from there, so home
+                // sits on the terrain the route is drawn against. The altitude typed in or reported for home is only
+                // used until that terrain loads: a simulator often reports 0, and one set before its tile loaded reads 0.
+                double ground = terrain(home.Lat, home.Lng);
+                double homeAlt = double.IsNaN(ground) ? home.Alt : ground;
 
                 reference = homeAlt;
                 route.Add(new RoutePoint { Lat = home.Lat, Lng = home.Lng, Altitude = homeAlt, Label = "H", OnGround = true });
