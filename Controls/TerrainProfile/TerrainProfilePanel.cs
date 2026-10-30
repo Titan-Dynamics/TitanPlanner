@@ -24,8 +24,8 @@ namespace MissionPlanner.Controls.TerrainProfile
 
         const string SettingOpen = "plan_terrain_profile_open";
         const int Margin = 10;
-        const int HeaderHeight = 28;
-        const int PlotLeft = 52, PlotRight = 18, PlotTop = 34, PlotBottom = 24;
+        const int HeaderHeight = 32;
+        const int PlotLeft = 60, PlotRight = 18, PlotTop = 40, PlotBottom = 27;
 
         // clearance under this (metres) is drawn as a warning
         const double LowClearance = 10;
@@ -46,9 +46,9 @@ namespace MissionPlanner.Controls.TerrainProfile
 
         readonly myGMAP _map;
         readonly System.Windows.Forms.Timer _rebuild = new System.Windows.Forms.Timer();
-        readonly Font _font = new Font("Segoe UI", 8.25f);
-        readonly Font _small = new Font("Segoe UI", 7.5f);
-        readonly Font _bold = new Font("Segoe UI", 7.5f, FontStyle.Bold);
+        readonly Font _font = new Font("Segoe UI", 9f);
+        readonly Font _small = new Font("Segoe UI", 8.25f);
+        readonly Font _bold = new Font("Segoe UI", 8.25f, FontStyle.Bold);
 
         PointLatLngAlt _home;
         List<Locationwp> _items;
@@ -147,9 +147,21 @@ namespace MissionPlanner.Controls.TerrainProfile
             Invalidate();
         }
 
-        // the ground's altitude from SRTM: NaN while its tile is downloading or where there is none
+        // The ground's altitude: from a GeoTIFF elevation model the user has loaded, as srtm.getAltitude prefers, else
+        // from SRTM. NaN while its tile is downloading or where there is none.
         static double TerrainAt(double lat, double lng)
         {
+            try
+            {
+                var tiff = GeoTiff.getAltitude(lat, lng);
+                if (tiff.currenttype == srtm.tiletype.valid)
+                    return tiff.alt;
+            }
+            catch (Exception ex)
+            {
+                log.Debug(ex);
+            }
+
             short[,] data;
             switch (srtm.GetCell(lat, lng, out data))
             {
@@ -174,7 +186,7 @@ namespace MissionPlanner.Controls.TerrainProfile
             if (_profile == null || _map.Width < 320 || _map.Height < 240)
                 return false;
 
-            int height = _open ? Math.Max(140, Math.Min(210, (int)(_map.Height * 0.26))) : HeaderHeight;
+            int height = _open ? Math.Max(150, Math.Min(225, (int)(_map.Height * 0.27))) : HeaderHeight;
             _bounds = new Rectangle(Margin, _map.Height - Margin - height, _map.Width - 2 * Margin, height);
             _toggle = new Rectangle(_bounds.Right - 30, _bounds.Top + (HeaderHeight - 22) / 2, 24, 22);
             _plot = Rectangle.FromLTRB(_bounds.Left + PlotLeft, _bounds.Top + PlotTop, _bounds.Right - PlotRight,
@@ -305,20 +317,18 @@ namespace MissionPlanner.Controls.TerrainProfile
             x = DrawChip(g, "Length", FormatDistance(profile.Length), Text, Color.FromArgb(26, 255, 255, 255), x, middle);
             x = DrawChip(g, "Peak", FormatAltitude(highest), Text, Color.FromArgb(26, 255, 255, 255), x, middle);
 
-            if (!double.IsNaN(profile.MinClearance))
+            // the deepest the route goes into the ground, else how close the legs in the air come to it
+            if (profile.HasConflict)
             {
-                if (profile.HasConflict)
-                {
-                    x = DrawChip(g, "Below terrain",
-                        FormatAltitude(-profile.MinClearance) + " at " + FormatDistance(profile.MinClearanceDistance),
-                        Conflict, Color.FromArgb(70, Conflict), x, middle);
-                }
-                else
-                {
-                    var color = profile.MinClearance < LowClearance ? Warning : Text;
-                    x = DrawChip(g, "Clearance", FormatAltitude(profile.MinClearance), color,
-                        Color.FromArgb(26, 255, 255, 255), x, middle);
-                }
+                x = DrawChip(g, "Below terrain",
+                    FormatAltitude(profile.Conflict) + " at " + FormatDistance(profile.ConflictDistance),
+                    Conflict, Color.FromArgb(70, Conflict), x, middle);
+            }
+            else if (!double.IsNaN(profile.MinClearance))
+            {
+                var color = profile.MinClearance < LowClearance ? Warning : Text;
+                x = DrawChip(g, "Min clearance", FormatAltitude(profile.MinClearance), color,
+                    Color.FromArgb(26, 255, 255, 255), x, middle);
             }
 
             if (!profile.TerrainComplete)
@@ -340,18 +350,18 @@ namespace MissionPlanner.Controls.TerrainProfile
         {
             float labelWidth = label == null ? 0 : g.MeasureString(label, _small, PointF.Empty, StringFormat.GenericTypographic).Width + 5;
             float valueWidth = g.MeasureString(value, _font, PointF.Empty, StringFormat.GenericTypographic).Width;
-            var pill = new RectangleF(x, middle - 9, labelWidth + valueWidth + 16, 18);
+            var pill = new RectangleF(x, middle - 10.5f, labelWidth + valueWidth + 18, 21);
             if (pill.Right > _toggle.Left - 8)
                 return x;
 
             if (fill.A > 0)
             {
-                using (var path = MapButton.RoundedRect(pill, 9))
+                using (var path = MapButton.RoundedRect(pill, 10.5f))
                 using (var brush = new SolidBrush(fill))
                     g.FillPath(brush, path);
             }
 
-            float tx = pill.Left + 8;
+            float tx = pill.Left + 9;
             if (label != null)
                 tx = DrawText(g, label, _small, TextDim, tx, middle) + 5;
             DrawText(g, value, _font, valueColor, tx, middle);
@@ -586,12 +596,14 @@ namespace MissionPlanner.Controls.TerrainProfile
             {
                 lines.Add(Tuple.Create("Terrain", FormatAltitude(sample.Terrain) + " AMSL", Text));
                 var clearance = sample.Clearance;
-                var color = !sample.Checked ? Text : clearance < 0 ? Conflict : clearance < LowClearance ? Warning : Text;
+                var color = sample.Checked && clearance < 0 ? Conflict
+                    : sample.EnRoute && clearance < LowClearance ? Warning
+                    : Text;
                 lines.Add(Tuple.Create("Clearance", FormatAltitude(clearance), color));
             }
 
             string title = FormatDistance(sample.Distance);
-            const float rowHeight = 15, pad = 8, gap = 12;
+            const float rowHeight = 18, pad = 9, gap = 14;
             float labelWidth = 0, valueWidth = 0;
             foreach (var row in lines)
             {

@@ -3403,16 +3403,6 @@ namespace MissionPlanner.GCSViews
             kmlpolygonsoverlay.Routes.Add(route);
         }
 
-        public void elevationGraphToolStripMenuItem_Click(object sender, EventArgs e)
-        {
-            writeKML();
-            double homealt = MainV2.comPort.MAV.cs.HomeAlt;
-            Form temp = new ElevationProfile(pointlist, homealt,
-                (altmode) Enum.Parse(typeof(altmode), CMB_altmode.Text));
-            ThemeManager.ApplyThemeTo(temp);
-            temp.ShowDialog();
-        }
-
         public void enterUTMCoordToolStripMenuItem_Click(object sender, EventArgs e)
         {
             string easting = "578994";

@@ -164,7 +164,6 @@ namespace MissionPlanner.GCSViews
             this.prefetchToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.prefetchWPPathToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.kMLOverlayToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            this.elevationGraphToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.reverseWPsToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.gDALOpacityToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.fileLoadSaveToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
@@ -1089,7 +1088,6 @@ namespace MissionPlanner.GCSViews
             this.prefetchToolStripMenuItem,
             this.prefetchWPPathToolStripMenuItem,
             this.kMLOverlayToolStripMenuItem,
-            this.elevationGraphToolStripMenuItem,
             this.reverseWPsToolStripMenuItem,
             this.gDALOpacityToolStripMenuItem,
             this.editStyleToolStripMenuItem,
@@ -1132,12 +1130,6 @@ namespace MissionPlanner.GCSViews
             this.kMLOverlayToolStripMenuItem.Name = "kMLOverlayToolStripMenuItem";
             resources.ApplyResources(this.kMLOverlayToolStripMenuItem, "kMLOverlayToolStripMenuItem");
             this.kMLOverlayToolStripMenuItem.Click += new System.EventHandler(this.kMLOverlayToolStripMenuItem_Click);
-            // 
-            // elevationGraphToolStripMenuItem
-            // 
-            this.elevationGraphToolStripMenuItem.Name = "elevationGraphToolStripMenuItem";
-            resources.ApplyResources(this.elevationGraphToolStripMenuItem, "elevationGraphToolStripMenuItem");
-            this.elevationGraphToolStripMenuItem.Click += new System.EventHandler(this.elevationGraphToolStripMenuItem_Click);
             // 
             // reverseWPsToolStripMenuItem
             // 
@@ -1698,7 +1690,6 @@ namespace MissionPlanner.GCSViews
         public ToolStripMenuItem zoomToToolStripMenuItem;
         public ToolStripMenuItem prefetchToolStripMenuItem;
         public ToolStripMenuItem kMLOverlayToolStripMenuItem;
-        public ToolStripMenuItem elevationGraphToolStripMenuItem;
         public ToolStripMenuItem rTLToolStripMenuItem;
         public ToolStripMenuItem landToolStripMenuItem;
         public ToolStripMenuItem takeoffToolStripMenuItem;

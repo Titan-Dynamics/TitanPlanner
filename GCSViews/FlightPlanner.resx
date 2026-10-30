@@ -2299,12 +2299,6 @@
   <data name="kMLOverlayToolStripMenuItem.Text" xml:space="preserve">
     <value>KML Overlay</value>
   </data>
-  <data name="elevationGraphToolStripMenuItem.Size" type="System.Drawing.Size, System.Drawing">
-    <value>209, 26</value>
-  </data>
-  <data name="elevationGraphToolStripMenuItem.Text" xml:space="preserve">
-    <value>Elevation Graph</value>
-  </data>
   <data name="reverseWPsToolStripMenuItem.Size" type="System.Drawing.Size, System.Drawing">
     <value>209, 26</value>
   </data>
@@ -2978,12 +2972,6 @@
     <value>kMLOverlayToolStripMenuItem</value>
   </data>
   <data name="&gt;&gt;kMLOverlayToolStripMenuItem.Type" xml:space="preserve">
-    <value>System.Windows.Forms.ToolStripMenuItem, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
-  </data>
-  <data name="&gt;&gt;elevationGraphToolStripMenuItem.Name" xml:space="preserve">
-    <value>elevationGraphToolStripMenuItem</value>
-  </data>
-  <data name="&gt;&gt;elevationGraphToolStripMenuItem.Type" xml:space="preserve">
     <value>System.Windows.Forms.ToolStripMenuItem, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </data>
   <data name="&gt;&gt;reverseWPsToolStripMenuItem.Name" xml:space="preserve">

@@ -94,8 +94,40 @@ namespace MissionPlanner.Controls.TerrainProfile.Tests
             }, true, hill);
 
             Assert.IsTrue(profile.HasConflict);
+            Assert.AreEqual(150, profile.Conflict, 0.5);
+            Assert.AreEqual(profile.Length / 2, profile.ConflictDistance, profile.Length / 10);
             Assert.AreEqual(-150, profile.MinClearance, 0.5);
-            Assert.AreEqual(profile.Length / 2, profile.MinClearanceDistance, profile.Length / 10);
+        }
+
+        [TestMethod]
+        public void TheClimbFromHomeAndTheGlideInDoNotSetTheMinimumClearance()
+        {
+            // no takeoff item, so the route climbs from home on a slope, and a plane glides down to land
+            var profile = MissionProfile.Build(Home, new List<Locationwp>
+            {
+                Item(MAVLink.MAV_CMD.WAYPOINT, Leg, 50), Item(MAVLink.MAV_CMD.WAYPOINT, 2 * Leg, 50),
+                Item(MAVLink.MAV_CMD.LAND, 3 * Leg, 0)
+            }, false, Flat);
+
+            Assert.AreEqual(50, profile.MinClearance, 0.01, "only the leg between the two waypoints counts");
+            Assert.AreEqual(1113 * 1.5, profile.MinClearanceDistance, 1113 * 0.6);
+            Assert.IsFalse(profile.HasConflict);
+        }
+
+        [TestMethod]
+        public void AHillInTheGlideIsStillAConflict()
+        {
+            // a hill half way down a plane's glide to land
+            Func<double, double, double> hill = (lat, lng) => Math.Abs(lng - Origin - 2.5 * Leg) < Leg / 10 ? 200 : 100;
+            var profile = MissionProfile.Build(Home, new List<Locationwp>
+            {
+                Takeoff(50), Item(MAVLink.MAV_CMD.WAYPOINT, Leg, 50), Item(MAVLink.MAV_CMD.WAYPOINT, 2 * Leg, 50),
+                Item(MAVLink.MAV_CMD.LAND, 3 * Leg, 0)
+            }, false, hill);
+
+            Assert.IsTrue(profile.HasConflict);
+            Assert.AreEqual(1113 * 2.5, profile.ConflictDistance, 1113 * 0.2);
+            Assert.AreEqual(50, profile.MinClearance, 0.01, "the glide doesn't count towards the clearance");
         }
 
         [TestMethod]

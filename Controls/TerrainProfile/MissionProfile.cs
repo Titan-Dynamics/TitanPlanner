@@ -32,10 +32,16 @@ namespace MissionPlanner.Controls.TerrainProfile
             public double Terrain;
 
             /// <summary>
-            /// Whether the clearance here counts: false next to home and landing points, where the route meets the
-            /// ground on purpose and the terrain data's few metres of error would read as a conflict.
+            /// Whether going below the ground here is a conflict: false next to home and landing points, where the
+            /// route meets the ground on purpose and the terrain data's few metres of error would read as one.
             /// </summary>
             public bool Checked;
+
+            /// <summary>
+            /// Whether this is on a leg between two points in the air, so not the climb from home or the way down to
+            /// a landing, which come close to the ground by design.
+            /// </summary>
+            public bool EnRoute;
 
             public double Clearance => Altitude - Terrain;
         }
@@ -47,16 +53,28 @@ namespace MissionPlanner.Controls.TerrainProfile
         /// <summary>False while the ground under part of the route isn't known yet.</summary>
         public bool TerrainComplete { get; private set; } = true;
 
-        /// <summary>The least height above the ground along the route, NaN when no ground is known.</summary>
+        /// <summary>
+        /// The least height above the ground on the legs between points in the air, NaN when there are none or no
+        /// ground is known there.
+        /// </summary>
         public double MinClearance { get; private set; } = double.NaN;
 
         public double MinClearanceDistance { get; private set; }
 
-        /// <summary>Whether the route goes below the ground anywhere its clearance counts.</summary>
-        public bool HasConflict => MinClearance < 0;
+        /// <summary>How far below the ground the route goes at worst, 0 when it never does.</summary>
+        public double Conflict { get; private set; }
+
+        public double ConflictDistance { get; private set; }
+
+        public bool HasConflict => Conflict > 0;
 
         // within this of where the route meets the ground, its clearance doesn't count
         const double GroundContactMargin = 30;
+
+        // samples along the route: no further apart than this (finer than SRTM1's 30 m grid, so a narrow ridge isn't
+        // stepped over), and at least the first count for a short route, but no more than the second for a long one
+        const double MaxSpacing = 20;
+        const int MinSamples = 600, MaxSamples = 6000;
 
         sealed class RoutePoint
         {
@@ -77,7 +95,7 @@ namespace MissionPlanner.Controls.TerrainProfile
         /// null when the mission has no route to draw.
         /// </summary>
         public static MissionProfile Build(PointLatLngAlt home, IList<Locationwp> items, bool verticalLanding,
-            Func<double, double, double> terrain, int sampleCount = 600)
+            Func<double, double, double> terrain)
         {
             if (items == null)
                 return null;
@@ -87,7 +105,7 @@ namespace MissionPlanner.Controls.TerrainProfile
                 return null;
 
             var profile = new MissionProfile();
-            profile.SampleRoute(route, terrain, sampleCount);
+            profile.SampleRoute(route, terrain);
             return profile.Length > 0 ? profile : null;
         }
 
@@ -213,7 +231,7 @@ namespace MissionPlanner.Controls.TerrainProfile
             }
         }
 
-        void SampleRoute(List<RoutePoint> route, Func<double, double, double> terrain, int sampleCount)
+        void SampleRoute(List<RoutePoint> route, Func<double, double, double> terrain)
         {
             var distances = new double[route.Count];
             for (int i = 1; i < route.Count; i++)
@@ -242,13 +260,14 @@ namespace MissionPlanner.Controls.TerrainProfile
                     contacts.Add(distances[i]);
             }
 
-            double spacing = Math.Max(1, Length / Math.Max(1, sampleCount));
+            double spacing = Math.Max(Length / MaxSamples, Math.Min(MaxSpacing, Length / MinSamples));
             for (int leg = 1; leg < route.Count; leg++)
             {
                 var a = route[leg - 1];
                 var b = route[leg];
                 double legLength = distances[leg] - distances[leg - 1];
                 int steps = Math.Max(1, (int)Math.Ceiling(legLength / spacing));
+                bool enRoute = !a.OnGround && !b.OnGround;
 
                 // a terrain-frame leg holds the height above the ground, eased from the start's to the end's
                 double aboveA = double.NaN, aboveB = double.NaN;
@@ -281,7 +300,7 @@ namespace MissionPlanner.Controls.TerrainProfile
                     Add(new Sample
                     {
                         Distance = distance, Lat = lat, Lng = lng, Altitude = altitude, Terrain = ground,
-                        Checked = !nearContact
+                        Checked = !nearContact, EnRoute = enRoute
                     });
                 }
             }
@@ -297,10 +316,16 @@ namespace MissionPlanner.Controls.TerrainProfile
                 return;
             }
 
-            if (sample.Checked && (double.IsNaN(MinClearance) || sample.Clearance < MinClearance))
+            if (sample.EnRoute && (double.IsNaN(MinClearance) || sample.Clearance < MinClearance))
             {
                 MinClearance = sample.Clearance;
                 MinClearanceDistance = sample.Distance;
+            }
+
+            if (sample.Checked && -sample.Clearance > Conflict)
+            {
+                Conflict = -sample.Clearance;
+                ConflictDistance = sample.Distance;
             }
         }
 
@@ -345,7 +370,8 @@ namespace MissionPlanner.Controls.TerrainProfile
                 Terrain = double.IsNaN(s0.Terrain) || double.IsNaN(s1.Terrain)
                     ? double.NaN
                     : s0.Terrain + (s1.Terrain - s0.Terrain) * t,
-                Checked = s0.Checked && s1.Checked
+                Checked = s0.Checked && s1.Checked,
+                EnRoute = s0.EnRoute && s1.EnRoute
             };
         }
     }
