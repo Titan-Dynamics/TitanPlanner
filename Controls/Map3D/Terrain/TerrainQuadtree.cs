@@ -28,6 +28,22 @@ namespace MissionPlanner.Controls.Scene3D
         /// </summary>
         public int MaxZoom = 20;
 
+        /// <summary>
+        /// The finest imagery level for a camera this high above the ground: 24 within 100 m, 22 up to 500 m, 20
+        /// above. Each boundary has 10% of hysteresis around it, so a camera hovering at one doesn't flip the level
+        /// (and the detail drawn) from frame to frame.
+        /// </summary>
+        public static int MaxZoomFor(double heightAboveGround, int current)
+        {
+            int Band(double height) => height < 100 ? 24 : height < 500 ? 22 : 20;
+
+            // only change once the height is clearly past the boundary between the two levels
+            int wanted = Band(heightAboveGround);
+            if (wanted == current)
+                return current;
+            return Band(heightAboveGround * 1.1) == wanted && Band(heightAboveGround / 1.1) == wanted ? wanted : current;
+        }
+
         /// <summary>Refine until one imagery texel covers at most this many screen pixels.</summary>
         public double MaxTexelPixels = 1.25;
 

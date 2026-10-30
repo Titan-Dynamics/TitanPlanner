@@ -608,6 +608,47 @@ namespace MissionPlanner.Controls.Scene3D.Tests
     }
 
     [TestClass]
+    public class MaxZoomTests
+    {
+        [TestMethod]
+        public void TheFinestLevelFollowsTheHeightAboveTheGround()
+        {
+            Assert.AreEqual(24, SelectionParams.MaxZoomFor(30, 20));
+            Assert.AreEqual(22, SelectionParams.MaxZoomFor(300, 20));
+            Assert.AreEqual(20, SelectionParams.MaxZoomFor(2000, 24));
+        }
+
+        [TestMethod]
+        public void ALevelHoldsUntilTheHeightIsClearlyPastItsBoundary()
+        {
+            // climbing out of 24
+            Assert.AreEqual(24, SelectionParams.MaxZoomFor(105, 24));
+            Assert.AreEqual(22, SelectionParams.MaxZoomFor(115, 24));
+            // and back down into it
+            Assert.AreEqual(22, SelectionParams.MaxZoomFor(95, 22));
+            Assert.AreEqual(24, SelectionParams.MaxZoomFor(85, 22));
+
+            // the same around 500 m
+            Assert.AreEqual(22, SelectionParams.MaxZoomFor(520, 22));
+            Assert.AreEqual(20, SelectionParams.MaxZoomFor(560, 22));
+            Assert.AreEqual(20, SelectionParams.MaxZoomFor(480, 20));
+            Assert.AreEqual(22, SelectionParams.MaxZoomFor(440, 20));
+        }
+
+        [TestMethod]
+        public void HoveringAtABoundaryNeverFlipsTheLevel()
+        {
+            int level = 24;
+            var random = new Random(1);
+            for (int i = 0; i < 1000; i++)
+            {
+                int next = SelectionParams.MaxZoomFor(100 + (random.NextDouble() - 0.5) * 6, level);
+                Assert.AreEqual(level, next, "at frame " + i);
+            }
+        }
+    }
+
+    [TestClass]
     public class FrameStatsTests
     {
         [TestMethod]

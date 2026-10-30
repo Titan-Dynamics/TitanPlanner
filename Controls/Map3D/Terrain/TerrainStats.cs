@@ -5,7 +5,8 @@ namespace MissionPlanner.Controls.Scene3D
     /// </summary>
     public sealed class TerrainStats
     {
-        public const int ZoomLevels = 21;
+        // zoom 0 to 24, the finest a camera near the ground draws (SelectionParams.MaxZoomFor)
+        public const int ZoomLevels = 25;
 
         public int Drawn;
         public int Resident;

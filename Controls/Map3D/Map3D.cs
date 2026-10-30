@@ -542,6 +542,7 @@ namespace MissionPlanner.Controls
             _selection.ViewportHeight = Height;
             _selection.FovY = fov;
             _selection.ReferenceHeight = _groundHeight;
+            _selection.MaxZoom = SelectionParams.MaxZoomFor(_camera.Z - _groundHeight, _selection.MaxZoom);
 
             var timer = Stopwatch.StartNew();
             _terrain.Update(_selection);

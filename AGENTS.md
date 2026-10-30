@@ -156,11 +156,14 @@ the git log has those. `ChangeLog.txt` is upstream's and is not maintained here.
   Planner") into the new ones. The NextVision edition sets these to "TitanPlanner-NextVision" and
   `{ "TitanPlanner", "Mission Planner" }`, so those lines differ between the two repos by design.
 - **3D map.** `Controls/Map3D/` is the 3D view (excluded from the LIB build). `Terrain/` streams satellite
-  terrain: `TerrainQuadtree` picks tiles by screen-space error, `TileLoader` fetches imagery (through the
-  shared GMap cache), samples SRTM (`srtm.GetCell`) and builds meshes on worker threads, and `TerrainEngine`
-  uploads and draws them on the render thread. `Rendering/` holds the GL helpers and GLSL 1.10/ES 2.0
-  shaders, `Overlays/` the mission, vehicle and ADS-B drawing, `Scene/` the UTM frame, camera and pose
-  smoothing. Selection and loading are pure logic with tests in `MissionPlannerTests/Controls/`.
+  terrain: `TerrainQuadtree` picks tiles by screen-space error, up to a finest zoom set by the camera's height
+  (`SelectionParams.MaxZoomFor`), `TileLoader` fetches imagery (through the shared GMap cache), samples SRTM
+  (`srtm.GetCell`) and builds meshes on worker threads, and `TerrainEngine` uploads and draws them on the render
+  thread. `Rendering/` holds the GL helpers and GLSL 1.10/ES 2.0 shaders, `Overlays/` the mission, vehicle and
+  ADS-B drawing, `Scene/` the UTM frame, camera and pose smoothing. `VehicleTracker` dead-reckons and
+  Kalman-filters the pose (MAVLink velocity is north, east, down); the trail and ADS-B prediction smooth too,
+  and `Map3DSettings.SmoothMovement` turns all of it off for raw telemetry. Selection and loading are pure logic
+  with tests in `MissionPlannerTests/Controls/`.
 - **2D maps.** Setting `GMapControl.Position` or `Zoom` re-projects every overlay and repaints synchronously,
   and `GMapControl.Invalidate` is throttled to about 9 fps. The DATA map pans with `myGMAP.Pan` plus
   `((Control)map).Invalidate()` (dragging and the autopan timer in `FlightData`). Zoom from user input goes

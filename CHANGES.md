@@ -52,7 +52,7 @@ The connected vehicle renders in 3D with default STL models per MAV type (plane,
 
 ## Terrain Streaming Engine
 Terrain streams Google Earth style:
-- **Screen-space level of detail.** A tile quadtree is refined until each imagery texel is about a pixel on screen, up to zoom 20, so detail follows what the camera actually sees; there is no zoom setting to manage.
+- **Screen-space level of detail.** A tile quadtree is refined until each imagery texel is about a pixel on screen, up to zoom 24 within 100 m of the ground, 22 up to 500 m and 20 above, so detail follows what the camera actually sees; there is no zoom setting to manage.
 - **Coarse first, centre outwards.** Load requests are ranked by distance relative to tile size and by angle from the view centre, re-ranked every frame, and dropped when no longer wanted. Tiles out of view are prefetched coarser so turning never shows holes.
 - **No holes or overlaps.** A tile is replaced by its children only once all of them are loaded; skirts hide cracks between levels.
 - **Off the UI thread.** Eight workers fetch imagery, sample elevation once per tile and build meshes; the render thread only uploads finished tiles within a per-frame time budget, with BGRA uploads, mipmaps and anisotropic filtering. A bounded GPU cache keeps recently seen terrain.
