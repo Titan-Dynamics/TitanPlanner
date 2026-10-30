@@ -205,6 +205,7 @@ Sensible default Quick tab options on first run; reset and reset-all per-item; l
 The WPOverlay2 rendering pipeline with its MissionStyleEditor, `MissionSegmentizer` arcs, `GMapRoute` arrow modes, `GMapMarkerWP` marker types with centred text, the plane return-path command, and correct `DO_LAND_START` Z units.
 
 ## Fork Additions
+- **Terrain profile** along the foot of the PLAN map: the mission's altitude in the theme's accent over the ground under its route, with its length, peak and least clearance, places it goes below the terrain in red, and a readout and map marker for the point under the pointer; it folds to a slim bar
 - **Center to Vehicle** button
 - **Clear all** in PLAN tab; clear-path from FlightData
 - 2D ↔ 3D map waypoint sync

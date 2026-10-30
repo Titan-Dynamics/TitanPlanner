@@ -165,6 +165,13 @@ namespace MissionPlanner.GCSViews
             MainMap.OnMarkerEnter += MainMap_OnMarkerEnter;
             MainMap.OnMarkerLeave += MainMap_OnMarkerLeave;
 
+#if !LIB
+            // the terrain profile along the foot of the map, drawn over it after the map's own painting
+            terrainProfile = new Controls.TerrainProfile.TerrainProfilePanel(MainMap);
+            MainMap.OverlayPanel = terrainProfile;
+            MainMap.Paint += (s, e) => terrainProfile.Paint(e.Graphics);
+#endif
+
             MainMap.MapScaleInfoEnabled = false;
             MainMap.ScalePen = new Pen(Color.Red);
 
@@ -288,6 +295,10 @@ namespace MissionPlanner.GCSViews
         public static FlightPlanner instance { get; set; }
 
         public List<PointLatLngAlt> pointlist { get; set; } = new List<PointLatLngAlt>();
+
+#if !LIB
+        private Controls.TerrainProfile.TerrainProfilePanel terrainProfile;
+#endif
 
 
         public void Activate()
@@ -1517,6 +1528,12 @@ namespace MissionPlanner.GCSViews
 
                     pointlist = activePointlist;
 
+#if !LIB
+                    // multirotors (and an unknown vehicle) land straight down; planes glide in
+                    terrainProfile?.SetMission(home, commandlist,
+                        MainV2.comPort.MAV.cs.vehicleClass != VehicleClass.Plane);
+#endif
+
                     if (!useV2)
                     {
                         foreach (var pointLatLngAlt in pointlist.PrevNowNext())
@@ -1572,6 +1589,13 @@ namespace MissionPlanner.GCSViews
 
                     MainMap.Refresh();
                 }
+#if !LIB
+                else
+                {
+                    // the grid holds fence or rally points: no route to profile
+                    terrainProfile?.SetMission(null, null, false);
+                }
+#endif
 
                 if ((MAVLink.MAV_MISSION_TYPE) cmb_missiontype.SelectedValue == MAVLink.MAV_MISSION_TYPE.FENCE)
                 {

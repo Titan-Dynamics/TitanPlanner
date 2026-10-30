@@ -15,6 +15,20 @@ using System.Windows.Forms;
 namespace MissionPlanner.Controls
 {
     /// <summary>
+    /// A panel a screen draws over a <see cref="myGMAP"/> from its Paint event. While the pointer is over it, the panel
+    /// takes the mouse, so clicks and drags there don't reach the map, its markers, the screen's map handlers or the
+    /// map's context menu.
+    /// </summary>
+    public interface IMapPanel
+    {
+        bool HitTest(Point location);
+        void OnMouseMove(MouseEventArgs e);
+        void OnMouseDown(MouseEventArgs e);
+        void OnMouseUp(MouseEventArgs e);
+        void OnMouseLeave();
+    }
+
+    /// <summary>
     /// Mono handles calls from other thread difrently - this prevents those crashs
     /// </summary>
     public class myGMAP : GMap.NET.WindowsForms.GMapControl
@@ -360,9 +374,92 @@ namespace MissionPlanner.Controls
                 lastx = e.X;
                 lasty = e.Y;
 
+                // a press on the panel keeps its moves until the release; a map drag passes over it
+                bool panel = OverlayPanel != null &&
+                             (e.Button == MouseButtons.None ? OverlayPanel.HitTest(e.Location) : _panelPressed);
+                if (panel)
+                {
+                    _panelHovered = true;
+                    OverlayPanel.OnMouseMove(e);
+                    return;
+                }
+
+                LeavePanel();
                 base.OnMouseMove(e);
             }
             catch (Exception ex) { Console.WriteLine(ex.ToString()); }
+        }
+
+        /// <summary>
+        /// The panel drawn over the map that takes the mouse while the pointer is over it, or null.
+        /// </summary>
+        public IMapPanel OverlayPanel { get; set; }
+
+        private bool _panelHovered;
+
+        // set by a press on the panel and kept until the next press, so the release and the clicks it raises stay
+        // with the panel too
+        private bool _panelPressed;
+
+        private void LeavePanel()
+        {
+            if (!_panelHovered)
+                return;
+            _panelHovered = false;
+            OverlayPanel?.OnMouseLeave();
+        }
+
+        protected override void OnMouseDown(MouseEventArgs e)
+        {
+            _panelPressed = OverlayPanel != null && OverlayPanel.HitTest(e.Location);
+            if (_panelPressed)
+            {
+                OverlayPanel.OnMouseDown(e);
+                return;
+            }
+
+            base.OnMouseDown(e);
+        }
+
+        protected override void OnMouseUp(MouseEventArgs e)
+        {
+            if (_panelPressed)
+            {
+                OverlayPanel?.OnMouseUp(e);
+                return;
+            }
+
+            base.OnMouseUp(e);
+        }
+
+        protected override void OnClick(EventArgs e)
+        {
+            if (!_panelPressed)
+                base.OnClick(e);
+        }
+
+        protected override void OnMouseClick(MouseEventArgs e)
+        {
+            if (!_panelPressed)
+                base.OnMouseClick(e);
+        }
+
+        protected override void OnDoubleClick(EventArgs e)
+        {
+            if (!_panelPressed)
+                base.OnDoubleClick(e);
+        }
+
+        protected override void OnMouseDoubleClick(MouseEventArgs e)
+        {
+            if (!_panelPressed)
+                base.OnMouseDoubleClick(e);
+        }
+
+        protected override void OnMouseLeave(EventArgs e)
+        {
+            LeavePanel();
+            base.OnMouseLeave(e);
         }
 
 
@@ -439,6 +536,16 @@ namespace MissionPlanner.Controls
         {
             if (_gestureConfigSize == 0)
                 SetupStructSizes();
+
+            // the map's context menu acts on the point clicked, which the panel has taken
+            const int WM_CONTEXTMENU = 0x7B;
+            if (m.Msg == WM_CONTEXTMENU && OverlayPanel != null && m.LParam.ToInt64() != -1)
+            {
+                long lparam = m.LParam.ToInt64();
+                var screen = new Point(unchecked((short)lparam), unchecked((short)(lparam >> 16)));
+                if (OverlayPanel.HitTest(PointToClient(screen)))
+                    return;
+            }
 
             bool handled;
             switch (m.Msg)
