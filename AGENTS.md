@@ -172,6 +172,7 @@ the git log has those. `ChangeLog.txt` is upstream's and is not maintained here.
   is the view centre only after a whole-level zoom or a `Position` set; a `Core.DragOffset` pan moves it, and
   `Core.FromLocalToLatLng` / `FromLatLngToLocal` leave the scale out. Pan with `myGMAP.Pan` (keeps
   `Position` on the centre), measure with `myGMAP.FromLatLngToMapLocal`, and zoom through `myGMAP`, which
-  moves the pivot back to the centre first. The DATA update loop changes overlays on its own thread and GMap's
+  moves the pivot back to the centre first. A rotated map turns its tiles about that point but its overlays
+  about the view centre, so there `Pan` moves `Position` itself (re-centring and re-projecting each step). The DATA update loop changes overlays on its own thread and GMap's
   collections don't lock, so UI-thread code that walks overlays has to survive a collection changing under it.
 - **Commits.** Messages carry no AI attribution trailers. Do not commit or push unless asked.

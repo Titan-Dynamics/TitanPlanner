@@ -212,12 +212,37 @@ namespace MissionPlanner.Controls
                 (float)(origin.Y + (local.Y - origin.Y) * scale));
         }
 
+        private double _panCarryX, _panCarryY;
+
         /// <summary>
         /// Moves the map by the offset in pixels (before rotation) without re-projecting the overlays, keeping
         /// Position on the view centre.
         /// </summary>
         public void Pan(GPoint offset)
         {
+            if (IsRotated)
+            {
+                // GMap turns the tiles about Core.renderOffset but the overlays about the view centre, so on a rotated
+                // map the two only agree while that is the centre: move the centre itself, which re-centres the map
+                // and re-projects the overlays. The carry keeps the fractions of a whole level's pixel.
+                double scale = FractionalScale;
+                _panCarryX += offset.X / scale;
+                _panCarryY += offset.Y / scale;
+                long stepX = (long)Math.Truncate(_panCarryX), stepY = (long)Math.Truncate(_panCarryY);
+                if (stepX == 0 && stepY == 0)
+                    return;
+
+                _panCarryX -= stepX;
+                _panCarryY -= stepY;
+                var centre = CentrePixel();
+                var target = new GPoint(centre.X - stepX, centre.Y - stepY);
+                Position = MapProvider.Projection.FromPixelToLatLng(target, Core.Zoom);
+                // the lat/lng round trip can land a pixel short: keep that for the next step
+                _panCarryX += Core.positionPixel.X - target.X;
+                _panCarryY += Core.positionPixel.Y - target.Y;
+                return;
+            }
+
             Core.DragOffset(offset);
 
             var pixel = CentrePixel();
