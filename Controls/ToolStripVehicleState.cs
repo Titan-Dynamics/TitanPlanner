@@ -1358,7 +1358,15 @@ namespace MissionPlanner.Controls
             var screenPoint = PointToScreen(new Point(0, Height));
             _popup.StartPosition = FormStartPosition.Manual;
             _popup.Location = screenPoint;
-            _popup.Show(this.FindForm());
+
+            // as tall as the list, up to the popup's limit and no lower than the bottom of the window (and screen)
+            var form = FindForm();
+            int bottom = Screen.FromPoint(screenPoint).WorkingArea.Bottom;
+            if (form != null)
+                bottom = Math.Min(bottom, form.RectangleToScreen(form.ClientRectangle).Bottom);
+            _popup.FitHeight(Math.Min(ModeDropdownPopup.MaxHeight, bottom - screenPoint.Y - 4));
+
+            _popup.Show(form);
 
             // Force refresh after popup is shown to ensure colors are applied
             _popup.BeginInvoke((Action)(() => _popup.RefreshAfterShow()));
@@ -1562,6 +1570,17 @@ namespace MissionPlanner.Controls
         public void RefreshCurrentMode()
         {
             RefreshModesList();
+        }
+
+        /// <summary>The tallest the popup gets; a longer list scrolls inside it.</summary>
+        public const int MaxHeight = 640;
+
+        /// <summary>Sizes the popup to its list, no taller than maxHeight; a longer list scrolls.</summary>
+        public void FitHeight(int maxHeight)
+        {
+            _modesPanel.PerformLayout();
+            int content = _modesPanel.Height + _scrollPanel.Padding.Vertical;
+            Height = Math.Max(80, Math.Min(content, maxHeight));
         }
 
         public void RefreshAfterShow()
