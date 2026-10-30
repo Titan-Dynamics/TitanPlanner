@@ -30,7 +30,14 @@ namespace MissionPlanner.Utilities
             remove { _onNewImage -= value; }
         }
 
-        private bool threadShouldRun = true;
+        // One per Start, so a Stop reaches only the run it was meant for: a run checks its own flag, not one a later
+        // Start has set again.
+        private class Run
+        {
+            public volatile bool ShouldRun = true;
+        }
+
+        private Run _run;
         private Thread _backgroundWorker;
 
 #pragma warning disable IDE1006 // Naming Styles
@@ -1184,17 +1191,18 @@ namespace MissionPlanner.Utilities
         public Thread Start(string stringpipeline)
         {
             Stop();
-            _backgroundWorker = new Thread(ThreadStart) {IsBackground = true, Name = "gstreamer"};
-            _backgroundWorker.Start(stringpipeline);
+            // made before the thread starts, so a Stop while it is still building the pipeline holds
+            var run = _run = new Run();
+            _backgroundWorker = new Thread(() => ThreadStart(stringpipeline, run)) {IsBackground = true, Name = "gstreamer"};
+            _backgroundWorker.Start();
 
             return _backgroundWorker;
         }
 
 
         [HandleProcessCorruptedStateExceptions, SecurityCritical]
-        void ThreadStart(object datao)
+        void ThreadStart(string stringpipeline, Run run)
         {
-            string stringpipeline = (string)datao;
 
             Environment.SetEnvironmentVariable("GST_DEBUG", "*:4");
 
@@ -1272,9 +1280,8 @@ namespace MissionPlanner.Utilities
             int Height = 0;
             // prevent it falling out of scope
             int trys = 0;
+            int empty = 0;
             GstAppSinkCallbacks callbacks2 = callbacks;
-
-            threadShouldRun = true;
 
             // not using appsink
             if (appsink == IntPtr.Zero && running)
@@ -1282,25 +1289,27 @@ namespace MissionPlanner.Utilities
                 /* Wait until error or EOS */
                 NativeMethods.gst_bus_timed_pop_filtered(bus, GST_CLOCK_TIME_NONE,
                     (int)(GstMessageType.GST_MESSAGE_ERROR | GstMessageType.GST_MESSAGE_EOS));
-                threadShouldRun = false;
+                run.ShouldRun = false;
 
             }
             else {
                 var msg = NativeMethods.gst_bus_timed_pop_filtered(bus, 0,
                      (int)(GstMessageType.GST_MESSAGE_ERROR | GstMessageType.GST_MESSAGE_EOS));
                 if (msg != IntPtr.Zero)
-                    threadShouldRun = false;
+                    run.ShouldRun = false;
             }
 
             log.Info("start frame loop gst_app_sink_is_eos");
-            while (threadShouldRun && !NativeMethods.gst_app_sink_is_eos(appsink))
+            while (run.ShouldRun && !NativeMethods.gst_app_sink_is_eos(appsink))
             {
                 try
                 {
-                        var sample = NativeMethods.gst_app_sink_try_pull_sample(appsink, GST_SECOND * 5);
+                    // a second at a time, so a Stop is seen soon after
+                    var sample = NativeMethods.gst_app_sink_try_pull_sample(appsink, GST_SECOND);
                     if (sample != IntPtr.Zero)
                     {
                         trys = 0;
+                        empty = 0;
                         var caps = NativeMethods.gst_sample_get_caps(sample);
                         var caps_s = NativeMethods.gst_caps_get_structure(caps, 0);
                         NativeMethods.gst_structure_get_int(caps_s, "width", out Width);
@@ -1317,7 +1326,9 @@ namespace MissionPlanner.Utilities
                                 var image = new Bitmap(Width, Height, 4 * Width, SkiaSharp.SKColorType.Bgra8888,
                                     info.data);
 
-                                _onNewImage?.Invoke(null, image);
+                                // a frame pulled after a Stop isn't shown
+                                if (run.ShouldRun)
+                                    _onNewImage?.Invoke(null, image);
                             }
 
                             NativeMethods.gst_buffer_unmap(buffer, out info);
@@ -1325,9 +1336,9 @@ namespace MissionPlanner.Utilities
 
                         NativeMethods.gst_sample_unref(sample);
                     }
-                    else
+                    else if (++empty % 5 == 0)
                     {
-                        log.Info("failed gst_app_sink_try_pull_sample " + trys + "");
+                        log.Info("failed gst_app_sink_try_pull_sample " + empty + "");
                     }
                 }
                 catch (Exception ex)
@@ -1490,8 +1501,19 @@ namespace MissionPlanner.Utilities
 
         public void Stop()
         {
-            threadShouldRun = false;
+            RequestStop();
             _backgroundWorker?.Join();
+        }
+
+        /// <summary>
+        /// Tells the pipeline to stop without waiting for it to. It shows no more frames; its thread ends within about
+        /// a second.
+        /// </summary>
+        public void RequestStop()
+        {
+            var run = _run;
+            if (run != null)
+                run.ShouldRun = false;
         }
 
         public static void DownloadGStreamer(Action<int, string> status = null)

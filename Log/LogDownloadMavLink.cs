@@ -468,16 +468,7 @@ namespace MissionPlanner.Log
 
         private void BUT_openlogdir_Click(object sender, EventArgs e)
         {
-            try
-            {
-                Directory.CreateDirectory(Settings.Instance.LogDir);
-                Process.Start(Settings.Instance.LogDir);
-            }
-            catch (Exception ex)
-            {
-                CustomMessageBox.Show(string.Format(LogStrings.LogDirectoryError, Settings.Instance.LogDir) + "\r\n" + ex.Message,
-                    Strings.ERROR);
-            }
+            LogFolder.Open();
         }
 
         private void BUT_redokml_Click(object sender, EventArgs e)

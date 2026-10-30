@@ -101,7 +101,7 @@ Replaced the dated FlightData tab bar with a modern themed strip and refreshed i
 ## New / Re-purposed Tabs
 - **Params tab** in FlightData and a Params panel co-located on the map
 - **Tuning tab** in FlightData (vehicle-aware: plane/copter/rover)
-- **Video tab** with USB camera and GStreamer support, an RTSP field that prefills a low-latency GStreamer pipeline, plus immediate HUD-overlay toggle
+- **Video tab** in place of the HUD's right-click Video menu: one source at a time (capture device, RTSP stream, MJPEG stream or GStreamer pipeline) with one Start/Stop button and a status indicator across the top (stopped, connecting, playing and its size, no video), remembered between launches, an RTSP URL that plays as entered with a HereLink preset, and boxes for the HUD overlay and OSD color, and for recording the HUD (with an Open Folder button)
 - **Inspector tab** (MAVLink Inspector exposed without `Ctrl+F`), in the theme's colours with field values in the accent colour
 - **Logs tab** unifying former Dataflash and Telemetry tabs
 - Working **Status tab** in FlightData
@@ -265,7 +265,7 @@ Built for air-gapped use. Opened from the **Offline Maps** button next to Find L
 - Faster, smoother docking/undocking of flight modes panel
 - The DATA map only keeps the no-fly zones near the view, so zooming and panning stay fast with the worldwide zone files loaded
 - Increased debouncing on 2D→3D map sync
-- Robust GStreamer start/stop handling
+- Robust video start/stop handling: stopped GStreamer and MJPEG video stays stopped, even when stopped while still connecting, and an unreachable MJPEG stream is retried once a second
 - Resilient QuickView state under churn
 
 ---

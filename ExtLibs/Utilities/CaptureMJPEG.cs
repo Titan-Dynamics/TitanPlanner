@@ -42,7 +42,9 @@ namespace MissionPlanner.Utilities
                 Priority = ThreadPriority.BelowNormal,
                 Name = "mjpg stream reader"
             }; 
-            
+
+            // set before the thread starts, so a Stop while it is still connecting holds
+            running = true;
             asyncthread.Start();
         }
 
@@ -50,6 +52,11 @@ namespace MissionPlanner.Utilities
         {
             running = false;
         }
+
+        /// <summary>
+        /// Whether the reader is running: showing the stream, or trying to reach it. It stops soon after Stop.
+        /// </summary>
+        public static bool IsRunning => asyncthread != null && asyncthread.IsAlive && running;
 
         public static string ReadLine(BinaryReader br)
         {
@@ -78,8 +85,6 @@ namespace MissionPlanner.Utilities
 
         static void getUrl()
         {
-            running = true;
-
             start:
 
             try
@@ -172,7 +177,9 @@ namespace MissionPlanner.Utilities
                                     lastimage = DateTime.Now;
                                 }
 
-                                _onNewImage?.Invoke(null, frame);
+                                // a frame read after a Stop isn't shown
+                                if (running)
+                                    _onNewImage?.Invoke(null, frame);
                             }
                             catch { }
                         }
@@ -197,7 +204,9 @@ namespace MissionPlanner.Utilities
             }
             catch (Exception ex) { log.Error(ex); }
 
-            // dont stop trying until we are told to stop
+            // dont stop trying until we are told to stop, a second between tries
+            if (running)
+                Thread.Sleep(1000);
             if (running)
                 goto start;
 

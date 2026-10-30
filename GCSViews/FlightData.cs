@@ -58,6 +58,9 @@ namespace MissionPlanner.GCSViews
             if (_hudGStreamerThread != null && _hudGStreamerThread.IsAlive)
                 return null;
 
+            // a stopped stream still finishing ends first, so its clearing of the HUD can't land after this
+            hudGStreamer.Stop();
+
             // Show loading state on HUD immediately, fitted to the current aspect ratio
             myhud.bgimage = CreateFittedNoVideoImage();
             _hudGStreamerFirstFrame = true;
@@ -136,16 +139,12 @@ namespace MissionPlanner.GCSViews
         public static void StopHudGStreamer()
         {
             _hudGStreamerFirstFrame = false;
-            myhud.bgimage = null;
 
-            // Stop in background to avoid blocking UI if GStreamer is slow to respond
-            var thread = _hudGStreamerThread;
+            // Stops at once, without waiting for the stream's thread to end: it shows no more frames, and a later
+            // Start waits for it. Stopping from a background task instead could land after that Start and stop it.
+            hudGStreamer.RequestStop();
             _hudGStreamerThread = null;
-
-            System.Threading.Tasks.Task.Run(() =>
-            {
-                hudGStreamer.Stop();
-            });
+            myhud.bgimage = null;
         }
         public static myGMAP mymap;
         public static bool threadrun;
@@ -4274,41 +4273,6 @@ namespace MissionPlanner.GCSViews
             }
         }
 
-        private void GStreamerStopToolStripMenuItem_Click(object sender, EventArgs e)
-        {
-            StopHudGStreamer();
-        }
-
-        private void HereLinkVideoToolStripMenuItem_Click(object sender, EventArgs e)
-        {
-            string ipaddr = "192.168.43.1";
-
-            if (Settings.Instance["herelinkip"] != null)
-                ipaddr = Settings.Instance["herelinkip"].ToString();
-
-            InputBox.Show("herelink ip", "Enter herelink ip address", ref ipaddr);
-
-            Settings.Instance["herelinkip"] = ipaddr;
-
-            string url = String.Format(
-                "rtspsrc location=rtsp://{0}:8554/fpv_stream latency=1 udp-reconnect=1 timeout=0 do-retransmission=false ! application/x-rtp ! rtph264depay ! h264parse ! queue ! avdec_h264 ! queue max-size-buffers=1 leaky=2 ! videoconvert ! video/x-raw,format=BGRx ! appsink name=outsink",
-                ipaddr);
-
-            GStreamer.GstLaunch = GStreamer.LookForGstreamer();
-
-            if (!GStreamer.GstLaunchExists)
-            {
-                GStreamerUI.DownloadGStreamer();
-
-                if (!GStreamer.GstLaunchExists)
-                {
-                    return;
-                }
-            }
-
-            StartHudGStreamer(url);
-        }
-
         private void hud_UserItem(object sender, EventArgs e)
         {
             var form = new Controls.DisplayThisForm(
@@ -5805,25 +5769,48 @@ namespace MissionPlanner.GCSViews
             Activate(); // Update new settings
         }
 
-        private void recordHudToAVIToolStripMenuItem_Click(object sender, EventArgs e)
+        /// <summary>
+        /// Whether the HUD, with its video, is being recorded to an AVI in the log folder.
+        /// </summary>
+        public bool IsHudRecording => aviwriter != null;
+
+        /// <summary>
+        /// Starts recording the HUD, with its video, to a new AVI in the log folder.
+        /// </summary>
+        public void StartHudRecording()
         {
-            stopRecordToolStripMenuItem_Click(sender, e);
+            StopHudRecording();
 
-            CustomMessageBox.Show("Output avi will be saved to the log folder");
-
-            aviwriter = new AviWriter();
+            var writer = new AviWriter();
             try
             {
                 Directory.CreateDirectory(Settings.Instance.LogDir);
-                aviwriter.avi_start(Settings.Instance.LogDir + Path.DirectorySeparatorChar +
-                                    DateTime.Now.ToString("yyyy-MM-dd HH-mm-ss") + ".avi");
-
-                recordHudToAVIToolStripMenuItem.Text = "Recording";
+                writer.avi_start(Settings.Instance.LogDir + Path.DirectorySeparatorChar +
+                                 DateTime.Now.ToString("yyyy-MM-dd HH-mm-ss") + ".avi");
+                aviwriter = writer;
             }
             catch (UnauthorizedAccessException ex)
             {
                 CustomMessageBox.Show(ex.Message, Strings.ERROR);
             }
+        }
+
+        /// <summary>
+        /// Stops the HUD recording, if there is one, and closes its file.
+        /// </summary>
+        public void StopHudRecording()
+        {
+            try
+            {
+                if (aviwriter != null)
+                    aviwriter.avi_close();
+            }
+            catch (Exception ex)
+            {
+                CustomMessageBox.Show(Strings.ERROR + " " + ex, Strings.ERROR);
+            }
+
+            aviwriter = null;
         }
 
         /// <summary>
@@ -5960,45 +5947,6 @@ namespace MissionPlanner.GCSViews
             MainV2.comPort.sendPacket(go, MainV2.comPort.MAV.sysid, MainV2.comPort.MAV.compid);
         }
 
-        private void setGStreamerSourceToolStripMenuItem_Click(object sender, EventArgs e)
-        {
-            string url = Settings.Instance["gstreamer_url"] != null
-                ? Settings.Instance["gstreamer_url"]
-                : @"videotestsrc ! video/x-raw, width=1280, height=720, framerate=30/1 ! videoconvert ! video/x-raw,format=BGRA ! appsink name=outsink";
-
-            if (DialogResult.OK == InputBox.Show("GStreamer url",
-                "Enter the source pipeline\nEnsure the final payload is ! videoconvert ! video/x-raw,format=BGRA ! appsink name=outsink",
-                ref url))
-            {
-                Settings.Instance["gstreamer_url"] = url;
-
-                GStreamer.GstLaunch = GStreamer.LookForGstreamer();
-
-                if (!GStreamer.GstLaunchExists)
-                {
-                    GStreamerUI.DownloadGStreamer();
-
-                    if (!GStreamer.GstLaunchExists)
-                    {
-                        return;
-                    }
-                }
-
-                try
-                {
-                    StartHudGStreamer(url);
-                }
-                catch (Exception ex)
-                {
-                    CustomMessageBox.Show(ex.ToString(), Strings.ERROR);
-                }
-            }
-            else
-            {
-                StopHudGStreamer();
-            }
-        }
-
         private async void setHomeHereToolStripMenuItem_Click(object sender, EventArgs e)
         {
             if (MainV2.comPort.BaseStream.IsOpen)
@@ -6037,28 +5985,6 @@ namespace MissionPlanner.GCSViews
         private void setMapBearing()
         {
             BeginInvoke((Action) delegate { gMapControl1.Bearing = (int) ((MainV2.comPort.MAV.cs.yaw + 360) % 360); });
-        }
-
-        private void setMJPEGSourceToolStripMenuItem_Click(object sender, EventArgs e)
-        {
-            string url = Settings.Instance["mjpeg_url"] != null
-                ? Settings.Instance["mjpeg_url"]
-                : @"http://127.0.0.1:56781/map.jpg";
-
-            if (DialogResult.OK == InputBox.Show("Mjpeg url", "Enter the url to the mjpeg source url", ref url))
-            {
-                Settings.Instance["mjpeg_url"] = url;
-
-                CaptureMJPEG.Stop();
-
-                CaptureMJPEG.URL = url;
-
-                CaptureMJPEG.runAsync();
-            }
-            else
-            {
-                CaptureMJPEG.Stop();
-            }
         }
 
         private void setQuickViewRowsCols(string cols, string rows)
@@ -6709,56 +6635,6 @@ namespace MissionPlanner.GCSViews
         }
 
         #endregion
-
-        private void startCameraToolStripMenuItem_Click(object sender, EventArgs e)
-        {
-            if (MainV2.MONO)
-                return;
-            if (MainV2.cam == null)
-            {
-                try
-                {
-                    MainV2.cam = new Capture(Settings.Instance.GetInt32("video_device"), new AMMediaType());
-
-                    MainV2.cam.Start();
-
-                    MainV2.cam.camimage += new CamImage(cam_camimage);
-                }
-                catch (Exception ex)
-                {
-                    CustomMessageBox.Show("Camera Fail: " + ex.ToString(), Strings.ERROR);
-
-                    // Clean up the partially initialized camera to prevent crashes
-                    // from the background thread trying to access invalid resources
-                    if (MainV2.cam != null)
-                    {
-                        try
-                        {
-                            MainV2.cam.Dispose();
-                        }
-                        catch { }
-                        MainV2.cam = null;
-                    }
-                }
-            }
-        }
-
-        private void stopRecordToolStripMenuItem_Click(object sender, EventArgs e)
-        {
-            recordHudToAVIToolStripMenuItem.Text = "Start Recording";
-
-            try
-            {
-                if (aviwriter != null)
-                    aviwriter.avi_close();
-            }
-            catch (Exception ex)
-            {
-                CustomMessageBox.Show(Strings.ERROR + " " + ex, Strings.ERROR);
-            }
-
-            aviwriter = null;
-        }
 
         private void SwapHud1AndMap()
         {
