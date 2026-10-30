@@ -78,6 +78,13 @@ namespace MissionPlanner.Controls
                 var numAdsbSize = new NumericUpDown { Minimum = 50, Maximum = 2000, Increment = 50, Value = clamp(settings.AdsbCircleSize, 50, 2000) };
                 addRow("ADSB Size:", numAdsbSize);
 
+                var numClouds = new NumericUpDown
+                {
+                    Minimum = 0, Maximum = Scene3D.CloudField.MaxDensity, Increment = 10,
+                    Value = clamp(settings.CloudDensity, 0, Scene3D.CloudField.MaxDensity)
+                };
+                addRow("Cloud density:", numClouds);
+
                 Color selectedColor = settings.VehicleColor;
                 var colorPanel = new Panel { Height = 23, BorderStyle = BorderStyle.FixedSingle, Cursor = Cursors.Hand, Tag = "IgnoreTheme", BackColor = selectedColor };
                 colorPanel.Click += (s, e) =>
@@ -168,6 +175,7 @@ namespace MissionPlanner.Controls
                     chkTrail.Checked = defaults.ShowTrail;
                     chkFpv.Checked = defaults.FpvMode;
                     chkSmooth.Checked = defaults.SmoothMovement;
+                    numClouds.Value = defaults.CloudDensity;
                     chkHud.Checked = defaults.HudOverlay;
                     chkStats.Checked = defaults.StatsForNerds;
                     settings.CameraAngle = 0.0;
@@ -199,6 +207,7 @@ namespace MissionPlanner.Controls
                     settings.ShowTrail = chkTrail.Checked;
                     settings.FpvMode = chkFpv.Checked;
                     settings.SmoothMovement = chkSmooth.Checked;
+                    settings.CloudDensity = (int)numClouds.Value;
                     settings.HudOverlay = chkHud.Checked;
                     settings.StatsForNerds = chkStats.Checked;
                     settings.Save();

@@ -110,6 +110,11 @@ namespace MissionPlanner.Controls.Scene3D
             GL.Uniform1(Uniform(name), value);
         }
 
+        public void SetVector2(string name, float x, float y)
+        {
+            GL.Uniform2(Uniform(name), x, y);
+        }
+
         public void SetVector3(string name, float x, float y, float z)
         {
             GL.Uniform3(Uniform(name), x, y, z);

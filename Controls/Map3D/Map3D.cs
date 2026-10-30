@@ -46,6 +46,7 @@ namespace MissionPlanner.Controls
         // Created with the GL context on first paint.
         private TerrainEngine _terrain;
         private SkyRenderer _sky;
+        private CloudRenderer _clouds;
         private LineRenderer _lines;
         private MissionOverlay _mission;
         private VehicleOverlay _vehicleOverlay;
@@ -362,6 +363,7 @@ namespace MissionPlanner.Controls
             if (_sky == null)
             {
                 _sky = new SkyRenderer();
+                _clouds = new CloudRenderer();
                 _lines = new LineRenderer();
                 _mission = new MissionOverlay();
                 _vehicleOverlay = new VehicleOverlay(_stlLoader);
@@ -416,7 +418,7 @@ namespace MissionPlanner.Controls
             if (connected)
             {
                 _vehicle.Update(_frame, _viewCenter, centerTime, velocity, attitude, _groundHeight,
-                    cs?.nav_bearing ?? 0, cs?.groundcourse ?? 0, _settings.SmoothMovement);
+                    cs?.nav_bearing ?? 0, cs?.groundcourse ?? 0, _settings.SmoothMovement, cs?.armed == true);
                 _vehicleOverlay.RecordTrail(_frame, _vehicle, _settings.ShowTrail, cs?.armed == true);
 
                 // In FPV the eye stays a metre above the ground under the vehicle, or a landed vehicle would look
@@ -465,6 +467,11 @@ namespace MissionPlanner.Controls
             var ownPosition = connected ? (cs?.Location ?? _viewCenter) : _viewCenter;
             _adsb.Draw(_lines, _frame, ownPosition, _settings.AdsbCircleSize, _camera.X, _camera.Y, _camera.Z,
                 _settings.FieldOfView, Width, Height, _settings.SmoothMovement, ref terrainProjection, ref _view);
+
+            // after the terrain (which hides them behind hills) and traffic (which they veil from behind)
+            if (_settings.CloudDensity > 0)
+                _clouds.Draw(_frame, _camera.X, _camera.Y, _camera.Z, _groundHeight, connected ? _vehicle.Z : _camera.Z,
+                    viewRadius, horizon, _settings.CloudDensity, ref terrainProjection, ref _view);
 
             // Pass 2: mission and vehicle.
             GL.Clear(ClearBufferMask.DepthBufferBit);
@@ -665,6 +672,7 @@ namespace MissionPlanner.Controls
             try
             {
                 _sky.Dispose();
+                _clouds.Dispose();
                 _lines.Dispose();
                 _mission.Dispose();
                 _vehicleOverlay.Dispose();

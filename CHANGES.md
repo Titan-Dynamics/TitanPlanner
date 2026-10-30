@@ -66,12 +66,13 @@ Terrain streams Google Earth style:
 ## Camera & Visual Effects
 - **FPV mode** with smooth camera movement and pitch-matched heading lines
 - **HUD overlay** setting: the DATA tab's HUD, with its items and plugin drawings, over the 3D view without its sky and ground
+- **Clouds**: three drifting layers (cumulus, patchy mid-level cloud and high streaks) at least a kilometre above the vehicle, with cloudy and clear stretches, shaded from below, hidden behind high terrain and fading into the horizon; a **Cloud density** setting from 0 (none) to 100, default 50, sets how much of the sky they cover
 - **Orbital camera** mode
 - **Distance haze** that fades terrain into the sky's horizon colour before the edge of the loaded terrain, at every altitude
 - **Sky gradient** that follows the true horizon through pitch and roll
 - **Heading indicators** and dynamic render distance
 - **Trailing flight path** with Kalman-smoothed lines on all axes, curving into the vehicle along its velocity; render gated on stable telemetry
-- **Smooth movement** setting (on by default): the vehicle's position, altitude and attitude, its trail and ADS-B traffic are carried along between telemetry updates and filtered; off, everything is drawn from the raw telemetry
+- **Smooth movement** setting (on by default): the vehicle's position, altitude and attitude, its trail and ADS-B traffic are carried along between telemetry updates and filtered; off, everything is drawn from the raw telemetry. Disarmed, or when the position jumps more than 100 m, the vehicle and the view go straight to it instead of gliding across the map
 - **High-altitude rendering** improvements
 
 ## ADS-B in 3D

@@ -126,5 +126,63 @@ void main(void) {
     gl_FragColor = mix(HorizonColor, TopColor, smoothstep(0.0, 0.6, elevation));
 }
 ";
+
+        /// <summary>A sheet of cloud: a horizontal quad in scene metres around the camera.</summary>
+        public const string CloudVertex = @"
+attribute vec3 Position;
+uniform mat4 ModelView;
+uniform mat4 Projection;
+varying vec3 vPosition;
+void main(void) {
+    vPosition = Position;
+    gl_Position = Projection * ModelView * vec4(Position, 1.0);
+}
+";
+
+        /// <summary>
+        /// Cloud from a tiling density texture sampled three times: the shape, finer detail (each drifting with the
+        /// wind), and a much larger weather pattern that moves the coverage, so the sky has cloudy and clear stretches
+        /// instead of a repeating carpet. Cut off below the coverage so sky shows between clouds, darker where
+        /// thicker as seen from below, thinned out with distance and fogged into the horizon colour like the terrain.
+        /// </summary>
+        public const string CloudFragment = FloatPrecision + @"
+uniform sampler2D Texture;
+uniform vec2 Scale;
+uniform vec2 Offset;
+uniform float DetailFactor;
+uniform vec2 DetailOffset;
+uniform float DetailWeight;
+uniform float WeatherFactor;
+uniform vec2 WeatherOffset;
+uniform float WeatherStrength;
+uniform float Coverage;
+uniform float Softness;
+uniform float Opacity;
+uniform vec3 Camera;
+uniform float FadeStart;
+uniform float FadeEnd;
+uniform float FogStart;
+uniform float FogEnd;
+uniform vec4 FogColor;
+uniform vec3 LitColor;
+uniform vec3 ShadeColor;
+varying vec3 vPosition;
+// fragments fainter than this are dropped rather than blended
+const float MinAlpha = 0.004;
+void main(void) {
+    vec2 uv = vPosition.xy * Scale;
+    float density = mix(texture2D(Texture, uv + Offset).r, texture2D(Texture, uv * DetailFactor + DetailOffset).r, DetailWeight);
+    float weather = texture2D(Texture, uv * WeatherFactor + WeatherOffset).r;
+    float coverage = Coverage + (0.5 - weather) * 2.0 * WeatherStrength;
+    float cloud = smoothstep(coverage, coverage + Softness, density);
+    float across = length(vPosition.xy - Camera.xy);
+    float alpha = cloud * Opacity * (1.0 - smoothstep(FadeStart, FadeEnd, across));
+    if (alpha < MinAlpha)
+        discard;
+    vec3 color = mix(LitColor, ShadeColor, smoothstep(coverage, 1.0, density));
+    float fog = smoothstep(FogStart, FogEnd, length(vPosition - Camera));
+    gl_FragColor = vec4(mix(color, FogColor.rgb, fog), alpha);
+}
+";
     }
 }

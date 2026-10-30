@@ -35,6 +35,12 @@ namespace MissionPlanner.Controls
         /// </summary>
         public bool SmoothMovement = true;
 
+        /// <summary>
+        /// Layers of cloud drifting well above the vehicle: how much of the sky they cover, from 0 (none) to
+        /// <see cref="Scene3D.CloudField.MaxDensity"/>.
+        /// </summary>
+        public int CloudDensity = Scene3D.CloudField.DefaultDensity;
+
         /// <summary>The top-right diagnostics panel: frame timing graph, terrain streaming, view and GPU.</summary>
         public bool StatsForNerds;
 
@@ -61,6 +67,8 @@ namespace MissionPlanner.Controls
                 ShowTrail = s.GetBoolean("map3d_show_trail", false),
                 FpvMode = s.GetBoolean("map3d_fpv_mode", false),
                 SmoothMovement = s.GetBoolean("map3d_smooth_movement", true),
+                CloudDensity = Math.Max(0, Math.Min(Scene3D.CloudField.MaxDensity,
+                    s.GetInt32("map3d_cloud_density", Scene3D.CloudField.DefaultDensity))),
                 StatsForNerds = s.GetBoolean("map3d_stats_for_nerds", false),
                 HudOverlay = s.GetBoolean("map3d_hud_overlay", false),
                 WaypointMarkerSize = s.GetDouble("map3d_waypoint_marker_size", 60),
@@ -96,6 +104,7 @@ namespace MissionPlanner.Controls
             s["map3d_show_trail"] = ShowTrail.ToString();
             s["map3d_fpv_mode"] = FpvMode.ToString();
             s["map3d_smooth_movement"] = SmoothMovement.ToString();
+            s["map3d_cloud_density"] = CloudDensity.ToString();
             s["map3d_stats_for_nerds"] = StatsForNerds.ToString();
             s["map3d_hud_overlay"] = HudOverlay.ToString();
             SaveCamera();

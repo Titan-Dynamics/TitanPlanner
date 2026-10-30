@@ -649,6 +649,130 @@ namespace MissionPlanner.Controls.Scene3D.Tests
     }
 
     [TestClass]
+    public class VehicleTrackerTests
+    {
+        static readonly MissionPlanner.Utilities.Vector3 Still = new MissionPlanner.Utilities.Vector3(0, 0, 0);
+
+        // how far the tracker draws the vehicle from its fix after a fix at start, then one metres north of it
+        static double DistanceFromFix(bool armed, double metres)
+        {
+            var frame = new WorldFrame();
+            frame.Update(40.0, -105.0);
+            var tracker = new VehicleTracker();
+            var start = new PointLatLngAlt(40.0, -105.0, 1700);
+            tracker.Update(frame, start, DateTime.Now, Still, Still, 1600, 0, 0, true, armed);
+
+            var next = start.newpos(0, metres);
+            tracker.Update(frame, next, DateTime.Now, Still, Still, 1600, 0, 0, true, armed);
+
+            double x, y;
+            frame.ToLocal(next.Lat, next.Lng, out x, out y);
+            return Math.Sqrt((tracker.X - x) * (tracker.X - x) + (tracker.Y - y) * (tracker.Y - y));
+        }
+
+        [TestMethod]
+        public void DisarmedTheVehicleGoesStraightToItsFix()
+        {
+            Assert.AreEqual(0, DistanceFromFix(false, 50), 0.01);
+        }
+
+        [TestMethod]
+        public void ArmedAShortMoveIsEased()
+        {
+            Assert.IsTrue(DistanceFromFix(true, 50) > 1, "eases towards a fix 50 m away");
+        }
+
+        [TestMethod]
+        public void ArmedAJumpOfOverAHundredMetresIsJumpedTo()
+        {
+            Assert.AreEqual(0, DistanceFromFix(true, 500), 0.01);
+        }
+    }
+
+    [TestClass]
+    public class CloudFieldTests
+    {
+        [TestMethod]
+        public void TheLowestLayerClearsTheVehicleAndTheGround()
+        {
+            // a vehicle low over the ground: the ground's minimum decides
+            Assert.AreEqual(100 + 1500, CloudField.BaseAltitude(100, 150));
+            // a vehicle high up: a kilometre above it
+            Assert.AreEqual(3000 + 1000, CloudField.BaseAltitude(100, 3000));
+
+            for (int i = 1; i < CloudField.Layers.Length; i++)
+                Assert.IsTrue(CloudField.Layers[i].Height > CloudField.Layers[i - 1].Height, "layers go upwards");
+        }
+
+        [TestMethod]
+        public void TheTextureTilesWithoutASeam()
+        {
+            const int size = 128;
+            float[] d;
+            CloudField.Texture(size, 7, out d);
+
+            Assert.AreEqual(0, d.Min(), 1e-6);
+            Assert.AreEqual(1, d.Max(), 1e-6);
+
+            // the step across the wrap is no bigger than steps elsewhere
+            double inside = 0, across = 0;
+            for (int y = 0; y < size; y++)
+            {
+                for (int x = 1; x < size; x++)
+                    inside = Math.Max(inside, Math.Abs(d[y * size + x] - d[y * size + x - 1]));
+                across = Math.Max(across, Math.Abs(d[y * size] - d[y * size + size - 1]));
+            }
+
+            for (int x = 0; x < size; x++)
+                across = Math.Max(across, Math.Abs(d[x] - d[(size - 1) * size + x]));
+
+            Assert.IsTrue(across <= inside * 1.2, "seam " + across + " vs " + inside);
+        }
+
+        [TestMethod]
+        public void DensityScalesTheShareOfSkyEachLayerCovers()
+        {
+            const int size = CloudField.TextureSize;
+            float[] d;
+            CloudField.Texture(size, CloudField.TextureSeed, out d);
+
+            var full = CloudField.Coverages(d, size, CloudField.MaxDensity);
+            var standard = CloudField.Coverages(d, size, CloudField.DefaultDensity);
+            var light = CloudField.Coverages(d, size, 40);
+            var none = CloudField.Coverages(d, size, 0);
+
+            for (int i = 0; i < CloudField.Layers.Length; i++)
+            {
+                var layer = CloudField.Layers[i];
+                double fullCover = CloudField.Cover(layer, d, size, layer.Coverage);
+
+                Assert.AreEqual(layer.Coverage, full[i], 0.002, "layer " + i + " at full density");
+                Assert.AreEqual(fullCover * CloudField.DefaultDensity / CloudField.MaxDensity,
+                    CloudField.Cover(layer, d, size, standard[i]), fullCover * 0.01, "layer " + i + " at the default density");
+                Assert.AreEqual(fullCover * 0.4, CloudField.Cover(layer, d, size, light[i]), fullCover * 0.01,
+                    "layer " + i + " at 40");
+                Assert.AreEqual(0, CloudField.Cover(layer, d, size, none[i]), 1e-6, "layer " + i + " at none");
+                Assert.IsTrue(light[i] > standard[i] && standard[i] > full[i], "less cloud, higher threshold");
+            }
+        }
+
+        [TestMethod]
+        public void TheTextureHasCloudsAndGaps()
+        {
+            float[] d;
+            CloudField.Texture(128, 7, out d);
+            double mean = d.Average();
+            double spread = Math.Sqrt(d.Average(v => (v - mean) * (v - mean)));
+
+            Assert.IsTrue(spread > 0.1, "spread " + spread);
+            // the lowest layer's coverage cuts somewhere between all cloud and none
+            float coverage = CloudField.Layers[0].Coverage;
+            double cloudy = d.Count(v => v > coverage) / (double)d.Length;
+            Assert.IsTrue(cloudy > 0.15 && cloudy < 0.85, "cloudy " + cloudy);
+        }
+    }
+
+    [TestClass]
     public class FrameStatsTests
     {
         [TestMethod]

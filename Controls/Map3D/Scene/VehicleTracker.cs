@@ -22,6 +22,9 @@ namespace MissionPlanner.Controls.Scene3D
         bool _initialized;
         int _zoneVersion = -1;
 
+        // a fix this far (metres) from where the vehicle is drawn is jumped to rather than eased to
+        const double JumpDistance = 100;
+
         /// <summary>Vehicle position in local scene coordinates (z is AMSL).</summary>
         public double X, Y, Z;
 
@@ -36,10 +39,12 @@ namespace MissionPlanner.Controls.Scene3D
 
         /// <summary>
         /// Takes this frame's pose. With smooth off it is the telemetry as it last arrived, unfiltered and not carried
-        /// along between updates.
+        /// along between updates. Disarmed, the position is never eased either, so a first fix or the GPS settling
+        /// on the ground puts the vehicle (and the camera following it) straight there instead of gliding across
+        /// the map; armed, a fix more than <see cref="JumpDistance"/> away is jumped to as well.
         /// </summary>
         public void Update(WorldFrame frame, PointLatLngAlt center, DateTime centerTime, Vector3 velocity,
-            Vector3 attitude, double groundHeight, double rawNavBearing, double rawGpsHeading, bool smooth)
+            Vector3 attitude, double groundHeight, double rawNavBearing, double rawGpsHeading, bool smooth, bool armed)
         {
             if (!smooth)
             {
@@ -75,6 +80,14 @@ namespace MissionPlanner.Controls.Scene3D
                 _gpsHeading.Reset(rawGpsHeading);
                 _initialized = true;
                 _zoneVersion = frame.ZoneVersion;
+            }
+
+            double jumpEast = east - _east.Value, jumpNorth = north - _north.Value;
+            if (!armed || jumpEast * jumpEast + jumpNorth * jumpNorth > JumpDistance * JumpDistance)
+            {
+                _east.Reset(east);
+                _north.Reset(north);
+                _altitude.Reset(projected.Alt);
             }
 
             X = _east.Update(east) - frame.OriginEasting;
