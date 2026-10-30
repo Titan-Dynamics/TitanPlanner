@@ -90,9 +90,10 @@ namespace MissionPlanner.Controls.Scene3D
             Roll = 0;
         }
 
-        public void FirstPerson(VehicleTracker vehicle)
+        /// <summary>From the vehicle, but no lower than minZ: on the ground the vehicle sits level with the terrain.</summary>
+        public void FirstPerson(VehicleTracker vehicle, double minZ)
         {
-            Look(vehicle.X, vehicle.Y, vehicle.Z, vehicle.Yaw, vehicle.Pitch);
+            Look(vehicle.X, vehicle.Y, Math.Max(vehicle.Z, minZ), vehicle.Yaw, vehicle.Pitch);
             Roll = vehicle.Roll;
         }
 

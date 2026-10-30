@@ -419,8 +419,10 @@ namespace MissionPlanner.Controls
                     cs?.nav_bearing ?? 0, cs?.groundcourse ?? 0);
                 _vehicleOverlay.RecordTrail(_frame, _vehicle, _settings.ShowTrail, cs?.armed == true);
 
+                // In FPV the eye stays a metre above the ground under the vehicle, or a landed vehicle would look
+                // out from level with the terrain mesh, half of the view under it.
                 if (_settings.FpvMode)
-                    _camera.FirstPerson(_vehicle);
+                    _camera.FirstPerson(_vehicle, _groundHeight + 1);
                 else
                     _camera.Chase(_vehicle, _settings.CameraDistance, _settings.CameraHeight, _settings.CameraAngle);
             }
