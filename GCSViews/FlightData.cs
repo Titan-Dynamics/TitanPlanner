@@ -327,7 +327,7 @@ namespace MissionPlanner.GCSViews
             HighLatency_Enable,
             HighLatency_Disable,
             Toggle_Safety_Switch,
-            Do_Parachute,
+            Parachute_Release,
             Engine_Start,
             Engine_Stop,
             Terminate_Flight,
@@ -2472,6 +2472,17 @@ namespace MissionPlanner.GCSViews
                     {
                         MainV2.comPort.doCommand(MainV2.comPort.MAV.sysid, MainV2.comPort.MAV.compid, MAVLink.MAV_CMD.DO_FLIGHTTERMINATION, 1.0f, 0, 0, 0, 0, 0, 0);
                         ((Control)sender).Enabled = true;
+                        return;
+                    }
+
+                    if (flightDataActions1.CMB_action.Text == actions.Parachute_Release.ToString())
+                    {
+                        if (!MainV2.comPort.doCommand(MAVLink.MAV_CMD.DO_PARACHUTE,
+                                (float) MAVLink.PARACHUTE_ACTION.PARACHUTE_RELEASE, 0, 0, 0, 0, 0, 0))
+                        {
+                            CustomMessageBox.Show(Strings.CommandFailed + " " + MAVLink.MAV_CMD.DO_PARACHUTE, Strings.ERROR);
+                        }
+                        ((Control) sender).Enabled = true;
                         return;
                     }
 
