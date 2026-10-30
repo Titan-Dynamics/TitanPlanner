@@ -542,6 +542,9 @@ namespace MissionPlanner.GCSViews
             this.panel_persistent.ControlAdded += (sender, e) => ManageLeftPanelVisibility();
             this.panel_persistent.ControlRemoved += (sender, e) => ManageLeftPanelVisibility();
 
+            // with Dynamic layout, the dashboard's items re-flow to stay near 4:3 as it resizes
+            this.tableLayoutPanelQuick.Resize += (sender, e) => ArrangeQuickViews();
+
             // the HUD stops growing taller where the tabs under it would get less than MinTabsHeight
             this.SubMainLeft.Resize += (sender, e) => LayoutHud();
             this.hud1.ParentChanged += (sender, e) => LayoutHud();
@@ -1107,6 +1110,7 @@ namespace MissionPlanner.GCSViews
             finally
             {
                 tableLayoutPanelQuick.ResumeLayout(true);
+                ArrangeQuickViews();
             }
         }
 
@@ -6038,8 +6042,8 @@ namespace MissionPlanner.GCSViews
             // Clear all existing controls
             tableLayoutPanelQuick.Controls.Clear();
 
-            tableLayoutPanelQuick.ColumnCount = Math.Max(1, int.Parse(cols));
-            tableLayoutPanelQuick.RowCount = Math.Max(1, int.Parse(rows));
+            tableLayoutPanelQuick.ColumnCount = _quickCols = Math.Max(1, int.Parse(cols));
+            tableLayoutPanelQuick.RowCount = _quickRows = Math.Max(1, int.Parse(rows));
 
             Settings.Instance["dashboardRows"] = tableLayoutPanelQuick.RowCount.ToString();
             Settings.Instance["dashboardCols"] = tableLayoutPanelQuick.ColumnCount.ToString();
@@ -6080,6 +6084,16 @@ namespace MissionPlanner.GCSViews
                     tableLayoutPanelQuick.Controls.Add(QV, col, row);
                 }
             }
+            SetQuickGridStyles();
+
+            tableLayoutPanelQuick.Controls.ForEach(a => ((Control) a).Invalidate());
+
+            tableLayoutPanelQuick.ResumeLayout(true);
+        }
+
+        // every column and row an equal share of the dashboard
+        private void SetQuickGridStyles()
+        {
             for (int i = 0; i < tableLayoutPanelQuick.ColumnCount; i++)
             {
                 if (tableLayoutPanelQuick.ColumnStyles.Count <= i)
@@ -6095,10 +6109,100 @@ namespace MissionPlanner.GCSViews
                 tableLayoutPanelQuick.RowStyles[j].SizeType = SizeType.Percent;
                 tableLayoutPanelQuick.RowStyles[j].Height = 100.0f / tableLayoutPanelQuick.RowCount;
             }
+        }
 
-            tableLayoutPanelQuick.Controls.ForEach(a => ((Control) a).Invalidate());
+        // The dashboard as set (Set View Count). Its items keep the order they read in this grid, left to right then
+        // down, whatever Dynamic layout shows; their saved positions and defaults are in this grid.
+        // (0 until the dashboard loads: the grid as it is)
+        private int _quickCols;
+        private int _quickRows;
 
+        private int QuickBaseCols => _quickCols > 0 ? _quickCols : tableLayoutPanelQuick.ColumnCount;
+        private int QuickBaseRows => _quickRows > 0 ? _quickRows : tableLayoutPanelQuick.RowCount;
+
+        private const double QuickItemAspect = 4.0 / 3.0;
+
+        private static bool DynamicQuickLayout => Settings.Instance.GetBoolean("dashboardDynamicLayout", true);
+
+        /// <summary>
+        /// Lays the dashboard's items out in their order: in the grid as set, or with Dynamic layout in the columns
+        /// and rows, with no empty cells, that bring each item nearest 4:3 at the dashboard's size.
+        /// </summary>
+        private void ArrangeQuickViews()
+        {
+            var items = QuickViewsInOrder();
+            if (_quickCols == 0 || items.Count == 0)
+                return;
+
+            int cols = _quickCols, rows = _quickRows;
+            var size = tableLayoutPanelQuick.ClientSize;
+            if (DynamicQuickLayout && size.Width > 0 && size.Height > 0)
+                (cols, rows) = QuickGridFor(items.Count, size);
+
+            if (cols == tableLayoutPanelQuick.ColumnCount && rows == tableLayoutPanelQuick.RowCount)
+                return;
+
+            tableLayoutPanelQuick.SuspendLayout();
+            tableLayoutPanelQuick.Controls.Clear();
+            tableLayoutPanelQuick.ColumnCount = cols;
+            tableLayoutPanelQuick.RowCount = rows;
+            SetQuickGridStyles();
+            for (int i = 0; i < items.Count; i++)
+                tableLayoutPanelQuick.Controls.Add(items[i], i % cols, i / cols);
             tableLayoutPanelQuick.ResumeLayout(true);
+        }
+
+        // the dashboard's items in their order, read off the grid as it is laid out now
+        private List<QuickView> QuickViewsInOrder()
+        {
+            int cols = tableLayoutPanelQuick.ColumnCount;
+            return tableLayoutPanelQuick.Controls.OfType<QuickView>()
+                .OrderBy(qv =>
+                {
+                    var pos = tableLayoutPanelQuick.GetPositionFromControl(qv);
+                    return pos.Row * cols + pos.Column;
+                })
+                .ToList();
+        }
+
+        // The columns and rows that hold that many items exactly, with each item nearest 4:3 at that size. The count is
+        // the grid as set's columns times rows, so that grid and its turn are always among them.
+        private static (int Cols, int Rows) QuickGridFor(int count, Size size)
+        {
+            int bestCols = 1, bestRows = count;
+            double bestScore = double.MaxValue;
+            for (int cols = 1; cols <= count; cols++)
+            {
+                // no empty cells
+                if (count % cols != 0)
+                    continue;
+
+                int rows = count / cols;
+                double aspect = (size.Width / (double)cols) / (size.Height / (double)rows);
+                double score = Math.Abs(Math.Log(aspect / QuickItemAspect));
+                if (score < bestScore)
+                {
+                    bestScore = score;
+                    bestCols = cols;
+                    bestRows = rows;
+                }
+            }
+
+            return (bestCols, bestRows);
+        }
+
+        // where the item is in the grid as set, whatever the layout shows
+        private TableLayoutPanelCellPosition QuickBasePosition(QuickView qv)
+        {
+            var pos = tableLayoutPanelQuick.GetPositionFromControl(qv);
+            int index = pos.Row * tableLayoutPanelQuick.ColumnCount + pos.Column;
+            return new TableLayoutPanelCellPosition(index % QuickBaseCols, index / QuickBaseCols);
+        }
+
+        private void dynamicLayoutToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            Settings.Instance["dashboardDynamicLayout"] = dynamicLayoutToolStripMenuItem.Checked.ToString();
+            ArrangeQuickViews();
         }
 
         bool setupPropertyInfo(ref PropertyInfo input, string name, object source)
@@ -6349,9 +6453,9 @@ namespace MissionPlanner.GCSViews
 
         private void SaveQuickViewArrangement()
         {
-            // Save layout dimensions
-            Settings.Instance["dashboardRows"] = tableLayoutPanelQuick.RowCount.ToString();
-            Settings.Instance["dashboardCols"] = tableLayoutPanelQuick.ColumnCount.ToString();
+            // Save layout dimensions: the grid as set, not the one Dynamic layout shows
+            Settings.Instance["dashboardRows"] = QuickBaseRows.ToString();
+            Settings.Instance["dashboardCols"] = QuickBaseCols.ToString();
 
             // Clear old dashboard item settings
             for (int i = 0; i < 30; i++)
@@ -6366,7 +6470,7 @@ namespace MissionPlanner.GCSViews
             {
                 if (ctrl is QuickView qv)
                 {
-                    var pos = tableLayoutPanelQuick.GetPositionFromControl(qv);
+                    var pos = QuickBasePosition(qv);
 
                     // Build the item string with all properties
                     var parts = new List<string>
@@ -6392,7 +6496,7 @@ namespace MissionPlanner.GCSViews
                     Settings.Instance["dashboardItem" + itemIndex] = string.Join("|", parts);
 
                     // Update control name based on position
-                    int posIndex = pos.Row * tableLayoutPanelQuick.ColumnCount + pos.Column + 1;
+                    int posIndex = pos.Row * QuickBaseCols + pos.Column + 1;
                     qv.Name = "quickView" + posIndex;
 
                     itemIndex++;
@@ -6456,6 +6560,8 @@ namespace MissionPlanner.GCSViews
                 moveUpToolStripMenuItem.Enabled = pos.Row > 0;
                 moveDownToolStripMenuItem.Enabled = pos.Row < tableLayoutPanelQuick.RowCount - 1;
             }
+
+            dynamicLayoutToolStripMenuItem.Checked = DynamicQuickLayout;
         }
 
         private void editQuickViewToolStripMenuItem_Click(object sender, EventArgs e)
@@ -6482,7 +6588,7 @@ namespace MissionPlanner.GCSViews
                     if (MainV2.DisplayConfiguration.lockQuickView)
                         return;
 
-                    var pos = tableLayoutPanelQuick.GetPositionFromControl(qv);
+                    var pos = QuickBasePosition(qv);
                     ResetQuickViewToDefault(qv, pos.Row, pos.Column);
                 }
             }
@@ -6532,6 +6638,7 @@ namespace MissionPlanner.GCSViews
             finally
             {
                 tableLayoutPanelQuick.ResumeLayout(true);
+                ArrangeQuickViews();
             }
         }
 

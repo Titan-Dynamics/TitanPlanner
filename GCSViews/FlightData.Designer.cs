@@ -29,6 +29,7 @@ namespace MissionPlanner.GCSViews
             this.contextMenuStripQuickView = new System.Windows.Forms.ContextMenuStrip(this.components);
             this.editQuickViewToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.setViewCountToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.dynamicLayoutToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.undockToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.toolStripSeparatorMove = new System.Windows.Forms.ToolStripSeparator();
             this.moveLeftToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
@@ -537,6 +538,7 @@ namespace MissionPlanner.GCSViews
             this.contextMenuStripQuickView.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
             this.editQuickViewToolStripMenuItem,
             this.setViewCountToolStripMenuItem,
+            this.dynamicLayoutToolStripMenuItem,
             this.undockToolStripMenuItem,
             this.toolStripSeparatorMove,
             this.moveLeftToolStripMenuItem,
@@ -561,6 +563,13 @@ namespace MissionPlanner.GCSViews
             this.setViewCountToolStripMenuItem.Name = "setViewCountToolStripMenuItem";
             resources.ApplyResources(this.setViewCountToolStripMenuItem, "setViewCountToolStripMenuItem");
             this.setViewCountToolStripMenuItem.Click += new System.EventHandler(this.setViewCountToolStripMenuItem_Click);
+            //
+            // dynamicLayoutToolStripMenuItem
+            //
+            this.dynamicLayoutToolStripMenuItem.CheckOnClick = true;
+            this.dynamicLayoutToolStripMenuItem.Name = "dynamicLayoutToolStripMenuItem";
+            this.dynamicLayoutToolStripMenuItem.Text = "Dynamic layout";
+            this.dynamicLayoutToolStripMenuItem.Click += new System.EventHandler(this.dynamicLayoutToolStripMenuItem_Click);
             //
             // undockToolStripMenuItem
             //
@@ -2837,6 +2846,7 @@ namespace MissionPlanner.GCSViews
         private System.Windows.Forms.ContextMenuStrip contextMenuStripQuickView;
         private System.Windows.Forms.ToolStripMenuItem editQuickViewToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem setViewCountToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem dynamicLayoutToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem setEKFHomeHereToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem setHomeHereToolStripMenuItem1;
         private System.Windows.Forms.ToolStripMenuItem groundColorToolStripMenuItem;

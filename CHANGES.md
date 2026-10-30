@@ -195,6 +195,7 @@ Arm/disarm indicator and a clickable GPS status popup with detailed real-time te
 - **Gauge display mode** for any dashboard item
 - 270° gauges with blinking on out-of-range values
 - Minimum 25% panel sizes enforced
+- **Dynamic layout** (right-click, on by default): as it resizes, the dashboard picks the columns and rows that fill the grid with no empty cells and keep each item nearest 4:3, keeping the items in their order
 - Battery `Wh` used and `Wh/km` available as Quick tab metrics
 
 ## Defaults & Persistence
