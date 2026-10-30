@@ -170,7 +170,9 @@ namespace MissionPlanner.Controls
             public int size;
         }
 
-        private Dictionary<int, character> charDict = new Dictionary<int, character>();
+        // Glyph textures by character, size (in thousandths) and colour, kept apart so different glyphs never share a
+        // slot and draw as each other.
+        private Dictionary<(int, int, int), character> charDict = new Dictionary<(int, int, int), character>();
 
         public int huddrawtime = 0;
 
@@ -185,6 +187,14 @@ namespace MissionPlanner.Controls
 
         [System.ComponentModel.Browsable(true), DefaultValue(true)]
         public bool displayspeed { get; set; }
+
+        /// <summary>The waypoint / home distance under the speed tape.</summary>
+        [System.ComponentModel.Browsable(true), DefaultValue(true)]
+        public bool displaywp { get; set; }
+
+        /// <summary>The wind readout under the speed tape.</summary>
+        [System.ComponentModel.Browsable(true), DefaultValue(true)]
+        public bool displaywind { get; set; }
 
         [System.ComponentModel.Browsable(true), DefaultValue(true)]
         public bool displayalt { get; set; }
@@ -321,7 +331,7 @@ namespace MissionPlanner.Controls
                     displayekf =
                         displayprearm =
                             displayheading =
-                                displayspeed =
+                                displayspeed = displaywp = displaywind =
                                     displayalt =
                                         displayconninfo =
                                             displayxtrack =
@@ -395,6 +405,7 @@ namespace MissionPlanner.Controls
         private float _gpsfix2 = 0;
         private float _gpshdop2 = 0;
         private float _disttowp = 0;
+        private float _bearingtowp = 0;
         private float _groundcourse = 0;
         private float _xtrack_error = 0;
         private float _turnrate = 0;
@@ -407,6 +418,8 @@ namespace MissionPlanner.Controls
         private int _wpno = 0;
         private float _distToHome = 0;
         private float _AZToMav = 0;
+        private float _windDirection = 0;
+        private float _windSpeed = 0;
 
         float _AOA = 0;
         float _SSA = 0;
@@ -786,6 +799,21 @@ namespace MissionPlanner.Controls
             }
         }
 
+        /// <summary>The bearing to the waypoint (or other target) disttowp measures to, in degrees.</summary>
+        [System.ComponentModel.Browsable(true), System.ComponentModel.Category("Values")]
+        public float bearingtowp
+        {
+            get { return _bearingtowp; }
+            set
+            {
+                if (_bearingtowp != value)
+                {
+                    _bearingtowp = value;
+                    this.Invalidate();
+                }
+            }
+        }
+
         [System.ComponentModel.Browsable(true), System.ComponentModel.Category("Values")]
         public string mode
         {
@@ -824,6 +852,36 @@ namespace MissionPlanner.Controls
                 if (_distToHome != value)
                 {
                     _distToHome = value;
+                    this.Invalidate();
+                }
+            }
+        }
+
+        /// <summary>The direction the wind blows from, in degrees.</summary>
+        [System.ComponentModel.Browsable(true), System.ComponentModel.Category("Values")]
+        public float windDirection
+        {
+            get { return _windDirection; }
+            set
+            {
+                if (_windDirection != value)
+                {
+                    _windDirection = value;
+                    this.Invalidate();
+                }
+            }
+        }
+
+        /// <summary>The wind speed, in the speed unit.</summary>
+        [System.ComponentModel.Browsable(true), System.ComponentModel.Category("Values")]
+        public float windSpeed
+        {
+            get { return _windSpeed; }
+            set
+            {
+                if (_windSpeed != value)
+                {
+                    _windSpeed = value;
                     this.Invalidate();
                 }
             }
@@ -2763,24 +2821,36 @@ namespace MissionPlanner.Controls
                         newdist = (int)newdist;
                     }
 
-                    var wpPrefix = "WP ◀ ";
+                    var wpLabel = "WP";
                     if (_wpno > 0 && mode == "Auto")
                     {
-                        wpPrefix = "WP " + _wpno + " ◀ ";
+                        wpLabel = "WP " + _wpno;
                     }
                     if (mode == "Loiter")
                     {
-                        wpPrefix = "↻ ";
+                        wpLabel = "↻";
                     }
                     if (mode == "RTL")
                     {
-                        wpPrefix = "H ◀ ";
+                        wpLabel = "H";
                     }
                     if (mode == "Guided")
                     {
-                        wpPrefix = "G ◀ ";
+                        wpLabel = "G";
                     }
-                    drawstring(wpPrefix + newdist + newdistunit, font, fontsize, _whiteBrush, scrollbg.Left + (fontsize / 2f), scrollbg.Bottom + (fontsize / 2f));
+                    // the readouts under the tape, a little smaller than the HUD's text, each taking the next line
+                    var readoutSize = fontsize * 0.85f;
+                    var belowTape = scrollbg.Bottom + (fontsize / 2f);
+                    if (displaywp)
+                    {
+                        // the arrow points at the target, with none when the readout shows no distance to it
+                        DrawArrowReadout(wpLabel, newdist > 0 ? _bearingtowp : (float?)null, newdist + newdistunit,
+                            scrollbg.Left + (fontsize / 2f), belowTape, readoutSize);
+                        belowTape += readoutSize * 1.5f;
+                    }
+
+                    if (displaywind)
+                        DrawWind(scrollbg.Left + (fontsize / 2f), belowTape, readoutSize);
                 }
 
                 // right scroller
@@ -3583,7 +3653,9 @@ namespace MissionPlanner.Controls
         /// <summary>
         /// pen for drawstring
         /// </summary>
-        private readonly Pen _p = new Pen(Color.FromArgb(0x26, 0x27, 0x28), 2f);
+        // the outline around text and the readout arrows
+        private static readonly Color _outlineColor = Color.FromArgb(0x26, 0x27, 0x28);
+        private readonly Pen _p = new Pen(_outlineColor, 2f);
 
         /// <summary>
         /// pth for drawstring
@@ -3600,7 +3672,7 @@ namespace MissionPlanner.Controls
             foreach (char cha in text)
             {
                 int charno = (int) cha;
-                int charid = charno ^ (int) (fontsize * 1000) ^ brush.Color.ToArgb();
+                var charid = (charno, (int) (fontsize * 1000), brush.Color.ToArgb());
 
                 if (!charDict.ContainsKey(charid))
                 {
@@ -3626,7 +3698,7 @@ namespace MissionPlanner.Controls
             foreach (char cha in text)
             {
                 int charno = (int)cha;
-                int charid = charno ^ (int)(fontsize * 1000) ^ brush.Color.ToArgb();
+                var charid = (charno, (int)(fontsize * 1000), brush.Color.ToArgb());
 
                 if (!charDict.ContainsKey(charid))
                 {
@@ -3656,6 +3728,74 @@ namespace MissionPlanner.Controls
         readonly float[] texCoords = { 0.0f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f, 0.0f };
         readonly float[] _vertices = new float[8]; // reusable vertices array
 
+        private readonly Pen _arrowPen = new Pen(Color.White, 2) { StartCap = LineCap.Round, EndCap = LineCap.Round };
+        private readonly Pen _arrowOutlinePen = new Pen(_outlineColor, 4) { StartCap = LineCap.Round, EndCap = LineCap.Round };
+
+        /// <summary>
+        /// The wind on a line of text at x, y: "Wind", an arrow the way it blows relative to the nose (up is a
+        /// tailwind, down a headwind), then its speed. A calm, or no wind telemetry, has no arrow.
+        /// </summary>
+        void DrawWind(float x, float y, float fontsize)
+        {
+            // below what the readout shows as 0.1 there is no direction to point; it blows towards its direction plus 180
+            DrawArrowReadout("Wind", _windSpeed < 0.05f ? (float?)null : _windDirection + 180,
+                _windSpeed.ToString("0.0") + speedunit, x, y, fontsize);
+        }
+
+        /// <summary>
+        /// A line of text at x, y: the label, an arrow pointing at a compass direction relative to the nose (up is
+        /// straight ahead), then the value. Without a direction the value follows the label.
+        /// </summary>
+        void DrawArrowReadout(string label, float? direction, string value, float x, float y, float fontsize)
+        {
+            float gap = fontsize * 0.35f;
+            float size = fontsize * 0.9f;
+            drawstring(label, font, fontsize, _whiteBrush, x, y);
+            float labelEnd = x + calcsize(label, fontsize, _whiteBrush).Width;
+
+            if (direction == null)
+            {
+                drawstring(value, font, fontsize, _whiteBrush, labelEnd + gap, y);
+                return;
+            }
+
+            float cx = labelEnd + gap + size / 2;
+            float cy = y + fontsize * 0.65f;
+
+            // turned so the nose is up, clockwise on screen
+            double angle = (direction.Value - _heading) * Math.PI / 180;
+            double cos = Math.Cos(angle), sin = Math.Sin(angle);
+            Func<float, float, PointF> turn = (px, py) => new PointF(
+                (float)(cx + px * cos - py * sin), (float)(cy + px * sin + py * cos));
+
+            // drawn in lines, which both the GL and GDI paths render as the rest of the HUD's lines are
+            var tip = turn(0, -size / 2);
+            var lines = new[]
+            {
+                (turn(0, size / 2), tip),
+                (turn(-size * 0.32f, -size * 0.12f), tip),
+                (turn(size * 0.32f, -size * 0.12f), tip),
+            };
+
+            // outlined as the text is, 1px past the white each side, all under the white so the joins stay white.
+            // GL lines have no round caps, so there the outline runs on past the ends instead.
+            _arrowPen.Width = Math.Max(2, fontsize / 9);
+            _arrowOutlinePen.Width = _arrowPen.Width + 2;
+            float extend = opengl ? 1 : 0;
+            foreach (var (from, to) in lines)
+            {
+                float dx = to.X - from.X, dy = to.Y - from.Y;
+                float length = (float)Math.Sqrt(dx * dx + dy * dy);
+                float ex = dx / length * extend, ey = dy / length * extend;
+                graphicsObject.DrawLine(_arrowOutlinePen, from.X - ex, from.Y - ey, to.X + ex, to.Y + ey);
+            }
+
+            foreach (var (from, to) in lines)
+                graphicsObject.DrawLine(_arrowPen, from.X, from.Y, to.X, to.Y);
+
+            drawstring(value, font, fontsize, _whiteBrush, cx + size / 2 + gap, y);
+        }
+
         void drawstring(string text, Font font, float fontsize, SolidBrush brush, float x, float y, bool center = false)
         {
             if (!opengl)
@@ -3684,7 +3824,7 @@ namespace MissionPlanner.Controls
             {
                 foreach (char cha in text)
                 {
-                    int charid = (int)cha ^ fontsizeKey ^ brushColorArgb;
+                    var charid = ((int)cha, fontsizeKey, brushColorArgb);
                     if (!charDict.ContainsKey(charid))
                     {
                         float maxx = spaceWidth;
@@ -3753,7 +3893,7 @@ namespace MissionPlanner.Controls
 
             foreach (char cha in text)
             {
-                int charid = (int)cha ^ fontsizeKey ^ brushColorArgb;
+                var charid = ((int)cha, fontsizeKey, brushColorArgb);
 
                 if (!charDict.TryGetValue(charid, out character charData))
                 {
@@ -3855,7 +3995,7 @@ namespace MissionPlanner.Controls
             {
                 foreach (char cha in text)
                 {
-                    int charid = (int)cha ^ fontsizeKey ^ brushColorArgb;
+                    var charid = ((int)cha, fontsizeKey, brushColorArgb);
                     if (!charDict.ContainsKey(charid))
                     {
                         float maxx = spaceWidth;
@@ -3902,7 +4042,7 @@ namespace MissionPlanner.Controls
 
             foreach (char cha in text)
             {
-                int charid = (int)cha ^ fontsizeKey ^ brushColorArgb;
+                var charid = ((int)cha, fontsizeKey, brushColorArgb);
 
                 if (!charDict.TryGetValue(charid, out character charData))
                 {

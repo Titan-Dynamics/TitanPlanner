@@ -51,6 +51,8 @@ namespace hudonoff
             {
                 {"displayheading", "Heading"},
                 {"displayspeed", "Speed"},
+                {"displaywp", "WP Distance"},
+                {"displaywind", "Wind"},
                 {"displayalt", "Alt"},
                 {"displayconninfo", "Connection"},
                 {"displayxtrack", "X-Track"},

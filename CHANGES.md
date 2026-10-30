@@ -29,6 +29,7 @@ Major reflow of the HUD. Larger, optimized fonts; centering uses cached per-char
 - **AOA / SSA / critical AOA gauge** for fixed-wing
 - **Low airspeed warning** (red) and **rate-of-change of airspeed** (blue bar)
 - **Low ground speed warning**
+- **Waypoint and wind arrows** on the HUD under the speed tape: the waypoint / home distance with an arrow pointing at it, and the wind speed with an arrow the way it blows, both relative to the nose. HUD Items (right-click the HUD) can hide either line
 - **Dual GPS** support on the top bar
 - **EKF / VIBE / GPS1 / GPS2** indicators repositioned to the right-most edge
 - **ESC telemetry** in tlog graphs
@@ -274,6 +275,7 @@ Built for air-gapped use. Opened from the **Offline Maps** button next to Find L
 Behaviour that differs from upstream because the fork fixed it:
 
 - The 3D map doesn't hit the intermittent `Destination array was not long enough` crash
+- HUD text always draws the right characters; upstream's OpenGL HUD can show "FAILSAFE" as "FAI AFE" or an altitude as "SS"
 - SITL starts with home at the ground height of the chosen point, so terrain readings match ([#28](https://github.com/Titan-Dynamics/TitanPlanner/issues/28))
 - The Messages tab keeps updating on long flights, keeps your place when scrolled up, and has a right-click **Clear Messages** ([#23](https://github.com/Titan-Dynamics/TitanPlanner/issues/23))
 - Battery monitor calibration handles DroneCAN and other digital monitors: voltage Calc explains they are calibrated on the device, and current Calc scales `BATTx_CURR_MULT` ([#27](https://github.com/Titan-Dynamics/TitanPlanner/issues/27))

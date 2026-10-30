@@ -369,6 +369,7 @@ namespace MissionPlanner.GCSViews
             this.hud1.DataBindings.Add(new System.Windows.Forms.Binding("current2", this.bindingSourceHud, "current2", true));
             this.hud1.DataBindings.Add(new System.Windows.Forms.Binding("datetime", this.bindingSourceHud, "datetime", true));
             this.hud1.DataBindings.Add(new System.Windows.Forms.Binding("disttowp", this.bindingSourceHud, "wp_dist", true));
+            this.hud1.DataBindings.Add(new System.Windows.Forms.Binding("bearingtowp", this.bindingSourceHud, "target_bearing", true));
             this.hud1.DataBindings.Add(new System.Windows.Forms.Binding("ekfstatus", this.bindingSourceHud, "ekfstatus", true));
             this.hud1.DataBindings.Add(new System.Windows.Forms.Binding("failsafe", this.bindingSourceHud, "failsafe", true));
             this.hud1.DataBindings.Add(new System.Windows.Forms.Binding("gpsfix", this.bindingSourceHud, "gpsstatus", true));
@@ -403,6 +404,8 @@ namespace MissionPlanner.GCSViews
             this.hud1.DataBindings.Add(new System.Windows.Forms.Binding("vibez", this.bindingSourceHud, "vibez", true));
             this.hud1.DataBindings.Add(new System.Windows.Forms.Binding("wpno", this.bindingSourceHud, "wpno", true));
             this.hud1.DataBindings.Add(new System.Windows.Forms.Binding("distToHome", this.bindingSourceHud, "DistToHome", true));
+            this.hud1.DataBindings.Add(new System.Windows.Forms.Binding("windDirection", this.bindingSourceHud, "wind_dir", true));
+            this.hud1.DataBindings.Add(new System.Windows.Forms.Binding("windSpeed", this.bindingSourceHud, "wind_vel", true));
             this.hud1.DataBindings.Add(new System.Windows.Forms.Binding("AZToMav", this.bindingSourceHud, "AZToMAV", true));
             this.hud1.DataBindings.Add(new System.Windows.Forms.Binding("xtrack_error", this.bindingSourceHud, "xtrack_error", true));
             this.hud1.DataBindings.Add(new System.Windows.Forms.Binding("AOA", this.bindingSourceHud, "AOA", true));
