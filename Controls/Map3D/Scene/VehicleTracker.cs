@@ -5,14 +5,15 @@ namespace MissionPlanner.Controls.Scene3D
 {
     /// <summary>
     /// Smooths the vehicle's pose between telemetry updates: dead-reckons from the last fix using velocity,
-    /// then runs Kalman filters on position, attitude and the heading indicators. Position is filtered in
-    /// absolute UTM so moving the scene origin never makes the vehicle slide.
+    /// then runs Kalman filters on position, altitude, attitude and the heading indicators. Position is filtered
+    /// in absolute UTM so moving the scene origin never makes the vehicle slide.
     /// </summary>
     public sealed class VehicleTracker
     {
         // Lower q = smoother, higher r = trust measurements less.
         readonly SimpleKalmanFilter _east = new SimpleKalmanFilter(0.02, 1.5);
         readonly SimpleKalmanFilter _north = new SimpleKalmanFilter(0.02, 1.5);
+        readonly SimpleKalmanFilter _altitude = new SimpleKalmanFilter(0.02, 1.5);
         readonly SimpleKalmanFilter _roll = new SimpleKalmanFilter(0.015, 2.0);
         readonly SimpleKalmanFilter _pitch = new SimpleKalmanFilter(0.015, 2.0);
         readonly SimpleKalmanFilter _yaw = new SimpleKalmanFilter(0.015, 2.5);
@@ -44,6 +45,7 @@ namespace MissionPlanner.Controls.Scene3D
             {
                 _east.Reset(east);
                 _north.Reset(north);
+                _altitude.Reset(projected.Alt);
                 _roll.Reset(attitude.X);
                 _pitch.Reset(attitude.Y);
                 _yaw.Reset(attitude.Z);
@@ -55,7 +57,8 @@ namespace MissionPlanner.Controls.Scene3D
 
             X = _east.Update(east) - frame.OriginEasting;
             Y = _north.Update(north) - frame.OriginNorthing;
-            Z = projected.Alt < groundHeight ? groundHeight + 1 : center.Alt;
+            // kept a metre above the ground, which the reported altitude often reads under on the ground
+            Z = Math.Max(_altitude.Update(projected.Alt), groundHeight + 1);
 
             Roll = (float)_roll.UpdateAngle(attitude.X);
             Pitch = (float)_pitch.UpdateAngle(attitude.Y);
