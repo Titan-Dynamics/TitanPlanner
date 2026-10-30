@@ -325,6 +325,7 @@ Settings, logs, map tiles, offline maps, elevation data and caches live in `Prog
 - **Reboot Vehicle** button in the Actions tab; global **`Ctrl+R`** shortcut to reboot autopilot
 - "Don't show again" option on the param-missing dialog, info dialogs, the failsafe-mode-change warning, and the ground-station-log dialog
 - Param write toast notifications
+- The mouse wheel scrolls the page past a dropdown instead of changing it; an open dropdown's list still scrolls
 - Actions tab laid out as a flow layout with the payload controls alongside, an **Aux Functions** box (four rows that each run a chosen aux function Low / Mid / High) and **Servos** and **Relays** boxes side by side below them, in place of upstream's Aux Function and Servo/Relay tabs
 - Revamped Telemetry Log tab
 - Logs tab combining Dataflash + Telemetry views

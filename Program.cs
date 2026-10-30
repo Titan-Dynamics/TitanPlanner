@@ -547,6 +547,10 @@ namespace MissionPlanner
             try
             {
                 Thread.CurrentThread.Name = "Base Thread";
+#if !LIB
+                // the mouse wheel scrolls past closed dropdowns instead of changing them
+                Application.AddMessageFilter(new ComboBoxWheelFilter(passToParent: !MONO));
+#endif
                 Console.WriteLine("Application.Run(new MainV2())");
                 Application.Run(new MainV2());
             }
