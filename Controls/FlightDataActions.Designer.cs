@@ -49,6 +49,8 @@ namespace MissionPlanner.Controls
             this.btnClearTrack = new MissionPlanner.Controls.MyButton();
             this.btnReboot = new MissionPlanner.Controls.MyButton();
             this.btnAbortLanding = new MissionPlanner.Controls.MyButton();
+            this.grpAux = new System.Windows.Forms.GroupBox();
+            this.tableAux = new System.Windows.Forms.TableLayoutPanel();
             this.grpPayload = new System.Windows.Forms.GroupBox();
             this.tablePayload = new System.Windows.Forms.TableLayoutPanel();
             this.groupBoxPitch = new System.Windows.Forms.GroupBox();
@@ -62,6 +64,10 @@ namespace MissionPlanner.Controls
             this.trackBarRoll = new System.Windows.Forms.TrackBar();
             this.btnResetGimbal = new MissionPlanner.Controls.MyButton();
             this.btnGimbalVideo = new MissionPlanner.Controls.MyButton();
+            this.grpServos = new System.Windows.Forms.GroupBox();
+            this.flowServos = new System.Windows.Forms.FlowLayoutPanel();
+            this.grpRelays = new System.Windows.Forms.GroupBox();
+            this.flowRelays = new System.Windows.Forms.FlowLayoutPanel();
             this.scrollPanel.SuspendLayout();
             this.mainFlowLayout.SuspendLayout();
             this.grpCommand.SuspendLayout();
@@ -70,6 +76,8 @@ namespace MissionPlanner.Controls
             this.tableSetpoints.SuspendLayout();
             this.grpTools.SuspendLayout();
             this.tableTools.SuspendLayout();
+            this.grpAux.SuspendLayout();
+            this.tableAux.SuspendLayout();
             this.grpPayload.SuspendLayout();
             this.tablePayload.SuspendLayout();
             this.groupBoxPitch.SuspendLayout();
@@ -78,6 +86,8 @@ namespace MissionPlanner.Controls
             ((System.ComponentModel.ISupportInitialize)(this.trackBarYaw)).BeginInit();
             this.groupBoxRoll.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.trackBarRoll)).BeginInit();
+            this.grpServos.SuspendLayout();
+            this.grpRelays.SuspendLayout();
             this.SuspendLayout();
             // 
             // scrollPanel
@@ -97,7 +107,10 @@ namespace MissionPlanner.Controls
             this.mainFlowLayout.Controls.Add(this.grpCommand);
             this.mainFlowLayout.Controls.Add(this.grpSetpoints);
             this.mainFlowLayout.Controls.Add(this.grpTools);
+            this.mainFlowLayout.Controls.Add(this.grpAux);
             this.mainFlowLayout.Controls.Add(this.grpPayload);
+            this.mainFlowLayout.Controls.Add(this.grpServos);
+            this.mainFlowLayout.Controls.Add(this.grpRelays);
             this.mainFlowLayout.Dock = System.Windows.Forms.DockStyle.Top;
             this.mainFlowLayout.Location = new System.Drawing.Point(0, 0);
             this.mainFlowLayout.Name = "mainFlowLayout";
@@ -550,16 +563,47 @@ namespace MissionPlanner.Controls
             this.btnAbortLanding.TextColorNotEnabled = System.Drawing.Color.FromArgb(((int)(((byte)(64)))), ((int)(((byte)(87)))), ((int)(((byte)(4)))));
             this.btnAbortLanding.UseVisualStyleBackColor = true;
             // 
+            // grpAux
+            // 
+            this.grpAux.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
+            this.grpAux.Controls.Add(this.tableAux);
+            this.grpAux.Location = new System.Drawing.Point(363, 240);
+            this.grpAux.MinimumSize = new System.Drawing.Size(350, 0);
+            this.grpAux.Name = "grpAux";
+            this.grpAux.Padding = new System.Windows.Forms.Padding(6);
+            this.grpAux.Size = new System.Drawing.Size(350, 180);
+            this.grpAux.TabIndex = 3;
+            this.grpAux.TabStop = false;
+            this.grpAux.Text = "Aux Functions";
+            // 
+            // tableAux
+            // 
+            this.tableAux.ColumnCount = 4;
+            this.tableAux.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 49F));
+            this.tableAux.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 17F));
+            this.tableAux.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 17F));
+            this.tableAux.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 17F));
+            this.tableAux.Dock = System.Windows.Forms.DockStyle.Top;
+            this.tableAux.Location = new System.Drawing.Point(6, 21);
+            this.tableAux.Name = "tableAux";
+            this.tableAux.RowCount = 4;
+            this.tableAux.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Absolute, 40F));
+            this.tableAux.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Absolute, 40F));
+            this.tableAux.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Absolute, 40F));
+            this.tableAux.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Absolute, 40F));
+            this.tableAux.Size = new System.Drawing.Size(338, 160);
+            this.tableAux.TabIndex = 0;
+            // 
             // grpPayload
             // 
             this.grpPayload.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
             this.grpPayload.Controls.Add(this.tablePayload);
-            this.grpPayload.Location = new System.Drawing.Point(363, 240);
+            this.grpPayload.Location = new System.Drawing.Point(719, 240);
             this.grpPayload.MinimumSize = new System.Drawing.Size(350, 0);
             this.grpPayload.Name = "grpPayload";
             this.grpPayload.Padding = new System.Windows.Forms.Padding(6);
             this.grpPayload.Size = new System.Drawing.Size(350, 180);
-            this.grpPayload.TabIndex = 3;
+            this.grpPayload.TabIndex = 4;
             this.grpPayload.TabStop = false;
             this.grpPayload.Text = "Payload";
             this.grpPayload.Visible = false;
@@ -703,6 +747,46 @@ namespace MissionPlanner.Controls
             this.btnGimbalVideo.TextColorNotEnabled = System.Drawing.Color.FromArgb(((int)(((byte)(64)))), ((int)(((byte)(87)))), ((int)(((byte)(4)))));
             this.btnGimbalVideo.UseVisualStyleBackColor = true;
             // 
+            // grpServos
+            // 
+            this.grpServos.Controls.Add(this.flowServos);
+            this.grpServos.Location = new System.Drawing.Point(7, 426);
+            this.grpServos.MinimumSize = new System.Drawing.Size(350, 0);
+            this.grpServos.Name = "grpServos";
+            this.grpServos.Padding = new System.Windows.Forms.Padding(6);
+            this.grpServos.Size = new System.Drawing.Size(1050, 200);
+            this.grpServos.TabIndex = 5;
+            this.grpServos.TabStop = false;
+            this.grpServos.Text = "Servos";
+            // 
+            // flowServos
+            // 
+            this.flowServos.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.flowServos.Location = new System.Drawing.Point(6, 21);
+            this.flowServos.Name = "flowServos";
+            this.flowServos.Size = new System.Drawing.Size(1038, 173);
+            this.flowServos.TabIndex = 0;
+            // 
+            // grpRelays
+            // 
+            this.grpRelays.Controls.Add(this.flowRelays);
+            this.grpRelays.Location = new System.Drawing.Point(7, 632);
+            this.grpRelays.MinimumSize = new System.Drawing.Size(350, 0);
+            this.grpRelays.Name = "grpRelays";
+            this.grpRelays.Padding = new System.Windows.Forms.Padding(6);
+            this.grpRelays.Size = new System.Drawing.Size(1050, 200);
+            this.grpRelays.TabIndex = 6;
+            this.grpRelays.TabStop = false;
+            this.grpRelays.Text = "Relays";
+            // 
+            // flowRelays
+            // 
+            this.flowRelays.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.flowRelays.Location = new System.Drawing.Point(6, 21);
+            this.flowRelays.Name = "flowRelays";
+            this.flowRelays.Size = new System.Drawing.Size(1038, 173);
+            this.flowRelays.TabIndex = 0;
+            // 
             // FlightDataActions
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(8F, 16F);
@@ -721,6 +805,8 @@ namespace MissionPlanner.Controls
             this.tableSetpoints.PerformLayout();
             this.grpTools.ResumeLayout(false);
             this.tableTools.ResumeLayout(false);
+            this.grpAux.ResumeLayout(false);
+            this.tableAux.ResumeLayout(false);
             this.grpPayload.ResumeLayout(false);
             this.tablePayload.ResumeLayout(false);
             this.groupBoxPitch.ResumeLayout(false);
@@ -732,6 +818,8 @@ namespace MissionPlanner.Controls
             this.groupBoxRoll.ResumeLayout(false);
             this.groupBoxRoll.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this.trackBarRoll)).EndInit();
+            this.grpServos.ResumeLayout(false);
+            this.grpRelays.ResumeLayout(false);
             this.ResumeLayout(false);
 
         }
@@ -777,6 +865,10 @@ namespace MissionPlanner.Controls
         private MissionPlanner.Controls.MyButton btnReboot;
         private MissionPlanner.Controls.MyButton btnAbortLanding;
 
+        // Aux functions group (rows made in FlightDataActions.cs)
+        private System.Windows.Forms.GroupBox grpAux;
+        private System.Windows.Forms.TableLayoutPanel tableAux;
+
         // Payload group
         private System.Windows.Forms.GroupBox grpPayload;
         private System.Windows.Forms.TableLayoutPanel tablePayload;
@@ -791,5 +883,11 @@ namespace MissionPlanner.Controls
         private System.Windows.Forms.TextBox txtRollPos;
         private MissionPlanner.Controls.MyButton btnResetGimbal;
         private MissionPlanner.Controls.MyButton btnGimbalVideo;
+
+        // Servos and Relays groups (rows made in FlightDataActions.cs)
+        private System.Windows.Forms.GroupBox grpServos;
+        private System.Windows.Forms.FlowLayoutPanel flowServos;
+        private System.Windows.Forms.GroupBox grpRelays;
+        private System.Windows.Forms.FlowLayoutPanel flowRelays;
     }
 }

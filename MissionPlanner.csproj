@@ -289,9 +289,6 @@
     <Compile Update="Controls\GMAPCache.cs">
       <SubType>UserControl</SubType>
     </Compile>
-    <Compile Update="Controls\AuxOptions.cs">
-      <SubType>UserControl</SubType>
-    </Compile>
     <Compile Update="Controls\QuickViewOptions.cs">
       <SubType>UserControl</SubType>
     </Compile>

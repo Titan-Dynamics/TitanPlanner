@@ -140,7 +140,8 @@ the git log has those. `ChangeLog.txt` is upstream's and is not maintained here.
   `development`, resolve conflicts in favour of the fork's UI (HUD layout, `FlightDataActions`,
   Motor Setup, Battery Monitor, Radio Calibration, themed tabs) while taking upstream's fixes,
   then update the "Upstream Base" section of `CHANGES.md` (the date, and upstream capabilities users
-  may notice). Expect upstream's mechanical changes (e.g. the `byte` → `uint` sysid widening) to also
+  may notice). Upstream's Servo/Relay and Aux Function tabs are boxes in `FlightDataActions` here, so
+  upstream changes to them belong there, not back in `FlightData.Designer.cs`. Expect upstream's mechanical changes (e.g. the `byte` → `uint` sysid widening) to also
   apply to fork-only code. Upstream PRs taken before they merge get a line in "Reliability Fixes Over
   Upstream" naming the PR.
 - **Line endings.** The repo stores a mix of CRLF and LF blobs and `core.autocrlf=true` is in use.

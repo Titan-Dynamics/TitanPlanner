@@ -122,45 +122,6 @@ namespace MissionPlanner.GCSViews
             this.ON_btn = new System.Windows.Forms.Button();
             this.Mode_clb = new System.Windows.Forms.CheckedListBox();
             this.tabStatus = new System.Windows.Forms.TabPage();
-            this.tabServo = new System.Windows.Forms.TabPage();
-            this.flowLayoutPanelServos = new System.Windows.Forms.FlowLayoutPanel();
-            this.servoOptions1 = new MissionPlanner.Controls.ServoOptions();
-            this.servoOptions2 = new MissionPlanner.Controls.ServoOptions();
-            this.servoOptions3 = new MissionPlanner.Controls.ServoOptions();
-            this.servoOptions4 = new MissionPlanner.Controls.ServoOptions();
-            this.servoOptions5 = new MissionPlanner.Controls.ServoOptions();
-            this.servoOptions6 = new MissionPlanner.Controls.ServoOptions();
-            this.servoOptions7 = new MissionPlanner.Controls.ServoOptions();
-            this.servoOptions8 = new MissionPlanner.Controls.ServoOptions();
-            this.servoOptions9 = new MissionPlanner.Controls.ServoOptions();
-            this.servoOptions10 = new MissionPlanner.Controls.ServoOptions();
-            this.servoOptions11 = new MissionPlanner.Controls.ServoOptions();
-            this.servoOptions12 = new MissionPlanner.Controls.ServoOptions();
-            this.relayOptions1 = new MissionPlanner.Controls.RelayOptions();
-            this.relayOptions2 = new MissionPlanner.Controls.RelayOptions();
-            this.relayOptions3 = new MissionPlanner.Controls.RelayOptions();
-            this.relayOptions4 = new MissionPlanner.Controls.RelayOptions();
-            this.relayOptions5 = new MissionPlanner.Controls.RelayOptions();
-            this.relayOptions6 = new MissionPlanner.Controls.RelayOptions();
-            this.relayOptions7 = new MissionPlanner.Controls.RelayOptions();
-            this.relayOptions8 = new MissionPlanner.Controls.RelayOptions();
-            this.relayOptions9 = new MissionPlanner.Controls.RelayOptions();
-            this.relayOptions10 = new MissionPlanner.Controls.RelayOptions();
-            this.relayOptions11 = new MissionPlanner.Controls.RelayOptions();
-            this.relayOptions12 = new MissionPlanner.Controls.RelayOptions();
-            this.relayOptions13 = new MissionPlanner.Controls.RelayOptions();
-            this.relayOptions14 = new MissionPlanner.Controls.RelayOptions();
-            this.relayOptions15 = new MissionPlanner.Controls.RelayOptions();
-            this.relayOptions16 = new MissionPlanner.Controls.RelayOptions();
-            this.tabAuxFunction = new System.Windows.Forms.TabPage();
-            this.flowLayoutPanel1 = new System.Windows.Forms.FlowLayoutPanel();
-            this.auxOptions1 = new MissionPlanner.Controls.AuxOptions();
-            this.auxOptions2 = new MissionPlanner.Controls.AuxOptions();
-            this.auxOptions3 = new MissionPlanner.Controls.AuxOptions();
-            this.auxOptions4 = new MissionPlanner.Controls.AuxOptions();
-            this.auxOptions5 = new MissionPlanner.Controls.AuxOptions();
-            this.auxOptions6 = new MissionPlanner.Controls.AuxOptions();
-            this.auxOptions7 = new MissionPlanner.Controls.AuxOptions();
             this.tabScripts = new System.Windows.Forms.TabPage();
             this.checkBoxRedirectOutput = new System.Windows.Forms.CheckBox();
             this.BUT_edit_selected = new MissionPlanner.Controls.MyButton();
@@ -273,10 +234,6 @@ namespace MissionPlanner.GCSViews
             ((System.ComponentModel.ISupportInitialize)(this.bindingSourceGaugesTab)).BeginInit();
             this.tabTransponder.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.Squawk_nud)).BeginInit();
-            this.tabServo.SuspendLayout();
-            this.flowLayoutPanelServos.SuspendLayout();
-            this.tabAuxFunction.SuspendLayout();
-            this.flowLayoutPanel1.SuspendLayout();
             this.tabScripts.SuspendLayout();
             this.tabTLogs.SuspendLayout();
             this.tableLayoutPanelLogs.SuspendLayout();
@@ -599,8 +556,6 @@ namespace MissionPlanner.GCSViews
             this.tabControlactions.Controls.Add(this.tabGauges);
             this.tabControlactions.Controls.Add(this.tabTransponder);
             this.tabControlactions.Controls.Add(this.tabStatus);
-            this.tabControlactions.Controls.Add(this.tabServo);
-            this.tabControlactions.Controls.Add(this.tabAuxFunction);
             this.tabControlactions.Controls.Add(this.tabScripts);
             this.tabControlactions.Controls.Add(this.tabTLogs);
             resources.ApplyResources(this.tabControlactions, "tabControlactions");
@@ -1931,268 +1886,6 @@ namespace MissionPlanner.GCSViews
             resources.ApplyResources(this.tabStatus, "tabStatus");
             this.tabStatus.Name = "tabStatus";
             // 
-            // tabServo
-            // 
-            this.tabServo.Controls.Add(this.flowLayoutPanelServos);
-            resources.ApplyResources(this.tabServo, "tabServo");
-            this.tabServo.Name = "tabServo";
-            this.tabServo.UseVisualStyleBackColor = true;
-            // 
-            // flowLayoutPanelServos
-            // 
-            resources.ApplyResources(this.flowLayoutPanelServos, "flowLayoutPanelServos");
-            this.flowLayoutPanelServos.Controls.Add(this.servoOptions1);
-            this.flowLayoutPanelServos.Controls.Add(this.servoOptions2);
-            this.flowLayoutPanelServos.Controls.Add(this.servoOptions3);
-            this.flowLayoutPanelServos.Controls.Add(this.servoOptions4);
-            this.flowLayoutPanelServos.Controls.Add(this.servoOptions5);
-            this.flowLayoutPanelServos.Controls.Add(this.servoOptions6);
-            this.flowLayoutPanelServos.Controls.Add(this.servoOptions7);
-            this.flowLayoutPanelServos.Controls.Add(this.servoOptions8);
-            this.flowLayoutPanelServos.Controls.Add(this.servoOptions9);
-            this.flowLayoutPanelServos.Controls.Add(this.servoOptions10);
-            this.flowLayoutPanelServos.Controls.Add(this.servoOptions11);
-            this.flowLayoutPanelServos.Controls.Add(this.servoOptions12);
-            this.flowLayoutPanelServos.Controls.Add(this.relayOptions1);
-            this.flowLayoutPanelServos.Controls.Add(this.relayOptions2);
-            this.flowLayoutPanelServos.Controls.Add(this.relayOptions3);
-            this.flowLayoutPanelServos.Controls.Add(this.relayOptions4);
-            this.flowLayoutPanelServos.Controls.Add(this.relayOptions5);
-            this.flowLayoutPanelServos.Controls.Add(this.relayOptions6);
-            this.flowLayoutPanelServos.Controls.Add(this.relayOptions7);
-            this.flowLayoutPanelServos.Controls.Add(this.relayOptions8);
-            this.flowLayoutPanelServos.Controls.Add(this.relayOptions9);
-            this.flowLayoutPanelServos.Controls.Add(this.relayOptions10);
-            this.flowLayoutPanelServos.Controls.Add(this.relayOptions11);
-            this.flowLayoutPanelServos.Controls.Add(this.relayOptions12);
-            this.flowLayoutPanelServos.Controls.Add(this.relayOptions13);
-            this.flowLayoutPanelServos.Controls.Add(this.relayOptions14);
-            this.flowLayoutPanelServos.Controls.Add(this.relayOptions15);
-            this.flowLayoutPanelServos.Controls.Add(this.relayOptions16);
-            this.flowLayoutPanelServos.Name = "flowLayoutPanelServos";
-            // 
-            // servoOptions1
-            // 
-            resources.ApplyResources(this.servoOptions1, "servoOptions1");
-            this.servoOptions1.Name = "servoOptions1";
-            this.servoOptions1.thisservo = 5;
-            // 
-            // servoOptions2
-            // 
-            resources.ApplyResources(this.servoOptions2, "servoOptions2");
-            this.servoOptions2.Name = "servoOptions2";
-            this.servoOptions2.thisservo = 6;
-            // 
-            // servoOptions3
-            // 
-            resources.ApplyResources(this.servoOptions3, "servoOptions3");
-            this.servoOptions3.Name = "servoOptions3";
-            this.servoOptions3.thisservo = 7;
-            // 
-            // servoOptions4
-            // 
-            resources.ApplyResources(this.servoOptions4, "servoOptions4");
-            this.servoOptions4.Name = "servoOptions4";
-            this.servoOptions4.thisservo = 8;
-            // 
-            // servoOptions5
-            // 
-            resources.ApplyResources(this.servoOptions5, "servoOptions5");
-            this.servoOptions5.Name = "servoOptions5";
-            this.servoOptions5.thisservo = 9;
-            // 
-            // servoOptions6
-            // 
-            resources.ApplyResources(this.servoOptions6, "servoOptions6");
-            this.servoOptions6.Name = "servoOptions6";
-            this.servoOptions6.thisservo = 10;
-            // 
-            // servoOptions7
-            // 
-            resources.ApplyResources(this.servoOptions7, "servoOptions7");
-            this.servoOptions7.Name = "servoOptions7";
-            this.servoOptions7.thisservo = 11;
-            // 
-            // servoOptions8
-            // 
-            resources.ApplyResources(this.servoOptions8, "servoOptions8");
-            this.servoOptions8.Name = "servoOptions8";
-            this.servoOptions8.thisservo = 12;
-            // 
-            // servoOptions9
-            // 
-            resources.ApplyResources(this.servoOptions9, "servoOptions9");
-            this.servoOptions9.Name = "servoOptions9";
-            this.servoOptions9.thisservo = 13;
-            // 
-            // servoOptions10
-            // 
-            resources.ApplyResources(this.servoOptions10, "servoOptions10");
-            this.servoOptions10.Name = "servoOptions10";
-            this.servoOptions10.thisservo = 14;
-            // 
-            // servoOptions11
-            // 
-            resources.ApplyResources(this.servoOptions11, "servoOptions11");
-            this.servoOptions11.Name = "servoOptions11";
-            this.servoOptions11.thisservo = 15;
-            // 
-            // servoOptions12
-            // 
-            resources.ApplyResources(this.servoOptions12, "servoOptions12");
-            this.servoOptions12.Name = "servoOptions12";
-            this.servoOptions12.thisservo = 16;
-            // 
-            // relayOptions1
-            // 
-            resources.ApplyResources(this.relayOptions1, "relayOptions1");
-            this.relayOptions1.Name = "relayOptions1";
-            this.relayOptions1.thisrelay = 0;
-            // 
-            // relayOptions2
-            // 
-            resources.ApplyResources(this.relayOptions2, "relayOptions2");
-            this.relayOptions2.Name = "relayOptions2";
-            this.relayOptions2.thisrelay = 1;
-            // 
-            // relayOptions3
-            // 
-            resources.ApplyResources(this.relayOptions3, "relayOptions3");
-            this.relayOptions3.Name = "relayOptions3";
-            this.relayOptions3.thisrelay = 2;
-            // 
-            // relayOptions4
-            // 
-            resources.ApplyResources(this.relayOptions4, "relayOptions4");
-            this.relayOptions4.Name = "relayOptions4";
-            this.relayOptions4.thisrelay = 3;
-            // 
-            // relayOptions5
-            // 
-            resources.ApplyResources(this.relayOptions5, "relayOptions5");
-            this.relayOptions5.Name = "relayOptions5";
-            this.relayOptions5.thisrelay = 4;
-            // 
-            // relayOptions6
-            // 
-            resources.ApplyResources(this.relayOptions6, "relayOptions6");
-            this.relayOptions6.Name = "relayOptions6";
-            this.relayOptions6.thisrelay = 5;
-            // 
-            // relayOptions7
-            // 
-            resources.ApplyResources(this.relayOptions7, "relayOptions7");
-            this.relayOptions7.Name = "relayOptions7";
-            this.relayOptions7.thisrelay = 6;
-            // 
-            // relayOptions8
-            // 
-            resources.ApplyResources(this.relayOptions8, "relayOptions8");
-            this.relayOptions8.Name = "relayOptions8";
-            this.relayOptions8.thisrelay = 7;
-            // 
-            // relayOptions9
-            // 
-            resources.ApplyResources(this.relayOptions9, "relayOptions9");
-            this.relayOptions9.Name = "relayOptions9";
-            this.relayOptions9.thisrelay = 8;
-            // 
-            // relayOptions10
-            // 
-            resources.ApplyResources(this.relayOptions10, "relayOptions10");
-            this.relayOptions10.Name = "relayOptions10";
-            this.relayOptions10.thisrelay = 9;
-            // 
-            // relayOptions11
-            // 
-            resources.ApplyResources(this.relayOptions11, "relayOptions11");
-            this.relayOptions11.Name = "relayOptions11";
-            this.relayOptions11.thisrelay = 10;
-            // 
-            // relayOptions12
-            // 
-            resources.ApplyResources(this.relayOptions12, "relayOptions12");
-            this.relayOptions12.Name = "relayOptions12";
-            this.relayOptions12.thisrelay = 11;
-            // 
-            // relayOptions13
-            // 
-            resources.ApplyResources(this.relayOptions13, "relayOptions13");
-            this.relayOptions13.Name = "relayOptions13";
-            this.relayOptions13.thisrelay = 12;
-            // 
-            // relayOptions14
-            // 
-            resources.ApplyResources(this.relayOptions14, "relayOptions14");
-            this.relayOptions14.Name = "relayOptions14";
-            this.relayOptions14.thisrelay = 13;
-            // 
-            // relayOptions15
-            // 
-            resources.ApplyResources(this.relayOptions15, "relayOptions15");
-            this.relayOptions15.Name = "relayOptions15";
-            this.relayOptions15.thisrelay = 14;
-            // 
-            // relayOptions16
-            // 
-            resources.ApplyResources(this.relayOptions16, "relayOptions16");
-            this.relayOptions16.Name = "relayOptions16";
-            this.relayOptions16.thisrelay = 15;
-            // 
-            // tabAuxFunction
-            // 
-            this.tabAuxFunction.Controls.Add(this.flowLayoutPanel1);
-            resources.ApplyResources(this.tabAuxFunction, "tabAuxFunction");
-            this.tabAuxFunction.Name = "tabAuxFunction";
-            this.tabAuxFunction.UseVisualStyleBackColor = true;
-            // 
-            // flowLayoutPanel1
-            // 
-            this.flowLayoutPanel1.Controls.Add(this.auxOptions1);
-            this.flowLayoutPanel1.Controls.Add(this.auxOptions2);
-            this.flowLayoutPanel1.Controls.Add(this.auxOptions3);
-            this.flowLayoutPanel1.Controls.Add(this.auxOptions4);
-            this.flowLayoutPanel1.Controls.Add(this.auxOptions5);
-            this.flowLayoutPanel1.Controls.Add(this.auxOptions6);
-            this.flowLayoutPanel1.Controls.Add(this.auxOptions7);
-            resources.ApplyResources(this.flowLayoutPanel1, "flowLayoutPanel1");
-            this.flowLayoutPanel1.Name = "flowLayoutPanel1";
-            // 
-            // auxOptions1
-            // 
-            resources.ApplyResources(this.auxOptions1, "auxOptions1");
-            this.auxOptions1.Name = "auxOptions1";
-            // 
-            // auxOptions2
-            // 
-            resources.ApplyResources(this.auxOptions2, "auxOptions2");
-            this.auxOptions2.Name = "auxOptions2";
-            // 
-            // auxOptions3
-            // 
-            resources.ApplyResources(this.auxOptions3, "auxOptions3");
-            this.auxOptions3.Name = "auxOptions3";
-            // 
-            // auxOptions4
-            // 
-            resources.ApplyResources(this.auxOptions4, "auxOptions4");
-            this.auxOptions4.Name = "auxOptions4";
-            // 
-            // auxOptions5
-            // 
-            resources.ApplyResources(this.auxOptions5, "auxOptions5");
-            this.auxOptions5.Name = "auxOptions5";
-            // 
-            // auxOptions6
-            // 
-            resources.ApplyResources(this.auxOptions6, "auxOptions6");
-            this.auxOptions6.Name = "auxOptions6";
-            // 
-            // auxOptions7
-            // 
-            resources.ApplyResources(this.auxOptions7, "auxOptions7");
-            this.auxOptions7.Name = "auxOptions7";
-            // 
             // tabScripts
             // 
             this.tabScripts.Controls.Add(this.checkBoxRedirectOutput);
@@ -3025,10 +2718,6 @@ namespace MissionPlanner.GCSViews
             this.tabTransponder.ResumeLayout(false);
             this.tabTransponder.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this.Squawk_nud)).EndInit();
-            this.tabServo.ResumeLayout(false);
-            this.flowLayoutPanelServos.ResumeLayout(false);
-            this.tabAuxFunction.ResumeLayout(false);
-            this.flowLayoutPanel1.ResumeLayout(false);
             this.tabScripts.ResumeLayout(false);
             this.tabScripts.PerformLayout();
             this.tabTLogs.ResumeLayout(false);
@@ -3136,12 +2825,6 @@ namespace MissionPlanner.GCSViews
         private System.Windows.Forms.ToolStripMenuItem triggerCameraToolStripMenuItem;
         private Controls.MyTrackBar TRK_zoom;
         private Label LBL_logfn;
-        public System.Windows.Forms.TabPage tabServo;
-        private System.Windows.Forms.FlowLayoutPanel flowLayoutPanelServos;
-        private Controls.ServoOptions servoOptions1;
-        private Controls.ServoOptions servoOptions2;
-        private Controls.ServoOptions servoOptions3;
-        private Controls.ServoOptions servoOptions4;
         private System.Windows.Forms.TableLayoutPanel tableLayoutPaneltlogs;
         private System.Windows.Forms.TableLayoutPanel tableLayoutPanelLogs;
         private System.Windows.Forms.GroupBox grpDataflash;
@@ -3149,14 +2832,6 @@ namespace MissionPlanner.GCSViews
         private System.Windows.Forms.FlowLayoutPanel flowLayoutPanelTLogControls;
         private System.Windows.Forms.TableLayoutPanel tableLayoutPanelTrackRow;
         private System.Windows.Forms.FlowLayoutPanel flowLayoutPanelSpeed;
-        private Controls.ServoOptions servoOptions5;
-        private Controls.ServoOptions servoOptions6;
-        private Controls.ServoOptions servoOptions7;
-        private Controls.ServoOptions servoOptions8;
-        private Controls.ServoOptions servoOptions9;
-        private Controls.ServoOptions servoOptions10;
-        private Controls.ServoOptions servoOptions11;
-        private Controls.ServoOptions servoOptions12;
         private System.Windows.Forms.BindingSource bindingSourceHud;
         private System.Windows.Forms.TableLayoutPanel tableLayoutPanelQuick;
         private System.Windows.Forms.Label label2;
@@ -3235,12 +2910,6 @@ namespace MissionPlanner.GCSViews
         private System.Windows.Forms.ToolStripMenuItem setEKFHomeHereToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem setHomeHereToolStripMenuItem1;
         private System.Windows.Forms.ToolStripMenuItem groundColorToolStripMenuItem;
-        private Controls.RelayOptions relayOptions1;
-        private Controls.RelayOptions relayOptions2;
-        private Controls.RelayOptions relayOptions3;
-        private Controls.RelayOptions relayOptions4;
-        private Controls.RelayOptions relayOptions5;
-        private Controls.RelayOptions relayOptions6;
         private System.Windows.Forms.ToolStripMenuItem hereLinkVideoToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem gStreamerStopToolStripMenuItem;
         private Controls.MyButton BUT_georefimage;
@@ -3280,26 +2949,7 @@ namespace MissionPlanner.GCSViews
         private System.Windows.Forms.TextBox NIC_tb;
         private Controls.MyButton BUT_SendMSG;
         public Panel panel_persistent;
-        public System.Windows.Forms.TabPage tabAuxFunction;
-        private FlowLayoutPanel flowLayoutPanel1;
-        private Controls.AuxOptions auxOptions1;
-        private Controls.AuxOptions auxOptions2;
-        private Controls.AuxOptions auxOptions3;
-        private Controls.AuxOptions auxOptions4;
-        private Controls.AuxOptions auxOptions5;
-        private Controls.AuxOptions auxOptions6;
-        private Controls.AuxOptions auxOptions7;
         private ToolStripMenuItem jumpToTagToolStripMenuItem;
-        private Controls.RelayOptions relayOptions7;
-        private Controls.RelayOptions relayOptions8;
-        private Controls.RelayOptions relayOptions9;
-        private Controls.RelayOptions relayOptions10;
-        private Controls.RelayOptions relayOptions11;
-        private Controls.RelayOptions relayOptions12;
-        private Controls.RelayOptions relayOptions13;
-        private Controls.RelayOptions relayOptions14;
-        private Controls.RelayOptions relayOptions15;
-        private Controls.RelayOptions relayOptions16;
         private ToolStripMenuItem gimbalVideoToolStripMenuItem;
         private ToolStripMenuItem gimbalVideoFullSizedToolStripMenuItem;
         private ToolStripMenuItem gimbalVideoMiniToolStripMenuItem;

@@ -1312,8 +1312,6 @@ namespace MissionPlanner.GCSViews
 
             TabListDisplay.Add(tabStatus.Name, MainV2.DisplayConfiguration.displayStatusTab);
 
-            TabListDisplay.Add(tabServo.Name, MainV2.DisplayConfiguration.displayServoTab);
-
             TabListDisplay.Add(tabScripts.Name, MainV2.DisplayConfiguration.displayScriptsTab);
 
             TabListDisplay.Add(tabTLogs.Name, MainV2.DisplayConfiguration.displayTelemetryTab);
@@ -1321,8 +1319,6 @@ namespace MissionPlanner.GCSViews
             TabListDisplay.Add(tabPagemessages.Name, MainV2.DisplayConfiguration.displayMessagesTab);
 
             TabListDisplay.Add(tabTransponder.Name, MainV2.DisplayConfiguration.displayTransponderTab);
-
-            TabListDisplay.Add(tabAuxFunction.Name, MainV2.DisplayConfiguration.displayAuxFunctionTab);
 
             TabListDisplay.Add(tabParams.Name, MainV2.DisplayConfiguration.displayParamsTab);
 
