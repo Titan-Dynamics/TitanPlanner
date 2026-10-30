@@ -283,6 +283,7 @@ Behaviour that differs from upstream because the fork fixed it:
 - SSH (terminal, SCP/SFTP log download, Solo tools) uses SSH.NET 2026, with current key exchanges and ciphers and the `ScpClient` security fixes (upstream PR [#3729](https://github.com/ArduPilot/MissionPlanner/pull/3729))
 - The Actions tab's **Parachute_Release** releases the parachute; upstream's Do_Parachute sends it as Disable, which turns the parachute off until a reboot (upstream PR [#3854](https://github.com/ArduPilot/MissionPlanner/pull/3854))
 - The Actions tab's commands send the reserved param3 as 0 (Preflight_Calibration still sets it); upstream sends 1, which an autopilot strict about reserved params refuses and Loiter_Unlim reads as a 1 m radius (upstream PR [#3853](https://github.com/ArduPilot/MissionPlanner/pull/3853))
+- The initial parameters calculator's after-flight advice matches the vehicle: on Copter 4.7 `PSC_D_ACC_P` / `PSC_D_ACC_I` at 0.1 / 0.2 × `MOT_THST_HOVER` (upstream gives the older gains' values, ten times too high), and the `Q_` names on QuadPlanes (upstream PR [#3829](https://github.com/ArduPilot/MissionPlanner/pull/3829))
 - ADS-B from adsb.lol works (it requires a User-Agent) and stays within its rate limit
 - Elevation (SRTM) lookups are thread-safe and never block the UI behind a slow load
 - The Full Parameter List opens without crashing, and Flight Modes populates its `RCx_OPTION` lists on load
