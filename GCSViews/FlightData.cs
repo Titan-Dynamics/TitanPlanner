@@ -542,6 +542,10 @@ namespace MissionPlanner.GCSViews
             this.panel_persistent.ControlAdded += (sender, e) => ManageLeftPanelVisibility();
             this.panel_persistent.ControlRemoved += (sender, e) => ManageLeftPanelVisibility();
 
+            // the HUD stops growing taller where the tabs under it would get less than MinTabsHeight
+            this.SubMainLeft.Resize += (sender, e) => LayoutHud();
+            this.hud1.ParentChanged += (sender, e) => LayoutHud();
+
             //    _serializer = new DockStateSerializer(dockContainer1);
             //    _serializer.SavePath = Application.StartupPath + Path.DirectorySeparatorChar + "FDscreen.xml";
             //    dockContainer1.PreviewRenderer = new PreviewRenderer();
@@ -4412,6 +4416,45 @@ namespace MissionPlanner.GCSViews
             combo.DropDownWidth = width;
         }
 
+        // the tabs under the HUD keep at least this much of the left column, and the HUD at least this much
+        private const int MinTabsHeight = 250;
+        private const int MinHudHeight = 100;
+
+        /// <summary>
+        /// Fits the HUD in the left column: the column's width at its aspect ratio, until the tabs under it would get
+        /// less than MinTabsHeight; from there no taller, and centred between black bars, video and overlay alike.
+        /// </summary>
+        private void LayoutHud()
+        {
+            if (hud1.Parent != SubMainLeft.Panel1)
+            {
+                // popped out, or swapped onto the map: it fills where it is
+                hud1.Dock = DockStyle.Fill;
+                return;
+            }
+
+            // hidden while the screen is away under Mono (Deactivate)
+            if (MainV2.MONO && !hud1.Enabled)
+                return;
+
+            float aspect = hud1.SixteenXNine ? 16f / 9f : 4f / 3f;
+            int width = SubMainLeft.Panel1.Width;
+            int maxHeight = Math.Max(MinHudHeight, SubMainLeft.Height - SubMainLeft.SplitterWidth - MinTabsHeight);
+            if (width / aspect <= maxHeight)
+            {
+                // the HUD sets its own height for its width, and hud1_Resize moves the split to it
+                hud1.Dock = DockStyle.Fill;
+                return;
+            }
+
+            int hudWidth = (int)(maxHeight * aspect);
+            hud1.Dock = DockStyle.None;
+            hud1.Bounds = new Rectangle((width - hudWidth) / 2, 0, hudWidth, maxHeight);
+            SubMainLeft.Panel1.BackColor = Color.Black;
+            if (SubMainLeft.SplitterDistance != maxHeight)
+                SubMainLeft.SplitterDistance = maxHeight;
+        }
+
         private void hud1_Resize(object sender, EventArgs e)
         {
             Console.WriteLine("HUD resize " + hud1.Width + " " + hud1.Height); // +"\n"+ System.Environment.StackTrace);
@@ -5921,6 +5964,7 @@ namespace MissionPlanner.GCSViews
             hud1.SixteenXNine = !hud1.SixteenXNine;
             Settings.Instance["HUD_SixteenXNine"] = hud1.SixteenXNine.ToString();
             hud1.doResize();
+            LayoutHud();
         }
 
         private void setEKFHomeHereToolStripMenuItem_Click(object sender, EventArgs e)

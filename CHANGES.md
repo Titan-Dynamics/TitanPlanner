@@ -23,7 +23,7 @@ Tornado and Proton aircraft are the default rendered icons for plane and copter 
 # HUD Overhaul
 
 ## Layout & Typography
-Major reflow of the HUD. Larger, optimized fonts; centering uses cached per-character metrics for stability; left/right scroller arrows scale with font size; mode display has a redrawn trapezoid background; heading scroller shows an `H` indicator for home heading; a degree symbol (`°`) instead of the literal `deg`; `Yaw` is labelled `Heading`.
+Major reflow of the HUD. Larger, optimized fonts; centering uses cached per-character metrics for stability; left/right scroller arrows scale with font size; mode display has a redrawn trapezoid background; heading scroller shows an `H` indicator for home heading; a degree symbol (`°`) instead of the literal `deg`; `Yaw` is labelled `Heading`. On the DATA screen the HUD stops growing taller where the tabs under it would get less than 250 px; past that it keeps its aspect ratio, centred between black bars.
 
 ## New Telemetry Readouts
 - **AOA / SSA / critical AOA gauge** for fixed-wing
