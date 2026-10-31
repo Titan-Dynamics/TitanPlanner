@@ -40,6 +40,16 @@ class LinuxSmokeTest
         }
     }
 
+    private static System.Collections.Generic.IEnumerable<Control> Descendants(Control parent)
+    {
+        foreach (Control child in parent.Controls)
+        {
+            yield return child;
+            foreach (var descendant in Descendants(child))
+                yield return descendant;
+        }
+    }
+
     [STAThread]
     static void Main()
     {
@@ -56,17 +66,18 @@ class LinuxSmokeTest
             try
             {
                 var flightData = MainV2.instance.FlightData;
-                var tabs = (TabControl)flightData.Controls.Find("tabControlactions", true).Single();
-                tabs.SelectedTab = (TabPage)flightData.Controls.Find("tabActions", true).Single();
-                var combo = (ComboBox)flightData.Controls.Find("CMB_action", true).Single();
-                if (!MainV2.instance.Visible || combo.Items.Count == 0)
+                // The DATA tabs are a ThemedTabStrip, and the Actions tab is FlightDataActions
+                var tabs = (MissionPlanner.Controls.ThemedTabStrip)flightData.Controls.Find("themedTabStrip", true).Single();
+                tabs.SelectTabByTabPage(tabs.TabPages.Single(page => page.Name == "tabActions"));
+                var actions = (MissionPlanner.Controls.FlightDataActions)flightData.Controls.Find("flightDataActions1", true).Single();
+                if (!MainV2.instance.Visible || actions.CMB_action.Items.Count == 0)
                     throw new Exception("FlightData did not load its actions.");
-                var table = (TableLayoutPanel)flightData.Controls.Find("tableLayoutPanel1", true).Single();
-                var modifiers = table.Controls.OfType<MissionPlanner.Controls.ModifyandSet>().ToArray();
+                var modifiers = Descendants(actions).OfType<MissionPlanner.Controls.ModifyandSet>().ToArray();
                 if (modifiers.Length != 3)
                     throw new Exception("Missing numeric action controls.");
+                // the value and its Set button side by side, the button inside the control
                 foreach (var modify in modifiers)
-                    if (modify.Button.Top != modify.NumericUpDown.Top || modify.Button.Right > modify.Width)
+                    if (modify.Button.Left < modify.NumericUpDown.Right || modify.Button.Right > modify.Width)
                         throw new Exception("Clipped action control: " + modify.Name);
                 CheckChecklistResize();
                 // Check the packaged native library and its managed ABI together.

@@ -22,6 +22,10 @@ public class ThemeManager
     {
         
     }
+
+    public static void ApplyPlainButtonTheme(Control button)
+    {
+    }
 }
 
 namespace MissionPlanner.Controls

@@ -162,7 +162,11 @@ the git log has those. `ChangeLog.txt` is upstream's and is not maintained here.
   Linux build compiles the desktop app with `Linux/Build.targets`, which collapses each project to its desktop
   target except `GMap.NET.Drawing`, kept netstandard too for `MissionPlanner.Utilities`. Check a `LIB` build
   locally with Visual Studio's MSBuild (`msbuild -restore -p:Configuration=Release MissionPlannerLib.csproj`;
-  `dotnet build` can't build the mono submodule).
+  `dotnet build` can't build the mono submodule). `ExtLibs/Xamarin/Xamarin/Xamarin.csproj` also compiles some
+  desktop files (e.g. `ConfigRawParams.cs`) against its own `HUD` and the `ThemeManager` stub in
+  `Controls/Extensions.cs`, so a new `ThemeManager` or `HUD` member used there needs a stub; build that project the
+  same way. `Linux/SmokeTest.cs` (run by the Linux job) launches the app and checks the fork's DATA screen
+  (`ThemedTabStrip`, `FlightDataActions`), so it changes with that layout.
 - **Build gotchas.** `MissionPlannerLib.csproj` builds into `obj2\`; `MissionPlanner.csproj` must
   keep its `obj\` / `obj2\` excludes or the Xamarin-generated `FirmwareSelection.xaml.g.cs` is
   compiled twice. Keep `GenerateResourceUsePreserializedResources` on, or `dotnet build`/`dotnet test`
