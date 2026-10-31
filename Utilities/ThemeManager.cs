@@ -234,7 +234,9 @@ namespace MissionPlanner.Utilities
                     }
                     finally
                     {
-                        DestroyIcon(handle);
+                        // a user32 icon handle on Windows; Mono elsewhere has no user32 to free it with
+                        if (Environment.OSVersion.Platform == PlatformID.Win32NT)
+                            DestroyIcon(handle);
                     }
 
                     _formIconSource = source;

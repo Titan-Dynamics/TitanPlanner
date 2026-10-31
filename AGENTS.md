@@ -154,9 +154,11 @@ the git log has those. `ChangeLog.txt` is upstream's and is not maintained here.
   the line endings changed, not the code. Files whose HEAD blob is CRLF must be staged as CRLF.
 - **Android/macOS/Linux builds.** Android and macOS compile `MissionPlannerLib.csproj` (`LIB`) against the
   `ExtLibs/mono` WinForms port, whose submodule commit has to match the upstream `ZZZLibShims.cs` it was
-  merged with (take upstream's submodule pointer in a merge). Its own `System.Drawing.Common`
-  (`ExtLibs/MissionPlanner.Drawing.Common`) clashes with the real package, so `MissionPlannerLib.csproj` excludes
-  the one SkiaSharp 2.88 pulls in; Windows-only controls such as WebView2 get a `ZZZLibShims.cs` stand-in. The
+  merged with (take upstream's submodule pointer in a merge). The `LIB` build and the Xamarin projects stay on
+  upstream's SkiaSharp 2.80.2: 2.88 fails the Android and macOS restores (a package downgrade against the Xamarin
+  projects' 2.80.2), and upstream reverted its own move to it for breaking those builds; the desktop app has its own
+  SkiaSharp 3. Windows-only controls such as WebView2 get a `ZZZLibShims.cs` stand-in, and Windows-only P/Invokes
+  in desktop code that Linux runs (user32, gdi32) need an OS check, or Mono throws `EntryPointNotFoundException`. The
   Linux build compiles the desktop app with `Linux/Build.targets`, which collapses each project to its desktop
   target except `GMap.NET.Drawing`, kept netstandard too for `MissionPlanner.Utilities`. Check a `LIB` build
   locally with Visual Studio's MSBuild (`msbuild -restore -p:Configuration=Release MissionPlannerLib.csproj`;
