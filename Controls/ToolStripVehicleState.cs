@@ -37,6 +37,9 @@ namespace MissionPlanner.Controls
         private List<string> _pinnedModes = new List<string>();
         private List<string> _favoriteModes = new List<string>();
         private List<string> _fltModes = new List<string>();
+        // the connected vehicle's firmware and its modes: the pins the toolbar shows (RefreshVehicleModes)
+        private ArduPilot.Firmwares? _vehicleFirmware;
+        private HashSet<string> _vehicleModes = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         private Timer _updateTimer;
         private const string PinnedSettingsKey = "ModeSelectorPinned";
         private const string FavoritesSettingsKey = "ModeSelectorFavorites";
@@ -556,12 +559,38 @@ namespace MissionPlanner.Controls
 
         /// <summary>
         /// The modes on the toolbar, each once: with Pin All, the configured FLTMODEs in configured order
-        /// followed by the user's own pins; otherwise just the user's pins.
+        /// followed by the user's own pins; otherwise just the user's pins. Pins the connected vehicle's firmware
+        /// doesn't have (a plane's FBWA on a copter) stay saved but don't show.
         /// </summary>
         private List<string> ToolbarModes()
         {
-            var modes = _pinAllFltModes ? _fltModes.Take(6).Concat(_pinnedModes) : _pinnedModes;
+            var pinned = _pinnedModes.Where(_vehicleModes.Contains);
+            var modes = _pinAllFltModes ? _fltModes.Take(6).Concat(pinned) : pinned;
             return modes.Distinct().ToList();
+        }
+
+        /// <summary>
+        /// Takes the modes the connected vehicle's firmware has, which decide the pins the toolbar shows.
+        /// </summary>
+        private void RefreshVehicleModes()
+        {
+            var firmware = MainV2.comPort?.MAV?.cs?.firmware;
+            _vehicleFirmware = firmware;
+
+            var modes = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            try
+            {
+                if (firmware != null)
+                {
+                    foreach (var mode in ArduPilot.Common.getModesList(firmware.Value))
+                        modes.Add(mode.Value);
+                }
+            }
+            catch
+            {
+            }
+
+            _vehicleModes = modes;
         }
 
         private void LoadSettings()
@@ -924,6 +953,15 @@ namespace MissionPlanner.Controls
                 {
                     var cs = MainV2.comPort?.MAV?.cs;
 
+                    // Another vehicle (a copter after a plane) without disconnecting: its own modes on the toolbar
+                    if (cs != null && cs.firmware != _vehicleFirmware)
+                    {
+                        RefreshVehicleModes();
+                        _visiblePinnedCount = ToolbarModes().Count;
+                        UpdatePinnedButtons();
+                        AdjustWidthToAvailableSpace();
+                    }
+
                     // Update arm state
                     bool isArmed = cs?.armed ?? false;
                     if (isArmed != _lastArmedState)
@@ -1043,7 +1081,8 @@ namespace MissionPlanner.Controls
                 _lastArmedState = isArmed;
                 UpdateArmButtonAppearance(isArmed);
 
-                // Show the user's pinned modes on the toolbar
+                // Show the user's pinned modes that this vehicle has on the toolbar
+                RefreshVehicleModes();
                 _visiblePinnedCount = ToolbarModes().Count;
                 UpdatePinnedButtons();
 
