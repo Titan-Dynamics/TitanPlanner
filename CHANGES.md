@@ -136,7 +136,7 @@ Themed search bar with suggest-only autocomplete; search resets when navigating 
 **Motor Setup** (upstream's "Motor Test") is a Betaflight-style page in the Mandatory Hardware section, shown only for copter/quadplane vehicles, with live frame and class type images. The frame diagrams ship with the app, so they show on air-gapped setups, and are refreshed from ardupilot.org when online.
 
 ## Servo Output Tab
-A revamped Servo Output panel with click-or-drag sliders for trim, an "Equidistant" min/max helper, and proper min/max-from-trim handling. The trim slider stays in sync with the combobox. Edits are written in the background once you pause, so the page never waits on the vehicle.
+A revamped Servo Output panel with click-or-drag sliders for trim, an "Equidistant" min/max helper, and proper min/max-from-trim handling. The trim slider stays in sync with the combobox. Min, trim and max accept 500–2500 µs and step by 10. Edits are written in the background once you pause, so the page never waits on the vehicle.
 
 ## Radio & Calibration
 Visual-stick-controls Radio Calibration UI with upstream's reversing logic; polished accel calibration.
