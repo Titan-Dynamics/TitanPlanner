@@ -124,7 +124,7 @@ namespace MissionPlanner.Controls
                 {
                     // must be actioned inside the catch, as this thread was just aborted
                     Running = false;
-                    this.BeginInvoke((MethodInvoker)this.Close);
+                    CloseFromBackground();
                     return;
                 }
                 else
@@ -163,7 +163,7 @@ namespace MissionPlanner.Controls
             {
                 //ShowDoneCancelled();
                 Running = false;
-                this.BeginInvoke((MethodInvoker)this.Close);
+                CloseFromBackground();
                 return;
             }
 
@@ -216,9 +216,19 @@ namespace MissionPlanner.Controls
                     this.ControlBox = true;
                 });
 
-            Thread.Sleep(100);         
+            Thread.Sleep(100);
 
-            this.BeginInvoke((MethodInvoker)this.Close);
+            CloseFromBackground();
+        }
+
+        // Close from the bg thread; the dialog may already be closed and disposed, leaving nothing to close
+        private void CloseFromBackground()
+        {
+            try
+            {
+                this.BeginInvoke((MethodInvoker)this.Close);
+            }
+            catch (InvalidOperationException) { } // handle gone (ObjectDisposedException derives from this)
         }
 
         // Called as a possible last operation of the bg thread

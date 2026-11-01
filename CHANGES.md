@@ -275,6 +275,7 @@ Built for air-gapped use. Opened from the **Offline Maps** button next to Find L
 Behaviour that differs from upstream because the fork fixed it:
 
 - The 3D map doesn't hit the intermittent `Destination array was not long enough` crash
+- Connecting or loading params doesn't crash when the progress dialog closes before it finishes
 - HUD text always draws the right characters; upstream's OpenGL HUD can show "FAILSAFE" as "FAI AFE" or an altitude as "SS"
 - SITL starts with home at the ground height of the chosen point, so terrain readings match ([#28](https://github.com/Titan-Dynamics/TitanPlanner/issues/28))
 - The Messages tab keeps updating on long flights, keeps your place when scrolled up, and has a right-click **Clear Messages** ([#23](https://github.com/Titan-Dynamics/TitanPlanner/issues/23))
