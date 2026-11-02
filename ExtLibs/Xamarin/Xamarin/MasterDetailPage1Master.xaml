@@ -24,7 +24,7 @@
           <Label
               Grid.Column="1"
               Grid.Row="2"
-              Text="Mission Planner"
+              Text="TitanPlanner"
               FontSize="16"
               Style="{DynamicResource SubtitleStyle}"/>
         </Grid>

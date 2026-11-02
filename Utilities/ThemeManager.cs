@@ -401,6 +401,17 @@ namespace MissionPlanner.Utilities
                 themeFileToLoad = Settings.GetUserDataDirectory() + strThemeName;
             }
 
+            // case-sensitive file systems (Linux, Android): the default "titandynamics.mpsystheme" is TitanDynamics.mpsystheme
+            try
+            {
+                if (!File.Exists(themeFileToLoad))
+                    themeFileToLoad = Directory.EnumerateFiles(Path.GetDirectoryName(themeFileToLoad))
+                        .FirstOrDefault(file => Path.GetFileName(file).Equals(strThemeName, StringComparison.OrdinalIgnoreCase)) ?? themeFileToLoad;
+            }
+            catch
+            {
+            }
+
             try
             {
                 ThemeManager.thmColor = ThemeManager.ReadFromXmlFile<ThemeColorTable>(themeFileToLoad);

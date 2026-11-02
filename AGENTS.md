@@ -182,8 +182,13 @@ the git log has those. `ChangeLog.txt` is upstream's and is not maintained here.
   folder (`wix/Program.cs`) and its own data folders via `Settings.AppConfigName`. On first launch
   `DataFolderMigration` copies the previous folders (`Settings.PreviousAppConfigNames`, "Mission
   Planner") into the new ones. The NextVision edition sets these to "TitanPlanner-NextVision" and
-  `{ "TitanPlanner", "Mission Planner" }`, so those lines differ between the two repos by design.
-- **3D map.** `Controls/Map3D/` is the 3D view (excluded from the LIB build). `Terrain/` streams satellite
+  `{ "TitanPlanner", "Mission Planner" }`, so those lines differ between the two repos by design. The
+  Android app is `aero.titandynamics.titanplanner` (`Properties/AndroidManifest.xml`), labelled TitanPlanner,
+  with launcher icons made from `.github/icon.png` and an AppCompat theme in the Titan Dynamics colours
+  (`Resources/values`). It writes its bundled files (themes, metadata) to its data folder at start-up from
+  `ExtLibs/Xamarin/Xamarin/files.resx` (`RestoreFiles` in `GCSViews/WinForms.xaml.cs`).
+- **3D map.** `Controls/Map3D/` is the 3D view (excluded from the LIB build; `ZZZLibShims.cs` stands in an empty
+  `Map3D`, so Android and Mac have no 3D map). `Terrain/` streams satellite
   terrain: `TerrainQuadtree` picks tiles by screen-space error, up to a finest zoom set by the camera's height
   (`SelectionParams.MaxZoomFor`), `TileLoader` fetches imagery (through the shared GMap cache), samples SRTM
   (`srtm.GetCell`) and builds meshes on worker threads, and `TerrainEngine` uploads and draws them on the render

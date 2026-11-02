@@ -276,6 +276,10 @@ namespace Xamarin.GCSViews
                     files.HighContrast);
 
                 File.WriteAllText(
+                    Settings.GetUserDataDirectory() + Path.DirectorySeparatorChar + "TitanDynamics.mpsystheme",
+                    files.TitanDynamics);
+
+                File.WriteAllText(
                     Settings.GetUserDataDirectory() + Path.DirectorySeparatorChar + "ParameterMetaData.xml",
                     files.ParameterMetaDataBackup);
 

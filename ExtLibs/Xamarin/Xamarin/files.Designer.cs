@@ -860,5 +860,25 @@ namespace MissionPlanner {
                 return ResourceManager.GetString("rotmat", resourceCulture);
             }
         }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to &lt;?xml version=&quot;1.0&quot; encoding=&quot;utf-8&quot;?&gt;
+        ///&lt;ThemeColorTable xmlns:xsd=&quot;http://www.w3.org/2001/XMLSchema&quot; xmlns:xsi=&quot;http://www.w3.org/2001/XMLSchema-instance&quot;&gt;
+        ///  &lt;colors&gt;
+        ///    &lt;ThemeColor&gt;
+        ///      &lt;strColorItemName&gt;Background&lt;/strColorItemName&gt;
+        ///      &lt;clrColor Web=&quot;#1E1F20&quot; /&gt;
+        ///      &lt;strVariableName&gt;BGColor&lt;/strVariableName&gt;
+        ///    &lt;/ThemeColor&gt;
+        ///    &lt;ThemeColor&gt;
+        ///      &lt;strColorItemName&gt;Control Background&lt;/strColorItemName&gt;
+        ///      &lt;clrColor Web=&quot;#38393A&quot; /&gt;
+        ///      &lt;strVariableName&gt;ControlBGColor&lt;/strVariableN [rest of string was truncated]&quot;;.
+        /// </summary>
+        public static string TitanDynamics {
+            get {
+                return ResourceManager.GetString("TitanDynamics", resourceCulture);
+            }
+        }
     }
 }

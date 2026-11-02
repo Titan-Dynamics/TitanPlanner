@@ -7,13 +7,13 @@ What this fork adds on top of upstream [ArduPilot/MissionPlanner](https://github
 # Branding & Theming
 
 ## Titan Dynamics System Theme
-A new bundled theme (`titandynamics.mpsystheme`) is set as the default for new installs. Theming also covers controls upstream leaves unthemed — `ListBox`, `PropertyGrid`, `MessagesList`, status tab, menu-bar icons, the Splash form, and toast notifications.
+A new bundled theme (`titandynamics.mpsystheme`) is set as the default for new installs. Theming also covers controls upstream leaves unthemed — `ListBox`, `PropertyGrid`, `MessagesList`, status tab, menu-bar icons, the Splash form, and toast notifications. The Android app uses the theme too, with its status bar, navigation bar and dialogs dark in the same colours, and the theme loads on Linux and Android, whose file names are case-sensitive.
 
 ## Dark Windows Title Bars
 Native Windows title bars now follow the application theme rather than always being light.
 
 ## New Application Icon, Splash, and Tab Icons
-A new app icon (Titan Dynamics branding), redesigned splash screen, and a fresh icon set for the main top-level tabs in both dark and light variants.
+A new app icon (Titan Dynamics branding), redesigned splash screen, and a fresh icon set for the main top-level tabs in both dark and light variants. The Android launcher shows the same icon.
 
 ## Plane & Copter Default Icons
 Tornado and Proton aircraft are the default rendered icons for plane and copter vehicle classes. Users can also drop in a custom aircraft icon image to override per-vehicle defaults entirely.
@@ -312,7 +312,7 @@ Reads `version.txt` from the channel URL (stable or beta) and compares as `Syste
 # Installation & Data Folders
 
 ## Its Own Product
-The MSI installs **TitanPlanner** as a product of its own: `Program Files\TitanPlanner`, a TitanPlanner Start-menu folder and uninstall entry, and its own Windows upgrade code. Log file associations use `TitanPlanner.*` ProgIds, and the window title reads "TitanPlanner".
+The MSI installs **TitanPlanner** as a product of its own: `Program Files\TitanPlanner`, a TitanPlanner Start-menu folder and uninstall entry, and its own Windows upgrade code. Log file associations use `TitanPlanner.*` ProgIds, and the window title reads "TitanPlanner". The Android app is TitanPlanner too (package `aero.titandynamics.titanplanner`), so it installs alongside Mission Planner.
 
 Older TitanPlanner installers used the identity of stock ArduPilot Mission Planner. The TitanPlanner MSI removes such an install only when it is TitanPlanner, recognised by `TitanDynamics.mpsystheme` in `Program Files (x86)\Mission Planner`, so upgrading from an older TitanPlanner needs no manual uninstall while a stock Mission Planner install is left alone. An older TitanPlanner installed to a custom folder is not detected and stays installed alongside. Nothing removes TitanPlanner except its own uninstaller: stock Mission Planner's installer and the NextVision edition install alongside it.
 
