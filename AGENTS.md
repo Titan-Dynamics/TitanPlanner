@@ -166,7 +166,11 @@ the git log has those. `ChangeLog.txt` is upstream's and is not maintained here.
   desktop files (e.g. `ConfigRawParams.cs`) against its own `HUD` and the `ThemeManager` stub in
   `Controls/Extensions.cs`, so a new `ThemeManager` or `HUD` member used there needs a stub; build that project the
   same way. `Linux/SmokeTest.cs` (run by the Linux job) launches the app and checks the fork's DATA screen
-  (`ThemedTabStrip`, `FlightDataActions`), so it changes with that layout.
+  (`ThemedTabStrip`, `FlightDataActions`), so it changes with that layout. On Android the WinForms port
+  (`xplatuimine.cs`) paints through `Graphics.FromCanvas`, whose `Surface` is a 1x1 null surface, so a `Graphics`
+  that wraps a paint's (`GdiGraphics(e.Graphics)` in the `netstandard2.0/Shim.cs` files, used by GMap) shares its
+  canvas through the `Graphics(Graphics)` constructor. Xamarin.Android's runtime libraries are 4 KB-aligned, so
+  the app runs only on 4 KB-page devices and emulator images, not the 16 KB-page ones.
 - **Build gotchas.** `MissionPlannerLib.csproj` builds into `obj2\`; `MissionPlanner.csproj` must
   keep its `obj\` / `obj2\` excludes or the Xamarin-generated `FirmwareSelection.xaml.g.cs` is
   compiled twice. Keep `GenerateResourceUsePreserializedResources` on in `MissionPlanner.csproj`, or

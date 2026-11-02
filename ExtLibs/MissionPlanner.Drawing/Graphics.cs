@@ -87,6 +87,13 @@ namespace System.Drawing
             Debug.Assert(_surface != null);
         }
 
+        // draws where the graphics does: a paint's graphics draws on a canvas (FromCanvas), not on its Surface
+        protected Graphics(Graphics graphics)
+        {
+            _surface = graphics._surface;
+            _overridecanvas = graphics._overridecanvas;
+        }
+
         public Graphics(IntPtr handle, int width, int height)
         {
             if (width == 0)

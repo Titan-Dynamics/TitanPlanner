@@ -292,6 +292,7 @@ Behaviour that differs from upstream because the fork fixed it:
 - Firmware flashing and the installer/release zip work on current .NET builds
 - Builds cleanly in Visual Studio 2022 and with `dotnet build` / `dotnet test`
 - The Android app starts and opens its screens; upstream's stops at start-up
+- The Android app's maps draw their tiles; upstream's stay blank
 
 ---
 

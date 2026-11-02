@@ -19,7 +19,7 @@ public class GdiGraphics : Graphics
     {
     }
 
-    public GdiGraphics(Graphics fromImage) : base(fromImage.Surface)
+    public GdiGraphics(Graphics fromImage) : base(fromImage)
     {
     }
 }
