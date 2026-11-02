@@ -292,6 +292,7 @@ Behaviour that differs from upstream because the fork fixed it:
 - Dashboard items repaint after context-menu edits, the panel never outgrows its tab, and the default layout has no duplicate "distance to home"
 - The 3D map's nav-bearing line points at the actual waypoint, and the PLAN and DATA maps stay in sync
 - Aborting a script when none is running is a no-op rather than a crash
+- With Bluetooth on, the scan for Bluetooth telemetry radios doesn't crash the app as it finishes
 - Servo Output's function dropdown shows the real value for REAL32-stored integer params such as `SERVOn_FUNCTION`; upstream truncates and can show the option below (Gripper for LandingGear)
 - Firmware flashing and the installer/release zip work on current .NET builds
 - Builds cleanly in Visual Studio 2022 and with `dotnet build` / `dotnet test`

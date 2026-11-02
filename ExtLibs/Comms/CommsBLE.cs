@@ -95,17 +95,9 @@ namespace MissionPlanner.Comms
                         return;
                     }
 
-                    simpleble_adapter_set_callback_on_scan_start(adapter, adapter_on_scan_start, null);
-                    simpleble_adapter_set_callback_on_scan_stop(adapter, adapter_on_scan_stop, null);
-                    simpleble_adapter_set_callback_on_scan_found(adapter, adapter_on_scan_found, null);
-                    simpleble_adapter_set_callback_on_scan_updated(adapter, adapter_on_scan_updated, null);
-
+                    // no scan callbacks: the results are read below, and Windows can raise a scan event after
+                    // scan_for returns, which would call whatever is set by then (null, or a collected delegate)
                     simpleble_adapter_scan_for(adapter, 5000);
-
-                    simpleble_adapter_set_callback_on_scan_start(adapter, null, null);
-                    simpleble_adapter_set_callback_on_scan_stop(adapter, null, null);
-                    simpleble_adapter_set_callback_on_scan_found(adapter, null, null);
-                    simpleble_adapter_set_callback_on_scan_updated(adapter, null, null);
 
                     size_t useindex = -1;
 
@@ -270,17 +262,8 @@ namespace MissionPlanner.Comms
                             return;
                         }
 
-                        simpleble_adapter_set_callback_on_scan_start(adapter, adapter_on_scan_start, null);
-                        simpleble_adapter_set_callback_on_scan_stop(adapter, adapter_on_scan_stop, null);
-                        simpleble_adapter_set_callback_on_scan_found(adapter, adapter_on_scan_found, null);
-                        simpleble_adapter_set_callback_on_scan_updated(adapter, adapter_on_scan_updated, null);
-
+                        // no scan callbacks, as in Open: a scan event raised after scan_for returns would call them
                         simpleble_adapter_scan_for(adapter, 5000);
-
-                        simpleble_adapter_set_callback_on_scan_start(adapter, null, null);
-                        simpleble_adapter_set_callback_on_scan_stop(adapter, null, null);
-                        simpleble_adapter_set_callback_on_scan_found(adapter, null, null);
-                        simpleble_adapter_set_callback_on_scan_updated(adapter, null, null);
 
                         size_t peripheral_count = simpleble_adapter_scan_get_results_count(adapter);
                         for (size_t peripheral_index = 0; peripheral_index < peripheral_count; peripheral_index++)
