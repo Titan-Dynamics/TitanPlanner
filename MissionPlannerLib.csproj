@@ -12,7 +12,9 @@
     <Deterministic>false</Deterministic>
     <EnableUnsafeBinaryFormatterSerialization>true</EnableUnsafeBinaryFormatterSerialization>
     <BaseIntermediateOutputPath>obj2\</BaseIntermediateOutputPath>
-    <GenerateResourceUsePreserializedResources>true</GenerateResourceUsePreserializedResources>
+    <!-- dotnet build needs it; msbuild (the Android and macOS builds) serializes the forms' resources, which the
+         Android/Mac System.Drawing reads, where preserialized ones need type converters it doesn't have -->
+    <GenerateResourceUsePreserializedResources Condition="'$(MSBuildRuntimeType)' == 'Core'">true</GenerateResourceUsePreserializedResources>
   </PropertyGroup>
 
   <PropertyGroup>

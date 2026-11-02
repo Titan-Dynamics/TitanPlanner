@@ -291,6 +291,7 @@ Behaviour that differs from upstream because the fork fixed it:
 - Servo Output's function dropdown shows the real value for REAL32-stored integer params such as `SERVOn_FUNCTION`; upstream truncates and can show the option below (Gripper for LandingGear)
 - Firmware flashing and the installer/release zip work on current .NET builds
 - Builds cleanly in Visual Studio 2022 and with `dotnet build` / `dotnet test`
+- The Android app starts and opens its screens; upstream's stops at start-up
 
 ---
 

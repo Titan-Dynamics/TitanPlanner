@@ -169,8 +169,11 @@ the git log has those. `ChangeLog.txt` is upstream's and is not maintained here.
   (`ThemedTabStrip`, `FlightDataActions`), so it changes with that layout.
 - **Build gotchas.** `MissionPlannerLib.csproj` builds into `obj2\`; `MissionPlanner.csproj` must
   keep its `obj\` / `obj2\` excludes or the Xamarin-generated `FirmwareSelection.xaml.g.cs` is
-  compiled twice. Keep `GenerateResourceUsePreserializedResources` on, or `dotnet build`/`dotnet test`
-  fail. Both `plugins\` and `Plugins\` exist on disk; the csproj excludes both.
+  compiled twice. Keep `GenerateResourceUsePreserializedResources` on in `MissionPlanner.csproj`, or
+  `dotnet build`/`dotnet test` fail. `MissionPlannerLib.csproj` turns it on only for `dotnet` builds: under
+  `msbuild` the forms' resources are serialized, which is what the Android/Mac `System.Drawing` reads (it has no
+  type converters for preserialized ones, so every form fails to load). Both `plugins\` and `Plugins\` exist on
+  disk; the csproj excludes both.
 - **Product identity and data folders.** The app is "TitanPlanner": its own MSI upgrade code and install
   folder (`wix/Program.cs`) and its own data folders via `Settings.AppConfigName`. On first launch
   `DataFolderMigration` copies the previous folders (`Settings.PreviousAppConfigNames`, "Mission
