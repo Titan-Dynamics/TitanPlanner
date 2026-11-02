@@ -153,7 +153,8 @@ the git log has those. `ChangeLog.txt` is upstream's and is not maintained here.
   compiled twice. Keep `GenerateResourceUsePreserializedResources` on, or `dotnet build`/`dotnet test`
   fail. Both `plugins\` and `Plugins\` exist on disk; the csproj excludes both.
 - **Product identity and data folders.** The app is "TitanPlanner": its own MSI upgrade code and install
-  folder (`wix/Program.cs`) and its own data folders via `Settings.AppConfigName`. On first launch
+  folder (`wix/Program.cs`) and its own data folders via `Settings.AppConfigName` (`app.config` for the
+  log files). On first launch
   `DataFolderMigration` copies the previous folders (`Settings.PreviousAppConfigNames`, "Mission
   Planner") into the new ones. The NextVision edition sets these to "TitanPlanner-NextVision" and
   `{ "TitanPlanner", "Mission Planner" }`, so those lines differ between the two repos by design.
