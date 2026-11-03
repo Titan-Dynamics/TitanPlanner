@@ -208,6 +208,7 @@ Sensible default Quick tab options on first run; reset and reset-all per-item; l
 The WPOverlay2 rendering pipeline with its MissionStyleEditor, `MissionSegmentizer` arcs, `GMapRoute` arrow modes, `GMapMarkerWP` marker types with centred text, the plane return-path command, and correct `DO_LAND_START` Z units.
 
 ## Fork Additions
+- **Elevation Graph** box on the PLAN tab: the mission's altitude over the terrain in a panel over the bottom of the map, with the rally points and, when connected, the fence ceiling, floor and circle, and the points outside the fence marked (upstream PR [#3813](https://github.com/ArduPilot/MissionPlanner/pull/3813))
 - **Center to Vehicle** button
 - **Clear all** in PLAN tab; clear-path from FlightData
 - 2D ↔ 3D map waypoint sync

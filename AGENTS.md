@@ -184,4 +184,8 @@ the git log has those. `ChangeLog.txt` is upstream's and is not maintained here.
   moves the pivot back to the centre first. A rotated map turns its tiles about that point but its overlays
   about the view centre, so there `Pan` moves `Position` itself (re-centring and re-projecting each step). The DATA update loop changes overlays on its own thread and GMap's
   collections don't lock, so UI-thread code that walks overlays has to survive a collection changing under it.
+- **PLAN elevation graph.** The Elevation Graph box over the bottom of the PLAN map is upstream PR #3813
+  (`Controls/PlanElevationGraph.cs`, `Controls/ElevationGraphProfile.cs`, hooks in `FlightPlanner.cs`), merged in
+  before upstream took it. When upstream merges it, take upstream's version; the fork only moves
+  `CHK_elevationgraph` clear of its Clear All / Center to Vehicle buttons in `FlightPlanner.resx`.
 - **Commits.** Messages carry no AI attribution trailers. Do not commit or push unless asked.

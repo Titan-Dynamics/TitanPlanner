@@ -79,6 +79,7 @@ namespace MissionPlanner.GCSViews
             this.chk_usemavftp = new System.Windows.Forms.CheckBox();
             this.BUT_center_on_mav = new MissionPlanner.Controls.MyButton();
             this.BUT_clear_all = new MissionPlanner.Controls.MyButton();
+            this.CHK_elevationgraph = new System.Windows.Forms.CheckBox();
             this.but_mincommands = new MissionPlanner.Controls.MyButton();
             this.CMB_altmode = new System.Windows.Forms.ComboBox();
             this.CHK_splinedefault = new System.Windows.Forms.CheckBox();
@@ -422,6 +423,7 @@ namespace MissionPlanner.GCSViews
             this.panelWaypoints.Controls.Add(this.chk_usemavftp);
             this.panelWaypoints.Controls.Add(this.BUT_center_on_mav);
             this.panelWaypoints.Controls.Add(this.BUT_clear_all);
+            this.panelWaypoints.Controls.Add(this.CHK_elevationgraph);
             this.panelWaypoints.Controls.Add(this.but_mincommands);
             this.panelWaypoints.Controls.Add(this.CMB_altmode);
             this.panelWaypoints.Controls.Add(this.CHK_splinedefault);
@@ -463,6 +465,14 @@ namespace MissionPlanner.GCSViews
             this.BUT_clear_all.TextColorNotEnabled = System.Drawing.Color.FromArgb(((int)(((byte)(64)))), ((int)(((byte)(87)))), ((int)(((byte)(4)))));
             this.BUT_clear_all.UseVisualStyleBackColor = true;
             this.BUT_clear_all.Click += new System.EventHandler(this.BUT_clear_all_Click);
+            //
+            // CHK_elevationgraph
+            // 
+            resources.ApplyResources(this.CHK_elevationgraph, "CHK_elevationgraph");
+            this.CHK_elevationgraph.Name = "CHK_elevationgraph";
+            this.toolTip1.SetToolTip(this.CHK_elevationgraph, resources.GetString("CHK_elevationgraph.ToolTip"));
+            this.CHK_elevationgraph.UseVisualStyleBackColor = true;
+            this.CHK_elevationgraph.CheckedChanged += new System.EventHandler(this.CHK_elevationgraph_CheckedChanged);
             // 
             // but_mincommands
             // 
@@ -1788,6 +1798,7 @@ namespace MissionPlanner.GCSViews
         public CheckBox chk_usemavftp;
         private Controls.MyButton BUT_center_on_mav;
         private Controls.MyButton BUT_clear_all;
+        public CheckBox CHK_elevationgraph;
         private DataGridViewComboBoxColumn Command;
         private DataGridViewTextBoxColumn Param1;
         private DataGridViewTextBoxColumn Param2;
