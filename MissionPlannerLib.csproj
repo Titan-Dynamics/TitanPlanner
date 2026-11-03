@@ -340,7 +340,6 @@
  <ItemGroup>
    <Compile Remove="Controls\OpenGLtest.cs" />
    <Compile Remove="Controls\Map3D\**" />
-   <Compile Remove="Controls\TerrainProfile\**" />
    <Compile Remove="Utilities\ImageMatch.cs" />
  </ItemGroup>
 
