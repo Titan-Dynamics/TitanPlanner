@@ -186,9 +186,13 @@ the git log has those. `ChangeLog.txt` is upstream's and is not maintained here.
   collections don't lock, so UI-thread code that walks overlays has to survive a collection changing under it.
 - **PLAN terrain profile.** `Controls/TerrainProfile/` (excluded from the LIB build): `MissionProfile` is the pure
   route logic (mission order from home, altitudes AMSL by each item's frame, terrain-frame legs following the
-  ground, takeoff/landing/RTL) with tests in `MissionPlannerTests/Controls/TerrainProfileTests.cs`;
-  `TerrainProfilePanel` draws it over `MainMap` from its Paint event and takes the mouse through
-  `myGMAP.OverlayPanel`. `FlightPlanner.writeKML` hands it the mission; it rebuilds on a worker thread, taking
-  the ground from a loaded GeoTIFF elevation model first (as `srtm.getAltitude` does), else `srtm.GetCell`, and
-  retries while tiles download. It replaces upstream's `ElevationProfile` dialog.
+  ground, takeoff/landing/RTL, rally points, spline legs from `MissionSegmentizer` as WPOverlay2 draws them) and
+  `MissionFence` the fence rules ported from upstream PR #3813 (limits, circle, polygon areas, `FENCE_ACTION` /
+  `FENCE_AUTOENABLE` / SYS_STATUS state), with tests in `MissionPlannerTests/Controls/TerrainProfileTests.cs`;
+  `TerrainProfilePanel` draws it over `MainMap` from its Paint event and takes the mouse and wheel through
+  `myGMAP.OverlayPanel`. `FlightPlanner.UpdateTerrainProfile` hands it a `ProfileInput` after each edit and on
+  `timer1` (the grid for the type being edited, the vehicle's copies for the rest while connected, the fence
+  parameters); an unchanged signature rebuilds nothing. It rebuilds on a worker thread, taking the ground from a
+  loaded GeoTIFF elevation model first (as `srtm.getAltitude` does), else `srtm.GetCell`, and retries while tiles
+  download. It replaces upstream's `ElevationProfile` dialog.
 - **Commits.** Messages carry no AI attribution trailers. Do not commit or push unless asked.

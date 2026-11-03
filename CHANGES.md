@@ -209,6 +209,9 @@ The WPOverlay2 rendering pipeline with its MissionStyleEditor, `MissionSegmentiz
 
 ## Fork Additions
 - **Terrain profile** along the foot of the PLAN map: the mission's altitude in the theme's accent over the ground under its route, with its length, peak and least clearance, places it goes below the terrain in red, and a readout and map marker for the point under the pointer; it folds to a slim bar, and takes the place of upstream's Map Tool → Elevation Graph dialog
+- The terrain profile shows the rally points in purple, at the route's nearest point or, without a mission, along a line through them, and follows spline legs along the map's curve
+- While connected, the terrain profile shows the vehicle's fence: the ceiling and floor (red when it will hold to them, grey when off or not in `FENCE_TYPE`) and where the route crosses the fence circle, which the PLAN map draws too; points outside the fence are ringed in red and named in its header (after upstream PR [#3813](https://github.com/ArduPilot/MissionPlanner/pull/3813))
+- The terrain profile zooms with a dragged box or the mouse wheel and pans with Ctrl+drag, keeping the zoom while the plan is edited; it resizes from its top edge, and a double-click on its header makes it tall
 - **Center to Vehicle** button
 - **Clear all** in PLAN tab; clear-path from FlightData
 - 2D ↔ 3D map waypoint sync

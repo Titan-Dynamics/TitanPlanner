@@ -39,6 +39,7 @@ using System.Windows.Forms;
 using System.Xml;
 #if !LIB
 using GDAL;
+using MissionPlanner.Controls.TerrainProfile;
 #endif
 using GeoAPI.CoordinateSystems;
 using GeoAPI.CoordinateSystems.Transformations;
@@ -167,9 +168,13 @@ namespace MissionPlanner.GCSViews
 
 #if !LIB
             // the terrain profile along the foot of the map, drawn over it after the map's own painting
-            terrainProfile = new Controls.TerrainProfile.TerrainProfilePanel(MainMap);
+            terrainProfile = new TerrainProfilePanel(MainMap);
             MainMap.OverlayPanel = terrainProfile;
             MainMap.Paint += (s, e) => terrainProfile.Paint(e.Graphics);
+
+            // the connected vehicle's fence circle, drawn by timer1 while the vehicle will hold to it
+            fenceCircleOverlay = new GMapOverlay("fencecircle");
+            MainMap.Overlays.Add(fenceCircleOverlay);
 #endif
 
             MainMap.MapScaleInfoEnabled = false;
@@ -297,7 +302,13 @@ namespace MissionPlanner.GCSViews
         public List<PointLatLngAlt> pointlist { get; set; } = new List<PointLatLngAlt>();
 
 #if !LIB
-        private Controls.TerrainProfile.TerrainProfilePanel terrainProfile;
+        private TerrainProfilePanel terrainProfile;
+        private GMapOverlay fenceCircleOverlay;
+
+        // the circle on the map now, as text (home and radius); "" for none
+        private string fenceCircleShown = "";
+
+        private static readonly Pen FenceCirclePen = new Pen(Color.Red, 2) { DashStyle = DashStyle.Dash };
 #endif
 
 
@@ -1528,12 +1539,6 @@ namespace MissionPlanner.GCSViews
 
                     pointlist = activePointlist;
 
-#if !LIB
-                    // multirotors (and an unknown vehicle) land straight down; planes glide in
-                    terrainProfile?.SetMission(home, commandlist,
-                        MainV2.comPort.MAV.cs.vehicleClass != VehicleClass.Plane);
-#endif
-
                     if (!useV2)
                     {
                         foreach (var pointLatLngAlt in pointlist.PrevNowNext())
@@ -1589,13 +1594,6 @@ namespace MissionPlanner.GCSViews
 
                     MainMap.Refresh();
                 }
-#if !LIB
-                else
-                {
-                    // the grid holds fence or rally points: no route to profile
-                    terrainProfile?.SetMission(null, null, false);
-                }
-#endif
 
                 if ((MAVLink.MAV_MISSION_TYPE) cmb_missiontype.SelectedValue == MAVLink.MAV_MISSION_TYPE.FENCE)
                 {
@@ -1685,12 +1683,171 @@ namespace MissionPlanner.GCSViews
 
                     MainMap.Refresh();
                 }
+
+#if !LIB
+                UpdateTerrainProfile();
+#endif
             }
             catch (FormatException ex)
             {
                 CustomMessageBox.Show(Strings.InvalidNumberEntered + "\n" + ex.Message, Strings.ERROR);
             }
         }
+
+#if !LIB
+        /// <summary>
+        /// Hands the terrain profile the plan as it stands. The grid holds the items of the type the dropdown is
+        /// editing; mission or rally points it doesn't hold come from the vehicle's copy while connected. Those copies
+        /// outlive a disconnect, and a vehicle that has gone mustn't have its fence flag points offline, so offline
+        /// there are none. The fence items give the polygon fence, the vehicle's parameters the ceiling, floor and
+        /// circle, and its SYS_STATUS whether the fence is on. Called after each edit and on the page's timer, which
+        /// catches what the grid doesn't see (parameters, downloads); a plan that hasn't changed rebuilds nothing.
+        /// </summary>
+        private void UpdateTerrainProfile()
+        {
+            if (terrainProfile == null)
+                return;
+
+            try
+            {
+                terrainProfile.SetInput(GetTerrainProfileInput());
+            }
+            catch (FormatException)
+            {
+                // a cell that isn't a number: writeKML says so
+            }
+            catch (Exception ex)
+            {
+                // a parameter read gives up while a parameter download holds the list; the next tick tries again
+                log.Warn("Terrain profile: could not read the plan or the fence parameters", ex);
+            }
+        }
+
+        private ProfileInput GetTerrainProfileInput()
+        {
+            var type = cmb_missiontype.SelectedValue is MAVLink.MAV_MISSION_TYPE selected
+                ? selected
+                : MAVLink.MAV_MISSION_TYPE.MISSION;
+            var grid = GetCommandList();
+            var mav = MainV2.comPort.MAV;
+            bool connected = MainV2.comPort.BaseStream != null && MainV2.comPort.BaseStream.IsOpen;
+            var none = new List<Locationwp>();
+
+            // on ArduPilot the vehicle's mission starts with home, which the grid doesn't show either
+            int skipHome = mav.apname == MAVLink.MAV_AUTOPILOT.ARDUPILOTMEGA ? 1 : 0;
+            var mission = type == MAVLink.MAV_MISSION_TYPE.MISSION ? grid
+                : !connected ? none
+                : mav.wps.OrderBy(a => a.Key).Skip(skipHome).Select(a => (Locationwp) a.Value).ToList();
+            var rally = type == MAVLink.MAV_MISSION_TYPE.RALLY ? grid
+                : !connected ? none
+                : mav.rallypoints.OrderBy(a => a.Key).Select(a => (Locationwp) a.Value).ToList();
+            var fenceItems = type == MAVLink.MAV_MISSION_TYPE.FENCE ? grid
+                : !connected ? none
+                : mav.fencepoints.OrderBy(a => a.Key).Select(a => (Locationwp) a.Value).ToList();
+
+            var areas = MissionFence.AreasOf(fenceItems);
+            var fence = connected
+                ? MissionFence.FromParameters(ParamLookup(mav), ReportedFenceEnabled(mav), areas)
+                : new MissionFence { Areas = areas };
+
+            double loiterRadius;
+            double.TryParse(TXT_loiterrad.Text, out loiterRadius);
+
+            return new ProfileInput
+            {
+                Home = GetPlannedHome(),
+                Mission = mission,
+                Rally = rally,
+                Fence = fence.IsEmpty ? null : fence,
+                VehicleClass = mav.cs.vehicleClass,
+                LoiterRadius = Math.Abs(loiterRadius) / CurrentState.multiplierdist
+            };
+        }
+
+        /// <summary>
+        /// A parameter lookup for one pass over the fence settings, reading each name from the vehicle's list once:
+        /// every read takes the list's reader lock (up to a second while a parameter download writes it) and walks it.
+        /// </summary>
+        private static Func<string, double?> ParamLookup(MAVState mav)
+        {
+            var read = new Dictionary<string, double?>();
+            return name =>
+            {
+                double? value;
+                if (!read.TryGetValue(name, out value))
+                    read[name] = value = mav.param[name]?.Value;
+                return value;
+            };
+        }
+
+        /// <summary>
+        /// The geofence bit of the vehicle's SYS_STATUS enabled sensors, or null until it reports a fence at all (no
+        /// SYS_STATUS yet, or its geofence present bit clear).
+        /// </summary>
+        private static bool? ReportedFenceEnabled(MAVState mav)
+        {
+            var present = mav.cs.sensors_present;
+            return present.seen && present.geofence ? mav.cs.sensors_enabled.geofence : (bool?) null;
+        }
+
+        /// <summary>Home from the Home Location boxes, its altitude in metres; null when they are empty, not numbers, or 0, 0.</summary>
+        private PointLatLngAlt GetPlannedHome()
+        {
+            double lat, lng, alt;
+            if (!double.TryParse(TXT_homelat.Text, out lat) || !double.TryParse(TXT_homelng.Text, out lng) ||
+                !double.TryParse(TXT_homealt.Text, out alt) || (lat == 0 && lng == 0))
+                return null;
+            return new PointLatLngAlt(lat, lng, alt / CurrentState.multiplieralt, "H");
+        }
+
+        /// <summary>
+        /// Draws the connected vehicle's fence circle on the map, FENCE_RADIUS around home, while the vehicle will hold
+        /// to it: FENCE_TYPE has the circle and the fence is on, or turns itself on at takeoff or arming. Runs on the
+        /// page's timer, so a change of parameters, fence state or home shows within a second or two.
+        /// </summary>
+        private void UpdateFenceCircle()
+        {
+            if (fenceCircleOverlay == null)
+                return;
+
+            var home = GetPlannedHome();
+            double radius = 0;
+            if (home != null && MainV2.comPort.BaseStream != null && MainV2.comPort.BaseStream.IsOpen)
+            {
+                var mav = MainV2.comPort.MAV;
+                var fence = MissionFence.FromParameters(ParamLookup(mav), ReportedFenceEnabled(mav), null);
+                if (fence.EnforcesCircle)
+                    radius = fence.CircleRadius;
+            }
+
+            var shown = radius <= 0
+                ? ""
+                : string.Join(",", home.Lat.ToString("R", CultureInfo.InvariantCulture),
+                    home.Lng.ToString("R", CultureInfo.InvariantCulture), radius.ToString("R", CultureInfo.InvariantCulture));
+            if (shown == fenceCircleShown)
+                return;
+            fenceCircleShown = shown;
+
+            var old = fenceCircleOverlay.Polygons.ToList();
+            fenceCircleOverlay.Polygons.Clear();
+            old.ForEach(a => a.Dispose());
+            if (radius > 0)
+            {
+                const int corners = 90;
+                var points = Enumerable.Range(0, corners)
+                    .Select(a => (PointLatLng) home.newpos(a * 360.0 / corners, radius))
+                    .ToList();
+                fenceCircleOverlay.Polygons.Add(new GMapPolygon(points, "fencecircle")
+                {
+                    Stroke = FenceCirclePen,
+                    Fill = Brushes.Transparent,
+                    IsHitTestVisible = false
+                });
+            }
+
+            MainMap.Invalidate();
+        }
+#endif
 
         internal IList<Locationwp> GetFlightPlanLocations()
         {
@@ -7094,6 +7251,12 @@ Column 1: Field type (RALLY is the only one at the moment -- may have RALLY_LAND
 
                 if (isMouseDown || CurentRectMarker != null)
                     return;
+
+#if !LIB
+                // what the grid doesn't see: the fence parameters and state, and downloads into the vehicle's copy
+                UpdateTerrainProfile();
+                UpdateFenceCircle();
+#endif
 
                 // in metres, like the terrain they are compared with; the planned home altitude
                 // is kept in display units, as typed in the home alt box

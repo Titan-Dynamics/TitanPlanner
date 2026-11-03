@@ -25,6 +25,7 @@ namespace MissionPlanner.Controls
         void OnMouseMove(MouseEventArgs e);
         void OnMouseDown(MouseEventArgs e);
         void OnMouseUp(MouseEventArgs e);
+        void OnMouseWheel(MouseEventArgs e);
         void OnMouseLeave();
     }
 
@@ -140,6 +141,13 @@ namespace MissionPlanner.Controls
 
         protected override void OnMouseWheel(MouseEventArgs e)
         {
+            // the wheel over the panel is the panel's
+            if (OverlayPanel != null && OverlayPanel.HitTest(e.Location))
+            {
+                OverlayPanel.OnMouseWheel(e);
+                return;
+            }
+
             if (!Core.IsDragging)
             {
                 // standard delta is 120, so normalize; ticks during the animation add to where it is heading
