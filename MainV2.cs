@@ -4095,11 +4095,14 @@ namespace MissionPlanner
             GMapMarkerBase.DisplayNavBearingSetting = Settings.Instance.GetBoolean("GMapMarkerBase_DisplayNavBearing", true);
             GMapMarkerBase.DisplayRadiusSetting = Settings.Instance.GetBoolean("GMapMarkerBase_DisplayRadius", true);
             GMapMarkerBase.DisplayTargetSetting = Settings.Instance.GetBoolean("GMapMarkerBase_DisplayTarget", true);
-            var inactiveDisplayStyle = GMapMarkerBase.InactiveDisplayStyleEnum.Normal;
-            string inactiveDisplayStyleStr = Settings.Instance.GetString("GMapMarkerBase_InactiveDisplayStyle", inactiveDisplayStyle.ToString());
+            // Vehicles other than the selected one are faded by default. The older key was saved at every start, Normal
+            // included, so of its values only Hidden was a choice.
+            var inactiveDisplayStyle = GMapMarkerBase.InactiveDisplayStyleEnum.Transparent;
+            string inactiveDisplayStyleStr = Settings.Instance.GetString("GMapMarkerBase_InactiveStyle",
+                Settings.Instance.GetString("GMapMarkerBase_InactiveDisplayStyle") == "Hidden" ? "Hidden" : inactiveDisplayStyle.ToString());
             Enum.TryParse(inactiveDisplayStyleStr, out inactiveDisplayStyle);
             GMapMarkerBase.InactiveDisplayStyle = inactiveDisplayStyle;
-            Settings.Instance["GMapMarkerBase_InactiveDisplayStyle"] = inactiveDisplayStyle.ToString();
+            Settings.Instance["GMapMarkerBase_InactiveStyle"] = inactiveDisplayStyle.ToString();
 
             // Initialize auto-connect USB feature (default ON)
             InitializeUSBAutoConnect();

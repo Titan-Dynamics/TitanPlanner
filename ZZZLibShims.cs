@@ -520,6 +520,17 @@ public class Map3D: OpenGLtest
 {
     public static Map3D instance;
 
+    public class VehicleFeed
+    {
+        public VehicleFeed(MAVState vehicle, PointLatLngAlt position, MissionPlanner.Utilities.Vector3 attitude,
+            MissionPlanner.Utilities.Vector3 velocity)
+        {
+        }
+    }
+
+    public void SetVehicles(List<VehicleFeed> feeds)
+    {
+    }
 }
 
 

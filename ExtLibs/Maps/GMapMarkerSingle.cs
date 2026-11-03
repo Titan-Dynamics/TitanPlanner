@@ -71,10 +71,10 @@ namespace MissionPlanner.Maps
             if (IsTransparent)
             {
                 // Draw image with transparency using a color matrix
-                var cm = new System.Drawing.Imaging.ColorMatrix { Matrix33 = 0.39f };
+                var cm = new System.Drawing.Imaging.ColorMatrix { Matrix33 = InactiveOpacity };
                 ia.SetColorMatrix(cm, System.Drawing.Imaging.ColorMatrixFlag.Default, System.Drawing.Imaging.ColorAdjustType.Bitmap);
 
-                fontBrush.Color = Color.FromArgb(100, fontBrush.Color);
+                fontBrush.Color = Color.FromArgb(InactiveAlpha, fontBrush.Color);
             }
             g.DrawImage(icon, new Rectangle(-icon.Width / 2, -icon.Width / 2, icon.Width, icon.Height), 0, 0, icon.Width, icon.Height, GraphicsUnit.Pixel, ia);
 #else

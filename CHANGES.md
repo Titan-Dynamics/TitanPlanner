@@ -51,6 +51,8 @@ No Russian-localized HUD variant and no time readout; the CPU message and link s
 ## Real-Time Vehicle Rendering
 The connected vehicle renders in 3D with default STL models per MAV type (plane, quadplane, copter, rover, boat, sub, tricopter, etc.) in correct colours, over terrain drawn out to just past the horizon (30–150 km depending on altitude). The model is uploaded to the GPU once and lit in a shader.
 
+With several vehicles connected, every one is drawn with its own model, the ones not selected at half opacity as on the 2D map and in a translucent ring the size of the waypoint markers with its system ID above it, so they stand out from far off; selecting another puts the camera straight behind it, with its trail already recorded.
+
 ## Terrain Streaming Engine
 Terrain streams Google Earth style:
 - **Screen-space level of detail.** A tile quadtree is refined until each imagery texel is about a pixel on screen, up to zoom 24 within 100 m of the ground, 22 up to 500 m and 20 above, so detail follows what the camera actually sees; there is no zoom setting to manage.
@@ -62,18 +64,18 @@ Terrain streams Google Earth style:
 - **No reloads while flying.** Tiles keep their own UTM origins, so moving the scene origin never discards loaded terrain.
 - **Light when hidden, quick to show.** Hiding the 3D map frees its terrain and elevation data so RAM drops back, while the view itself stays ready, so showing it again is near-instant. Elevation lookups never block the UI, and the vehicle model loads in the background.
 - **Idle rendering.** Full frame rate only while something changes (connected vehicle, terrain streaming, markers, ADS-B, input, the 2D map moving, or the stats panel open); otherwise one frame a second.
-- **Stats for nerds** (3D map Settings, off by default): a colour-coded panel with FPS and a frame-time graph, terrain streaming internals (tiles, per-zoom histogram, GPU memory, queue, load rate, failures, elevation status), the camera view and GPU info.
+- **Stats For Nerds** (3D map Settings, off by default): a colour-coded panel with FPS and a frame-time graph, terrain streaming internals (tiles, per-zoom histogram, GPU memory, queue, load rate, failures, elevation status), the camera view and GPU info.
 
 ## Camera & Visual Effects
 - **FPV mode** with smooth camera movement and pitch-matched heading lines
-- **HUD overlay** setting: the DATA tab's HUD, with its items and plugin drawings, over the 3D view without its sky and ground
-- **Clouds**: three drifting layers (cumulus, patchy mid-level cloud and high streaks) at least a kilometre above the vehicle, with cloudy and clear stretches, shaded from below, hidden behind high terrain and fading into the horizon; a **Cloud density** setting from 0 (none) to 100, default 50, sets how much of the sky they cover
+- **HUD Overlay** setting: the DATA tab's HUD, with its items and plugin drawings, over the 3D view without its sky and ground
+- **Clouds**: three drifting layers (cumulus, patchy mid-level cloud and high streaks) at least a kilometre above the vehicle, with cloudy and clear stretches, shaded from below, hidden behind high terrain and fading into the horizon; a **Cloud Density** setting from 0 (none) to 100, default 50, sets how much of the sky they cover
 - **Orbital camera** mode
 - **Distance haze** that fades terrain into the sky's horizon colour before the edge of the loaded terrain, at every altitude
 - **Sky gradient** that follows the true horizon through pitch and roll
 - **Heading indicators** and dynamic render distance
 - **Trailing flight path** with Kalman-smoothed lines on all axes, curving into the vehicle along its velocity; render gated on stable telemetry
-- **Smooth movement** setting (on by default): the vehicle's position, altitude and attitude, its trail and ADS-B traffic are carried along between telemetry updates and filtered; off, everything is drawn from the raw telemetry. Disarmed, or when the position jumps more than 100 m, the vehicle and the view go straight to it instead of gliding across the map
+- **Smooth Movement** setting (on by default): the vehicle's position, altitude and attitude, its trail and ADS-B traffic are carried along between telemetry updates and filtered; off, everything is drawn from the raw telemetry. Disarmed, or when the position jumps more than 100 m, the vehicle and the view go straight to it instead of gliding across the map
 - **High-altitude rendering** improvements
 
 ## ADS-B in 3D
@@ -82,7 +84,7 @@ ADS-B traffic is rendered with proper depth testing and pass ordering so it corr
 ## Persistence & UX
 - Camera distance, height, and angle saved on close
 - Settings dialog overhaul with persistence and out-of-range guards, opened from a translucent gear icon in the top-left corner
-- Configurable marker size
+- Configurable **Marker Size**, for the waypoints and the rings around other vehicles
 - Reset button defaults aligned with settings defaults
 - 2D ↔ 3D map waypoint and position synchronization
 - Required-valid-GPS gate before vehicle tracking begins
@@ -234,6 +236,7 @@ The WPOverlay2 rendering pipeline with its MissionStyleEditor, `MissionSegmentiz
 - Smooth dragging on the DATA map, and an autopan that glides after the vehicle instead of jumping every few seconds
 - Animated zoom on the maps: the mouse wheel, zoom slider, zoom box and zoom buttons ease to the new level, about the centre of the view
 - An **(i)** button in the DATA map's corner toggles the legend of the vehicle's lines (Current Heading, Direction to WP, Target Heading, Ground Track)
+- With several vehicles connected, the ones not selected are drawn at half opacity without their lines; Config > Planner's secondary display style can show them solid or hide them
 - Clean pixel-perfect bottom-bar layout
 - Auto-pan on parameter button swap
 

@@ -78,7 +78,7 @@ namespace MissionPlanner.Maps
             if (IsTransparent)
             {
                 var colorMatrix = new System.Drawing.Imaging.ColorMatrix();
-                colorMatrix.Matrix33 = 0.4f;
+                colorMatrix.Matrix33 = InactiveOpacity;
                 var imageAttributes = new System.Drawing.Imaging.ImageAttributes();
                 imageAttributes.SetColorMatrix(colorMatrix);
                 g.DrawImage(icon, new Rectangle(0, 0, icon.Width, icon.Height),

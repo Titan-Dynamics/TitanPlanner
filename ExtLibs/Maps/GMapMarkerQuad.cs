@@ -34,7 +34,7 @@ namespace MissionPlanner.Maps
             set
             {
                 _greenpen = value;
-                _transparent_greenpen = new Pen(Color.FromArgb(100, _greenpen.Color), _greenpen.Width);
+                _transparent_greenpen = new Pen(Color.FromArgb(InactiveAlpha, _greenpen.Color), _greenpen.Width);
             }
         }
         static Pen bluepen
@@ -42,7 +42,7 @@ namespace MissionPlanner.Maps
             set
             {
                 _bluepen = value;
-                _transparent_bluepen = new Pen(Color.FromArgb(100, _bluepen.Color), _bluepen.Width);
+                _transparent_bluepen = new Pen(Color.FromArgb(InactiveAlpha, _bluepen.Color), _bluepen.Width);
             }
         }
         static SolidBrush greenbrush
@@ -50,7 +50,7 @@ namespace MissionPlanner.Maps
             set
             {
                 _greenbrush = value;
-                _transparent_greenbrush = new SolidBrush(Color.FromArgb(100, _greenbrush.Color));
+                _transparent_greenbrush = new SolidBrush(Color.FromArgb(InactiveAlpha, _greenbrush.Color));
             }
         }
 
@@ -59,7 +59,7 @@ namespace MissionPlanner.Maps
             set
             {
                 _textbrush = value;
-                _transparent_textbrush = new SolidBrush(Color.FromArgb(100, _textbrush.Color));
+                _transparent_textbrush = new SolidBrush(Color.FromArgb(InactiveAlpha, _textbrush.Color));
             }
         }
 
@@ -166,7 +166,7 @@ namespace MissionPlanner.Maps
             if (IsTransparent)
             {
                 var colorMatrix = new System.Drawing.Imaging.ColorMatrix();
-                colorMatrix.Matrix33 = 0.4f;
+                colorMatrix.Matrix33 = InactiveOpacity;
                 var imageAttributes = new System.Drawing.Imaging.ImageAttributes();
                 imageAttributes.SetColorMatrix(colorMatrix);
                 g.DrawImage(icon, new Rectangle(icon.Width / -2, icon.Height / -2, icon.Width, icon.Height),

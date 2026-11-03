@@ -49,6 +49,12 @@ namespace MissionPlanner.Controls
             }
         }
 
+        /// <summary>The vehicle whose model this is; null for the selected one.</summary>
+        public MAVState Vehicle { get; set; }
+
+        /// <summary>The type of the vehicle the model is chosen for.</summary>
+        public MAVLink.MAV_TYPE VehicleType => CurrentMavType();
+
         /// <summary>
         /// Starts parsing the current vehicle's model in the background, so it is ready by the time the map draws.
         /// </summary>
@@ -117,11 +123,11 @@ namespace MissionPlanner.Controls
 
         private bool UsingCustomSTL => !string.IsNullOrEmpty(_customSTLPath) && File.Exists(_customSTLPath);
 
-        private static MAVLink.MAV_TYPE CurrentMavType()
+        private MAVLink.MAV_TYPE CurrentMavType()
         {
             try
             {
-                return MainV2.comPort?.MAV?.aptype ?? MAVLink.MAV_TYPE.FIXED_WING;
+                return (Vehicle ?? MainV2.comPort?.MAV)?.aptype ?? MAVLink.MAV_TYPE.FIXED_WING;
             }
             catch
             {
@@ -174,7 +180,7 @@ namespace MissionPlanner.Controls
         {
             try
             {
-                var param = MainV2.comPort?.MAV?.param;
+                var param = (Vehicle ?? MainV2.comPort?.MAV)?.param;
                 if (param != null && param.ContainsKey("Q_ENABLE"))
                 {
                     return param["Q_ENABLE"].Value == 1.0;

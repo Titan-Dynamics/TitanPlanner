@@ -18,7 +18,11 @@ namespace MissionPlanner.Maps
         public static bool DisplayRadiusSetting = true;
         public static bool DisplayTargetSetting = true;
         public static int length = 500;
-        public static InactiveDisplayStyleEnum InactiveDisplayStyle = InactiveDisplayStyleEnum.Normal;
+        public static InactiveDisplayStyleEnum InactiveDisplayStyle = InactiveDisplayStyleEnum.Transparent;
+
+        /// <summary>How opaque a vehicle other than the selected one is drawn with the Transparent style.</summary>
+        public const float InactiveOpacity = 0.5f;
+        protected static readonly int InactiveAlpha = (int)Math.Round(255 * InactiveOpacity);
 
         // Custom aircraft icon support
         private static Bitmap _customIcon;

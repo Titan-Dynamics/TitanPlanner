@@ -54,10 +54,7 @@ namespace MissionPlanner.GCSViews.ConfigurationView
             CMB_severity.Items.Add(SeverityLevel.Debug);
 
             cmb_secondarydisplaystyle.DataSource = Enum.GetNames(typeof(Maps.GMapMarkerBase.InactiveDisplayStyleEnum));
-            cmb_secondarydisplaystyle.Text = Settings.Instance.GetString(
-                "GMapMarkerBase_InactiveDisplayStyle",
-                Maps.GMapMarkerBase.InactiveDisplayStyleEnum.Normal.ToString()
-            );
+            cmb_secondarydisplaystyle.Text = Maps.GMapMarkerBase.InactiveDisplayStyle.ToString();
 
             BuildLayout();
         }
@@ -1667,13 +1664,13 @@ namespace MissionPlanner.GCSViews.ConfigurationView
             if (Enum.TryParse(cmb_secondarydisplaystyle.Text,
                               out Maps.GMapMarkerBase.InactiveDisplayStyleEnum result))
             {
-                Settings.Instance["GMapMarkerBase_InactiveDisplayStyle"] = cmb_secondarydisplaystyle.Text;
+                Settings.Instance["GMapMarkerBase_InactiveStyle"] = cmb_secondarydisplaystyle.Text;
                 Maps.GMapMarkerBase.InactiveDisplayStyle = result;
             }
             else
             {
-                Settings.Instance["GMapMarkerBase_InactiveDisplayStyle"] = Maps.GMapMarkerBase.InactiveDisplayStyleEnum.Normal.ToString();
-                Maps.GMapMarkerBase.InactiveDisplayStyle = Maps.GMapMarkerBase.InactiveDisplayStyleEnum.Normal;
+                Settings.Instance["GMapMarkerBase_InactiveStyle"] = Maps.GMapMarkerBase.InactiveDisplayStyleEnum.Transparent.ToString();
+                Maps.GMapMarkerBase.InactiveDisplayStyle = Maps.GMapMarkerBase.InactiveDisplayStyleEnum.Transparent;
             }
         }
 

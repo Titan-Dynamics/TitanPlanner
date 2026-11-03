@@ -1588,6 +1588,22 @@ namespace MissionPlanner.GCSViews
             });
         }
 
+        /// <summary>
+        /// Adds a vehicle that has a position to the 3D map's set, on the 3D map's ground plus its height above home.
+        /// </summary>
+        private static bool Add3DMapVehicle(List<Map3D.VehicleFeed> vehicles, MAVState MAV)
+        {
+            var cs = MAV.cs;
+            if (cs.lat == 0 || cs.lng == 0)
+                return false;
+
+            var terrainAlt = srtm.getAltitude(cs.lat, cs.lng).alt;
+            vehicles.Add(new Map3D.VehicleFeed(MAV,
+                new PointLatLngAlt(cs.lat, cs.lng, terrainAlt + cs.alt / CurrentState.multiplieralt, "here"),
+                new Vector3(cs.roll, cs.pitch, cs.yaw), new Vector3(cs.vx, cs.vy, cs.vz)));
+            return true;
+        }
+
         private void addMissionRouteMarker(GMapMarker marker)
         {
             if (marker == null) return;
@@ -4803,23 +4819,26 @@ namespace MissionPlanner.GCSViews
                             "here");
                     }
 
-                    // update 3D map (only when connected with valid location - disconnected mode uses 2D map center).
+                    // update 3D map: every vehicle with a position (disconnected, it follows the 2D map's centre).
                     // Not while it is hidden: the terrain lookup would load back an SRTM cell the hide just freed.
-                    if (Map3D.instance != null && Map3D.instance.IsActive && MainV2.comPort?.BaseStream?.IsOpen == true &&
-                        MainV2.comPort.MAV.cs.lat != 0 && MainV2.comPort.MAV.cs.lng != 0)
+                    if (Map3D.instance != null && Map3D.instance.IsActive)
                     {
-                        Map3D.instance.rpy = new Vector3(MainV2.comPort.MAV.cs.roll,
-                            MainV2.comPort.MAV.cs.pitch,
-                            MainV2.comPort.MAV.cs.yaw);
-                        // Use terrain altitude + relative altitude for correct 3D positioning
-                        var terrainAlt = srtm.getAltitude(MainV2.comPort.MAV.cs.lat, MainV2.comPort.MAV.cs.lng).alt;
-                        var relativeAlt = MainV2.comPort.MAV.cs.alt / CurrentState.multiplieralt;
-                        Map3D.instance.LocationCenter = new PointLatLngAlt(MainV2.comPort.MAV.cs.lat,
-                            MainV2.comPort.MAV.cs.lng, terrainAlt + relativeAlt,
-                            "here");
-                        Map3D.instance.Velocity = new Vector3(MainV2.comPort.MAV.cs.vx, MainV2.comPort.MAV.cs.vy,
-                            MainV2.comPort.MAV.cs.vz);
-                        Map3D.instance.WPs = MainV2.comPort.MAV.wps.Values.Select(a => (Locationwp) a).ToList();
+                        var selectedPort = MainV2.comPort;
+                        var selected = selectedPort.MAV;
+                        var vehicles = new List<Map3D.VehicleFeed>();
+                        foreach (var port in MainV2.Comports.ToArray())
+                        {
+                            if (port?.BaseStream?.IsOpen != true)
+                                continue;
+                            foreach (var MAV in port.MAVlist)
+                                if (MAV != selected)
+                                    Add3DMapVehicle(vehicles, MAV);
+                        }
+
+                        if (selectedPort.BaseStream?.IsOpen == true && Add3DMapVehicle(vehicles, selected))
+                            Map3D.instance.WPs = selected.wps.Values.Select(a => (Locationwp) a).ToList();
+
+                        Map3D.instance.SetVehicles(vehicles);
                     }
 
                     // update vario info

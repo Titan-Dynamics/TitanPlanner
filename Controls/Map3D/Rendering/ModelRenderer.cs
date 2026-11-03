@@ -26,8 +26,12 @@ namespace MissionPlanner.Controls.Scene3D
             _loader = loader;
         }
 
-        /// <summary>Draws the model with the given model matrix (scale, rotation and translation, row-vector order).</summary>
-        public void Draw(ref Matrix4 projection, ref Matrix4 view, Matrix4 model, Color color)
+        /// <summary>
+        /// Draws the model with the given model matrix (scale, rotation and translation, row-vector order). Below full
+        /// opacity it fills the depth buffer first and then colours only its nearest surface, so it fades evenly rather
+        /// than showing its own far side through itself.
+        /// </summary>
+        public void Draw(ref Matrix4 projection, ref Matrix4 view, Matrix4 model, Color color, float opacity = 1)
         {
             if (!EnsureUploaded())
                 return;
@@ -47,12 +51,27 @@ namespace MissionPlanner.Controls.Scene3D
             _program.SetMatrix("ModelView", ref modelView);
             _program.SetMatrix("Model", ref model);
             _program.SetVector3("LightDirection", LightX / lightLength, LightY / lightLength, LightZ / lightLength);
-            _program.SetColor("BaseColor", color.R / 255f, color.G / 255f, color.B / 255f, 1);
+            _program.SetColor("BaseColor", color.R / 255f, color.G / 255f, color.B / 255f, opacity);
 
             GL.BindBuffer(BufferTarget.ArrayBuffer, _vbo);
             _program.Pointer("Position", 3, 6, 0);
             _program.Pointer("Normal", 3, 6, 3);
-            GL.DrawArrays(PrimitiveType.Triangles, 0, _vertexCount);
+            if (opacity < 1)
+            {
+                GL.ColorMask(false, false, false, false);
+                GL.DrawArrays(PrimitiveType.Triangles, 0, _vertexCount);
+                GL.ColorMask(true, true, true, true);
+
+                GL.Enable(EnableCap.Blend);
+                GL.BlendFunc(BlendingFactorSrc.SrcAlpha, BlendingFactorDest.OneMinusSrcAlpha);
+                GL.DepthFunc(DepthFunction.Lequal);
+                GL.DrawArrays(PrimitiveType.Triangles, 0, _vertexCount);
+                GL.Disable(EnableCap.Blend);
+            }
+            else
+            {
+                GL.DrawArrays(PrimitiveType.Triangles, 0, _vertexCount);
+            }
             _program.DisablePointer("Position");
             _program.DisablePointer("Normal");
             GL.BindBuffer(BufferTarget.ArrayBuffer, 0);
@@ -61,7 +80,7 @@ namespace MissionPlanner.Controls.Scene3D
         bool EnsureUploaded()
         {
             // STLModelLoader reports load errors with a message box; don't retry a failed model every frame.
-            string key = _loader.CustomSTLPath + "|" + (MainV2.comPort?.MAV?.aptype.ToString() ?? "");
+            string key = _loader.CustomSTLPath + "|" + _loader.VehicleType;
             if (key == _failedKey)
                 return false;
 

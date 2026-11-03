@@ -37,10 +37,10 @@ namespace MissionPlanner.Controls
 
         private readonly Map3DSettings _settings;
         private readonly WorldFrame _frame = new WorldFrame();
-        private readonly VehicleTracker _vehicle = new VehicleTracker();
+        // The followed vehicle's pose (Map3D.Vehicles.cs); free look starts from its last heading.
+        private VehicleTracker _vehicle = new VehicleTracker();
         private readonly CameraRig _camera = new CameraRig();
         private readonly SelectionParams _selection = new SelectionParams();
-        private readonly STLModelLoader _stlLoader = new STLModelLoader();
         private readonly AdsbOverlay _adsb = new AdsbOverlay();
 
         // Created with the GL context on first paint.
@@ -49,7 +49,7 @@ namespace MissionPlanner.Controls
         private CloudRenderer _clouds;
         private LineRenderer _lines;
         private MissionOverlay _mission;
-        private VehicleOverlay _vehicleOverlay;
+        private VehicleMarkerOverlay _vehicleMarkers;
         private NerdStatsOverlay _nerdStats;
         private HudOverlay _hudOverlay;
         private bool _glFailed;
@@ -64,12 +64,9 @@ namespace MissionPlanner.Controls
         private readonly Stopwatch _cpuClock = new Stopwatch();
         private int _paintErrors;
 
-        // Telemetry written by FlightData's update thread, read once per frame.
+        // Telemetry written by FlightData's update thread, read once per frame; the vehicles' is in Map3D.Vehicles.cs.
         private readonly object _telemetryLock = new object();
         private PointLatLngAlt _telemetryCenter = new PointLatLngAlt(0, 0, 100);
-        private DateTime _telemetryTime;
-        private Vector3 _rpy = new Vector3();
-        private Vector3 _velocity = new Vector3();
 
         // The position the view is centred on: the vehicle, or the 2D map when disconnected. Render thread only.
         private PointLatLngAlt _viewCenter = PointLatLngAlt.Zero;
@@ -102,9 +99,8 @@ namespace MissionPlanner.Controls
         {
             instance = this;
             _settings = Map3DSettings.Load();
-            _stlLoader.CustomSTLPath = _settings.StlPath;
             // Parsed on a worker while the GL context is created, rather than on the UI thread in the first frame.
-            _stlLoader.Preload();
+            new STLModelLoader { CustomSTLPath = _settings.StlPath }.Preload();
 
             InitializeComponent();
             MouseMove += OnMouseMove;
@@ -187,40 +183,7 @@ namespace MissionPlanner.Controls
             set
             {
                 lock (_telemetryLock)
-                {
                     _telemetryCenter = new PointLatLngAlt(value.Lat, value.Lng, value.Alt);
-                    _telemetryTime = DateTime.Now;
-                }
-            }
-        }
-
-        /// <summary>Vehicle roll, pitch and yaw in degrees. Safe to set from any thread.</summary>
-        public Vector3 rpy
-        {
-            get
-            {
-                lock (_telemetryLock)
-                    return new Vector3(_rpy.X, _rpy.Y, _rpy.Z);
-            }
-            set
-            {
-                lock (_telemetryLock)
-                    _rpy = new Vector3((float)Math.Round(value.X, 2), (float)Math.Round(value.Y, 2), (float)Math.Round(value.Z, 2));
-            }
-        }
-
-        /// <summary>Vehicle velocity in m/s (north, east, down), used to extrapolate between updates.</summary>
-        public Vector3 Velocity
-        {
-            get
-            {
-                lock (_telemetryLock)
-                    return _velocity;
-            }
-            set
-            {
-                lock (_telemetryLock)
-                    _velocity = new Vector3(value.X, value.Y, value.Z);
             }
         }
 
@@ -289,8 +252,7 @@ namespace MissionPlanner.Controls
                 started = true;
             }
 
-            // Jump to the current pose instead of easing in from stale filter state.
-            _vehicle.Reset();
+            ResetVehicles();
             MarkActive();
             Invalidate();
         }
@@ -366,7 +328,7 @@ namespace MissionPlanner.Controls
                 _clouds = new CloudRenderer();
                 _lines = new LineRenderer();
                 _mission = new MissionOverlay();
-                _vehicleOverlay = new VehicleOverlay(_stlLoader);
+                _vehicleMarkers = new VehicleMarkerOverlay();
                 _nerdStats = new NerdStatsOverlay();
                 _hudOverlay = new HudOverlay();
 
@@ -388,14 +350,11 @@ namespace MissionPlanner.Controls
         private void RenderFrame()
         {
             PointLatLngAlt center;
-            DateTime centerTime;
-            Vector3 attitude, velocity;
+            List<VehicleFeed> feeds;
             lock (_telemetryLock)
             {
                 center = _telemetryCenter;
-                centerTime = _telemetryTime;
-                attitude = _rpy;
-                velocity = _velocity;
+                feeds = _feeds;
             }
 
             float[] top, horizon;
@@ -406,20 +365,21 @@ namespace MissionPlanner.Controls
             GL.DepthMask(true);
             GL.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit);
 
-            bool connected = IsVehicleConnected;
-            _viewCenter = connected ? center : FollowMap2D(center);
+            var followed = SyncVehicles(feeds);
+            bool connected = IsVehicleConnected && followed != null;
+            _followed = connected ? followed : null;
+            _viewCenter = connected ? followed.Feed.Position : FollowMap2D(center);
             if (_viewCenter.Lat == 0 && _viewCenter.Lng == 0)
                 return;
 
             _frame.Update(_viewCenter.Lat, _viewCenter.Lng);
             UpdateGroundHeight(_viewCenter);
+            UpdateVehicles();
 
             var cs = MainV2.comPort?.MAV?.cs;
             if (connected)
             {
-                _vehicle.Update(_frame, _viewCenter, centerTime, velocity, attitude, _groundHeight,
-                    cs?.nav_bearing ?? 0, cs?.groundcourse ?? 0, _settings.SmoothMovement, cs?.armed == true);
-                _vehicleOverlay.RecordTrail(_frame, _vehicle, _settings.ShowTrail, cs?.armed == true);
+                _vehicle = followed.Tracker;
 
                 // In FPV the eye stays a metre above the ground under the vehicle, or a landed vehicle would look
                 // out from level with the terrain mesh, half of the view under it.
@@ -431,7 +391,6 @@ namespace MissionPlanner.Controls
             else
             {
                 // Free-look from 100 m above the 2D map's centre, starting from the last known heading.
-                _vehicle.Reset();
                 double x, y;
                 _frame.ToLocal(_viewCenter.Lat, _viewCenter.Lng, out x, out y);
                 _camera.Look(x, y, _groundHeight + 100, _vehicle.Yaw + _freeLookYaw, _freeLookPitch);
@@ -485,18 +444,19 @@ namespace MissionPlanner.Controls
                 {
                     var target = _mission.NavigationTarget();
                     double targetAltitude = target != null ? _mission.DrawAltitude(target) : 0;
-                    _vehicleOverlay.DrawIndicators(_lines, _settings, _vehicle, target, targetAltitude, _frame,
+                    followed.Overlay.DrawIndicators(_lines, _settings, _vehicle, target, targetAltitude, _frame,
                         ref overlayProjection, ref _view);
                 }
 
                 if (_settings.ShowTrail)
-                    _vehicleOverlay.DrawTrail(_lines, _frame, _vehicle, cs?.armed == true, _settings.SmoothMovement,
+                {
+                    var velocity = followed.Feed.Velocity;
+                    followed.Overlay.DrawTrail(_lines, _frame, _vehicle, cs?.armed == true, _settings.SmoothMovement,
                         velocity.X, velocity.Y, velocity.Z, ref overlayProjection, ref _view);
-
-                if (!_settings.FpvMode)
-                    _vehicleOverlay.DrawModel(_vehicle, _settings.VehicleScale, _settings.VehicleColor,
-                        ref overlayProjection, ref _view);
+                }
             }
+
+            DrawVehicles(ref overlayProjection);
 
             // under the stats panel, which stays readable over it
             if (_settings.HudOverlay)
@@ -675,7 +635,8 @@ namespace MissionPlanner.Controls
                 _clouds.Dispose();
                 _lines.Dispose();
                 _mission.Dispose();
-                _vehicleOverlay.Dispose();
+                _vehicleMarkers.Dispose();
+                DisposeVehicles();
                 _nerdStats.Dispose();
                 _hudOverlay.Dispose();
                 _settingsButton.Dispose();
@@ -762,7 +723,8 @@ namespace MissionPlanner.Controls
         private void OpenSettings()
         {
             Map3DSettingsDialog.Show(this, _settings);
-            _stlLoader.CustomSTLPath = _settings.StlPath;
+            foreach (var view in _vehicles.Values)
+                view.Loader.CustomSTLPath = _settings.StlPath;
             MarkActive();
             Invalidate();
         }
@@ -799,8 +761,9 @@ namespace MissionPlanner.Controls
             if (Map2DMoved())
                 _lastActivity = now;
 
-            bool animating = IsVehicleConnected || _settings.StatsForNerds || _terrain == null || _terrain.IsBusy ||
-                             (_mission != null && _mission.MarkersDrawn > 0) || _adsb.ScreenPositions.Count > 0;
+            bool animating = IsVehicleConnected || _vehicles.Count > 0 || _settings.StatsForNerds || _terrain == null ||
+                             _terrain.IsBusy || (_mission != null && _mission.MarkersDrawn > 0) ||
+                             _adsb.ScreenPositions.Count > 0;
             return animating || now - _lastActivity < ActiveLinger || now - _lastFrame >= IdleInterval;
         }
 

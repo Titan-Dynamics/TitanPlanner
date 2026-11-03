@@ -290,7 +290,8 @@ namespace MissionPlanner.Controls.Scene3D
             }
         }
 
-        public void DrawModel(VehicleTracker vehicle, float scale, Color color, ref Matrix4 projection, ref Matrix4 view)
+        public void DrawModel(VehicleTracker vehicle, float scale, Color color, float opacity, ref Matrix4 projection,
+            ref Matrix4 view)
         {
             // The STL is in millimetres.
             var model = Matrix4.CreateScale(scale / 1000f);
@@ -298,7 +299,7 @@ namespace MissionPlanner.Controls.Scene3D
             model = Matrix4.Mult(model, Matrix4.CreateRotationX(vehicle.Pitch * (float)Math.PI / 180));
             model = Matrix4.Mult(model, Matrix4.CreateRotationZ(-vehicle.Yaw * (float)Math.PI / 180));
             model = Matrix4.Mult(model, Matrix4.CreateTranslation((float)vehicle.X, (float)vehicle.Y, (float)vehicle.Z));
-            _model.Draw(ref projection, ref view, model, color);
+            _model.Draw(ref projection, ref view, model, color, opacity);
         }
 
         public void Dispose()

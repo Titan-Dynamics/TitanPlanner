@@ -70,10 +70,10 @@ namespace MissionPlanner.Controls
                 addRow("Camera FoV:", numFov);
 
                 var numScale = new NumericUpDown { Minimum = 0.1m, Maximum = 10, DecimalPlaces = 2, Increment = 0.05m, Value = clamp(settings.VehicleScale, 0.1, 10) };
-                addRow("MAV Scale (m):", numScale);
+                addRow("Model Scale (m):", numScale);
 
-                var numMarkerSize = new NumericUpDown { Minimum = 10, Maximum = 500, Increment = 10, Value = clamp(settings.WaypointMarkerSize, 10, 500) };
-                addRow("WP Marker Size:", numMarkerSize);
+                var numMarkerSize = new NumericUpDown { Minimum = 10, Maximum = 500, Increment = 5, Value = clamp(settings.WaypointMarkerSize, 10, 500) };
+                addRow("Marker Size:", numMarkerSize);
 
                 var numAdsbSize = new NumericUpDown { Minimum = 50, Maximum = 2000, Increment = 50, Value = clamp(settings.AdsbCircleSize, 50, 2000) };
                 addRow("ADSB Size:", numAdsbSize);
@@ -83,7 +83,7 @@ namespace MissionPlanner.Controls
                     Minimum = 0, Maximum = Scene3D.CloudField.MaxDensity, Increment = 10,
                     Value = clamp(settings.CloudDensity, 0, Scene3D.CloudField.MaxDensity)
                 };
-                addRow("Cloud density:", numClouds);
+                addRow("Cloud Density:", numClouds);
 
                 Color selectedColor = settings.VehicleColor;
                 var colorPanel = new Panel { Height = 23, BorderStyle = BorderStyle.FixedSingle, Cursor = Cursors.Hand, Tag = "IgnoreTheme", BackColor = selectedColor };
@@ -98,7 +98,7 @@ namespace MissionPlanner.Controls
                         }
                     }
                 };
-                addRow("MAV Color:", colorPanel);
+                addRow("Model Color:", colorPanel);
 
                 string selectedStl = settings.StlPath;
                 var stlButton = new MyButton { Text = string.IsNullOrEmpty(selectedStl) ? "Default" : Path.GetFileName(selectedStl), Height = 23 };
@@ -127,7 +127,7 @@ namespace MissionPlanner.Controls
                 addCheckbox(chkTurnRadius);
                 var chkTrail = new CheckBox { Text = "Flight Path Trail", Checked = settings.ShowTrail };
                 addCheckbox(chkTrail);
-                var chkFpv = new CheckBox { Text = "FPV Mode (camera at aircraft)", Checked = settings.FpvMode };
+                var chkFpv = new CheckBox { Text = "FPV Mode (Camera At Aircraft)", Checked = settings.FpvMode };
                 chkFpv.CheckedChanged += (s, e) =>
                 {
                     numDist.Enabled = !chkFpv.Checked;
@@ -136,11 +136,11 @@ namespace MissionPlanner.Controls
                 numDist.Enabled = !settings.FpvMode;
                 numHeight.Enabled = !settings.FpvMode;
                 addCheckbox(chkFpv);
-                var chkSmooth = new CheckBox { Text = "Smooth movement", Checked = settings.SmoothMovement };
+                var chkSmooth = new CheckBox { Text = "Smooth Movement", Checked = settings.SmoothMovement };
                 addCheckbox(chkSmooth);
-                var chkHud = new CheckBox { Text = "HUD overlay", Checked = settings.HudOverlay };
+                var chkHud = new CheckBox { Text = "HUD Overlay", Checked = settings.HudOverlay };
                 addCheckbox(chkHud);
-                var chkStats = new CheckBox { Text = "Stats for nerds", Checked = settings.StatsForNerds };
+                var chkStats = new CheckBox { Text = "Stats For Nerds", Checked = settings.StatsForNerds };
                 addCheckbox(chkStats);
 
                 var buttons = new FlowLayoutPanel

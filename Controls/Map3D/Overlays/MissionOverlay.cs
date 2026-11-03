@@ -1,8 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Drawing;
-using System.Drawing.Drawing2D;
-using System.Drawing.Text;
 using System.Linq;
 using GMap.NET.WindowsForms;
 using MissionPlanner.Utilities;
@@ -23,7 +21,7 @@ namespace MissionPlanner.Controls.Scene3D
         readonly VertexList _planLine = new VertexList();
         readonly QuadRenderer _markers = new QuadRenderer();
         readonly QuadRenderer _homeMarker = new QuadRenderer();
-        readonly Dictionary<string, int> _labelTextures = new Dictionary<string, int>();
+        readonly LabelTextures _labels = new LabelTextures();
         readonly Dictionary<long, double> _terrainCache = new Dictionary<long, double>();
         readonly List<PointLatLngAlt> _waypoints = new List<PointLatLngAlt>();
         int _waypointsHash;
@@ -306,7 +304,7 @@ namespace MissionPlanner.Controls.Scene3D
                 double labelOffset = special ? -(markerHalfSize / 20) : markerHalfSize * 0.5;
                 Func<double, double, Vector3d> upright = (h, v) => new Vector3d(
                     x - axisX * h * labelHalfSize, y - axisY * h * labelHalfSize, z + v * labelHalfSize + labelOffset);
-                batch.Add(LabelTexture(label), upright(-1, 1), upright(1, 1), upright(-1, -1), upright(1, -1));
+                batch.Add(_labels.Get(label), upright(-1, 1), upright(1, 1), upright(-1, -1), upright(1, -1));
             }
 
             GL.Enable(EnableCap.Blend);
@@ -346,47 +344,11 @@ namespace MissionPlanner.Controls.Scene3D
             }
         }
 
-        int LabelTexture(string label)
-        {
-            int texture;
-            if (_labelTextures.TryGetValue(label, out texture))
-                return texture;
-
-            const int size = 128;
-            using (var bitmap = new Bitmap(size, size, System.Drawing.Imaging.PixelFormat.Format32bppArgb))
-            {
-                using (var g = Graphics.FromImage(bitmap))
-                using (var font = new Font("Arial", 48, FontStyle.Bold))
-                using (var format = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center })
-                using (var path = new GraphicsPath())
-                using (var outline = new Pen(Color.Black, 6) { LineJoin = LineJoin.Round })
-                {
-                    g.Clear(Color.Transparent);
-                    g.SmoothingMode = SmoothingMode.AntiAlias;
-                    g.TextRenderingHint = TextRenderingHint.AntiAlias;
-                    path.AddString(label, font.FontFamily, (int)font.Style, font.Size, new RectangleF(0, 0, size, size), format);
-                    g.DrawPath(outline, path);
-                    g.FillPath(Brushes.White, path);
-                }
-
-                texture = GLTextures.CreateFromImage(bitmap, true);
-            }
-
-            _labelTextures[label] = texture;
-            return texture;
-        }
-
         public void Dispose()
         {
             GLTextures.Delete(ref _markerTexture);
             GLTextures.Delete(ref _markerAltTexture);
-            foreach (var id in _labelTextures.Values)
-            {
-                int texture = id;
-                GLTextures.Delete(ref texture);
-            }
-
-            _labelTextures.Clear();
+            _labels.Dispose();
             _markers.Dispose();
             _homeMarker.Dispose();
         }
