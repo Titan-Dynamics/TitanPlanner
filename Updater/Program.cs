@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Reflection;
 
 namespace Updater
@@ -13,7 +15,7 @@ namespace Updater
         /// The main entry point for the application.
         /// </summary>
         [STAThread]
-        private static void Main()
+        private static void Main(string[] args)
         {
             OperatingSystem os = Environment.OSVersion;
 
@@ -26,8 +28,11 @@ namespace Updater
 
             string path = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
 
-            // give 4 seconds grace
-            System.Threading.Thread.Sleep(5000);
+            // the planner holds its files (open .pdb files can't be moved) until it has exited
+            WaitForPlannerExit(args, path);
+
+            // give 1 second grace
+            System.Threading.Thread.Sleep(1000);
 
             //UpdateFiles(path);
 
@@ -77,6 +82,52 @@ namespace Updater
                 catch
                 {
                 } // likely file didnt exist
+            }
+        }
+
+        /// <summary>
+        /// Waits up to a minute for the planner that started the update to exit: the one given by --pid=, or else
+        /// every MissionPlanner.exe running from this folder (a planner that passes no pid).
+        /// </summary>
+        private static void WaitForPlannerExit(string[] args, string path)
+        {
+            var planners = new List<Process>();
+
+            var pidArg = args.FirstOrDefault(a => a.StartsWith("--pid="));
+            int pid;
+            if (pidArg != null && int.TryParse(pidArg.Substring("--pid=".Length), out pid))
+            {
+                try
+                {
+                    planners.Add(Process.GetProcessById(pid));
+                }
+                catch (ArgumentException)
+                {
+                } // already exited
+            }
+            else
+            {
+                foreach (var process in Process.GetProcessesByName("MissionPlanner"))
+                {
+                    try
+                    {
+                        if (string.Equals(Path.GetDirectoryName(process.MainModule.FileName), path,
+                                StringComparison.OrdinalIgnoreCase))
+                            planners.Add(process);
+                    }
+                    catch
+                    {
+                    } // can't read its path
+                }
+            }
+
+            var deadline = DateTime.Now.AddMinutes(1);
+            foreach (var planner in planners)
+            {
+                Console.WriteLine("Waiting for MissionPlanner (" + planner.Id + ") to exit");
+                var left = (int) Math.Max(0, (deadline - DateTime.Now).TotalMilliseconds);
+                if (!planner.WaitForExit(left))
+                    Console.WriteLine("Still running, updating anyway");
             }
         }
 

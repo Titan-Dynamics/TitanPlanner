@@ -64,18 +64,20 @@ namespace MissionPlanner.Utilities
 
                 var process = new Process();
                 string exePath = Path.GetDirectoryName(Application.ExecutablePath);
+                // the updater waits for this process to exit before replacing its files
+                var pidArg = "--pid=" + Process.GetCurrentProcess().Id;
                 if (MONO)
                 {
                     process.StartInfo.WorkingDirectory = exePath;
                     process.StartInfo.FileName = "/bin/bash";
                     process.StartInfo.Arguments = " -c 'mono \"" + exePath + Path.DirectorySeparatorChar + "Updater.exe\"" +
-                                                  "  \"" + Application.ExecutablePath + "\"'";
+                                                  "  \"" + Application.ExecutablePath + "\" " + pidArg + "'";
                 }
                 else
                 {
                     process.StartInfo.WorkingDirectory = exePath;
                     process.StartInfo.FileName = exePath + Path.DirectorySeparatorChar + "Updater.exe";
-                    process.StartInfo.Arguments = Application.ExecutablePath;
+                    process.StartInfo.Arguments = "\"" + Application.ExecutablePath + "\" " + pidArg;
                 }
 
                 try
