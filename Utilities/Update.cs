@@ -114,11 +114,145 @@ namespace MissionPlanner.Utilities
             }
         }
 
-        public static void CheckForUpdate(bool NotifyNoUpdate = false)
+        /// <summary>
+        /// The running build's version, from version.txt next to the exe (what the update check compares), else the
+        /// assembly's.
+        /// </summary>
+        public static Version GetLocalVersion()
         {
+            try
+            {
+                var path = Path.Combine(Path.GetDirectoryName(Application.ExecutablePath), "version.txt");
+                if (File.Exists(path) && Version.TryParse(File.ReadLines(path).FirstOrDefault()?.Trim(), out var version))
+                    return version;
+            }
+            catch (Exception ex)
+            {
+                log.Warn("Reading version.txt", ex);
+            }
+
+            return Assembly.GetEntryAssembly()?.GetName().Version ?? new Version();
+        }
+
+        /// <summary>
+        /// The build date in a 1.3.* version (days since 2000-01-01).
+        /// </summary>
+        public static DateTime BuildDate(Version version)
+        {
+            return new DateTime(2000, 1, 1).AddDays(Math.Max(0, version.Build));
+        }
+
+        /// <summary>
+        /// The versions of the published releases (tags ending in -&lt;version&gt;, so not the development build),
+        /// newest first; null when GitHub can't be reached.
+        /// </summary>
+        public static List<Version> GetReleaseVersions()
+        {
+            // the repo the update URLs point at, e.g. https://github.com/Titan-Dynamics/TitanPlanner/releases/...
+            var match = Regex.Match(ConfigurationManager.AppSettings["UpdateLocation"] ?? "",
+                @"github\.com/([^/]+/[^/]+)/releases", RegexOptions.IgnoreCase);
+            if (!match.Success)
+                return null;
+
+            try
+            {
+                var json = client.GetStringAsync("https://api.github.com/repos/" + match.Groups[1].Value +
+                                                 "/releases?per_page=100").GetAwaiter().GetResult();
+                var versions = new List<Version>();
+                foreach (Match tag in Regex.Matches(json, @"""tag_name""\s*:\s*""[^""]*-(\d+\.\d+\.\d+\.\d+)"""))
+                {
+                    if (Version.TryParse(tag.Groups[1].Value, out var version))
+                        versions.Add(version);
+                }
+
+                return versions.OrderByDescending(v => v).ToList();
+            }
+            catch (Exception ex)
+            {
+                log.Warn("Getting the release list", ex);
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// The development build's version; null when it can't be read.
+        /// </summary>
+        public static Version GetDevVersion()
+        {
+            var url = ConfigurationManager.AppSettings["BetaUpdateLocationVersion"];
+            if (string.IsNullOrEmpty(url))
+                return null;
+
+            try
+            {
+                var text = client.GetStringAsync(url).GetAwaiter().GetResult();
+                return Version.TryParse(text.Split('\n')[0].Trim(), out var version) ? version : null;
+            }
+            catch (Exception ex)
+            {
+                log.Warn("Getting the development build version", ex);
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// A build that isn't one of the releases came from the development channel (or a local build).
+        /// </summary>
+        public static bool IsDevBuild(Version local, List<Version> releases)
+        {
+            return releases != null && releases.Count > 0 && !releases.Contains(local);
+        }
+
+        /// <summary>
+        /// One line on the running build: its version and date, and how many releases behind the latest it is.
+        /// Reads GitHub, so call it off the UI thread.
+        /// </summary>
+        public static string DescribeRunningBuild()
+        {
+            var local = GetLocalVersion();
+            var releases = GetReleaseVersions();
+            var dev = IsDevBuild(local, releases);
+
+            var text = (dev ? "Running development build " : "Running ") + local + ", built " +
+                       BuildDate(local).ToString("d MMM yyyy") + ". ";
+
+            if (releases == null || releases.Count == 0)
+                return text + "Couldn't reach GitHub to compare it with the releases.";
+
+            var behind = releases.Count(v => v > local);
+            if (behind == 0)
+                text += dev ? "Newer than the latest release." : "This is the latest release.";
+            else
+                text += behind + (behind == 1 ? " release" : " releases") + " behind the latest (" + releases[0] + ").";
+
+            if (dev)
+            {
+                var devVersion = GetDevVersion();
+                if (devVersion != null && devVersion > local)
+                    text += " A newer development build is available.";
+            }
+
+            return text;
+        }
+
+        /// <param name="NotifyNoUpdate">say so when there's no update</param>
+        /// <param name="startup">the check on launch: offers a new release once a day, a new development build on
+        /// every launch</param>
+        public static void CheckForUpdate(bool NotifyNoUpdate = false, bool startup = false)
+        {
+            // a development build is updated from the development channel, as if Dev updates were on
+            var devChannel = dobeta || IsDevBuild(GetLocalVersion(), GetReleaseVersions());
+
+            if (startup && !devChannel)
+            {
+                if (Settings.Instance["update_check"] == DateTime.Now.ToShortDateString())
+                    return;
+                Settings.Instance["update_check"] = DateTime.Now.ToShortDateString();
+            }
+
             var baseurl = ConfigurationManager.AppSettings["UpdateLocationVersion"];
 
-            if (dobeta)
+            if (devChannel)
                 baseurl = ConfigurationManager.AppSettings["BetaUpdateLocationVersion"];
 
             if (baseurl == "" || baseurl == null)
@@ -198,8 +332,8 @@ namespace MissionPlanner.Utilities
                {
                    string extra = "";
 
-                   if (dobeta)
-                       extra = "BETA ";
+                   if (devChannel)
+                       extra = "DEV ";
 
                    var dr = CustomMessageBox.Show(
                        extra + Strings.UpdateFound + " [link;" + baseurl.Replace("version.txt", "ChangeLog.txt") + ";ChangeLog]",
@@ -207,6 +341,9 @@ namespace MissionPlanner.Utilities
 
                    if (dr == (int)DialogResult.Yes)
                    {
+                       // DoUpdate downloads from the development channel when dobeta is set
+                       if (devChannel)
+                           dobeta = true;
                        DoUpdate();
                    }
                    else

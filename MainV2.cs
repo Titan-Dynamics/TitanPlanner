@@ -3893,17 +3893,11 @@ namespace MissionPlanner
 
             try
             {
-                // single update check per day - in a seperate thread
-                if (Settings.Instance["update_check"] != DateTime.Now.ToShortDateString())
-                {
-                    System.Threading.ThreadPool.QueueUserWorkItem(checkupdate);
-                    Settings.Instance["update_check"] = DateTime.Now.ToShortDateString();
-                }
-                else if (Settings.Instance.GetBoolean("beta_updates") == true)
-                {
+                if (Settings.Instance.GetBoolean("beta_updates") == true)
                     MissionPlanner.Utilities.Update.dobeta = true;
-                    System.Threading.ThreadPool.QueueUserWorkItem(checkupdate);
-                }
+
+                // in a seperate thread; a new release is offered once a day, a new development build on every launch
+                System.Threading.ThreadPool.QueueUserWorkItem(checkupdate);
             }
             catch (Exception ex)
             {
@@ -4348,7 +4342,7 @@ namespace MissionPlanner
 
             try
             {
-                MissionPlanner.Utilities.Update.CheckForUpdate();
+                MissionPlanner.Utilities.Update.CheckForUpdate(startup: true);
             }
             catch (Exception ex)
             {

@@ -12,6 +12,7 @@ using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Threading;
+using System.Threading.Tasks;
 using System.Windows.Forms;
 using WebCamService;
 
@@ -294,13 +295,29 @@ namespace MissionPlanner.GCSViews.ConfigurationView
             var group = CreateGroupBox("Updates");
             var table = CreateTableLayout(1);
 
+            // the running build and how many releases behind it is, filled in once GitHub answers
+            var lblBuild = new Label
+            {
+                Text = "Comparing this build with the releases...",
+                AutoSize = true,
+                Margin = new Padding(3, 3, 3, 6)
+            };
+            table.Controls.Add(lblBuild, 0, 0);
+            Task.Run(() => Utilities.Update.DescribeRunningBuild()).ContinueWith(t =>
+            {
+                if (!lblBuild.IsDisposed)
+                    lblBuild.Text = t.Status == TaskStatus.RanToCompletion
+                        ? t.Result
+                        : "Couldn't compare this build with the releases.";
+            }, TaskScheduler.FromCurrentSynchronizationContext());
+
             var btnCheckUpdate = new MyButton
             {
                 Text = "Check for Updates",
                 AutoSize = true
             };
             btnCheckUpdate.Click += BtnCheckUpdate_Click;
-            table.Controls.Add(btnCheckUpdate, 0, 0);
+            table.Controls.Add(btnCheckUpdate, 0, 1);
 
             var btnBetaUpdate = new MyButton
             {
@@ -308,7 +325,7 @@ namespace MissionPlanner.GCSViews.ConfigurationView
                 AutoSize = true
             };
             btnBetaUpdate.Click += BtnBetaUpdate_Click;
-            table.Controls.Add(btnBetaUpdate, 0, 1);
+            table.Controls.Add(btnBetaUpdate, 0, 2);
 
             var lnkReleases = new LinkLabel
             {
@@ -317,7 +334,11 @@ namespace MissionPlanner.GCSViews.ConfigurationView
                 Margin = new Padding(3, 6, 3, 3)
             };
             lnkReleases.LinkClicked += LnkReleases_LinkClicked;
-            table.Controls.Add(lnkReleases, 0, 2);
+            table.Controls.Add(lnkReleases, 0, 3);
+
+            // wrap the text to the group's width, as the speech options do
+            group.SizeChanged += (s, e) => lblBuild.MaximumSize = new Size(
+                Math.Max(1, group.DisplayRectangle.Width - table.Padding.Horizontal - lblBuild.Margin.Horizontal), 0);
 
             group.Controls.Add(table);
             return group;
@@ -1373,6 +1394,10 @@ namespace MissionPlanner.GCSViews.ConfigurationView
             Settings.Instance["beta_updates"] = CHK_beta.Checked.ToString();
 
             MissionPlanner.Utilities.Update.dobeta = CHK_beta.Checked;
+
+            // turned on by the user (not loaded from settings): offer the development build now
+            if (!startup && CHK_beta.Checked)
+                BtnCheckUpdate_Click(sender, e);
         }
 
         private void CHK_Password_CheckedChanged(object sender, EventArgs e)
