@@ -35,6 +35,7 @@ namespace MissionPlanner.Controls.Scene3D
         DateTime _planBuilt;
         int _markerTexture;
         int _markerAltTexture;
+        int _dotTexture;
 
         /// <summary>Markers drawn last frame; they spin, so the view keeps animating while any are visible.</summary>
         public int MarkersDrawn { get; private set; }
@@ -242,6 +243,8 @@ namespace MissionPlanner.Controls.Scene3D
                 _markerTexture = MarkerTexture(GMap.NET.Drawing.Properties.Resources.wp_3d.ToBitmap());
             if (_markerAltTexture == 0)
                 _markerAltTexture = MarkerTexture(GMap.NET.Drawing.Properties.Resources.wp_3d_alt.ToBitmap());
+            if (_dotTexture == 0)
+                _dotTexture = DotTexture();
 
             var waypoints = Waypoints();
             var points = waypoints.Where(a => a != null).ToList();
@@ -303,6 +306,17 @@ namespace MissionPlanner.Controls.Scene3D
                     spun(-1, 1), spun(1, 1), spun(-1, -1), spun(1, -1), opacity: opacity);
                 MarkersDrawn++;
 
+                // a yellow dot in the middle of each numbered waypoint, its radius a fifteenth of the Marker Size
+                if (label != null && !special)
+                {
+                    double dot = markerHalfSize / 15;
+                    batch.Add(_dotTexture,
+                        new Vector3d(x - axisX * dot, y - axisY * dot, z + dot),
+                        new Vector3d(x + axisX * dot, y + axisY * dot, z + dot),
+                        new Vector3d(x - axisX * dot, y - axisY * dot, z - dot),
+                        new Vector3d(x + axisX * dot, y + axisY * dot, z - dot), opacity: opacity);
+                }
+
                 if (label == null)
                     continue;
 
@@ -359,10 +373,28 @@ namespace MissionPlanner.Controls.Scene3D
             }
         }
 
+        static int DotTexture()
+        {
+            const int size = 64;
+            using (var bitmap = new Bitmap(size, size, System.Drawing.Imaging.PixelFormat.Format32bppArgb))
+            {
+                using (var g = Graphics.FromImage(bitmap))
+                {
+                    // cleared to the dot's colour, so the smaller mipmaps don't fringe it with another
+                    g.Clear(Color.FromArgb(0, Color.Yellow));
+                    g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+                    g.FillEllipse(Brushes.Yellow, 1, 1, size - 2, size - 2);
+                }
+
+                return GLTextures.CreateFromImage(bitmap, true);
+            }
+        }
+
         public void Dispose()
         {
             GLTextures.Delete(ref _markerTexture);
             GLTextures.Delete(ref _markerAltTexture);
+            GLTextures.Delete(ref _dotTexture);
             _labels.Dispose();
             _markers.Dispose();
             _homeMarker.Dispose();

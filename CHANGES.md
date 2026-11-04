@@ -86,6 +86,7 @@ ADS-B traffic is rendered with proper depth testing and pass ordering so it corr
 - Settings dialog overhaul with persistence and out-of-range guards, opened from a translucent gear icon in the top-left corner
 - Configurable **Marker Size**, for the waypoints and the other vehicles' beacons
 - Waypoint markers fade out as the vehicle comes within 61 m of them, gone at 15 m, rather than vanishing at once
+- A yellow dot marks the centre of each numbered waypoint marker
 - Reset button defaults aligned with settings defaults
 - 2D ↔ 3D map waypoint and position synchronization
 - Required-valid-GPS gate before vehicle tracking begins
