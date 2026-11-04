@@ -82,7 +82,6 @@ namespace MissionPlanner.Controls
         private Label lblPipeline;
         private TextBox txtPipeline;
         private InputHost hostPipeline;
-        private Label lblPipelineHint;
         private TableLayoutPanel _top;
         private StatusIndicator _status;
         private StartStopButton btnStartStop;
@@ -186,9 +185,6 @@ namespace MissionPlanner.Controls
             hostPipeline = NewInput(out txtPipeline, true);
             AddRow(tableSource, lblPipeline, hostPipeline);
 
-            lblPipelineHint = NewLabel("End it with ! videoconvert ! video/x-raw,format=BGRA ! appsink name=outsink");
-            AddRow(tableSource, null, lblPipelineHint);
-
             grpSource = NewBox("Video Source", tableSource);
 
             // Display: what the HUD draws over the video
@@ -275,7 +271,6 @@ namespace MissionPlanner.Controls
             int half = sideBySide ? available / 2 - BoxMargin : full;
 
             // long text wraps to the width it has
-            lblPipelineHint.MaximumSize = new Size(Math.Max(100, full - 120), 0);
             lblRecord.MaximumSize = new Size(Math.Max(100, half - 30), 0);
 
             _boxes.SuspendLayout();
@@ -702,7 +697,7 @@ namespace MissionPlanner.Controls
             SetVisible(source == Source.Camera, lblDevice, cmbDevice, btnRefreshDevices, lblFormat, cmbFormat);
             SetVisible(source == Source.Rtsp, lblRtspUrl, hostRtspUrl, btnHereLink);
             SetVisible(source == Source.Mjpeg, lblMjpegUrl, hostMjpegUrl);
-            SetVisible(source == Source.Pipeline, lblPipeline, hostPipeline, lblPipelineHint);
+            SetVisible(source == Source.Pipeline, lblPipeline, hostPipeline);
             tableSource.ResumeLayout(true);
             LayoutBoxes();
 
