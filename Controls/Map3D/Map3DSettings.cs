@@ -46,7 +46,7 @@ namespace MissionPlanner.Controls
 
         /// <summary>The DATA tab's HUD drawn over the 3D view, without its sky and ground.</summary>
         public bool HudOverlay;
-        public double WaypointMarkerSize = 25;
+        public double WaypointMarkerSize = 40;
         public double AdsbCircleSize = 500;
 
         public static Map3DSettings Load()
@@ -71,7 +71,7 @@ namespace MissionPlanner.Controls
                     s.GetInt32("map3d_cloud_density", Scene3D.CloudField.DefaultDensity))),
                 StatsForNerds = s.GetBoolean("map3d_stats_for_nerds", false),
                 HudOverlay = s.GetBoolean("map3d_hud_overlay", false),
-                WaypointMarkerSize = s.GetDouble("map3d_waypoint_marker_size", 25),
+                WaypointMarkerSize = s.GetDouble("map3d_waypoint_marker_size", 40),
                 AdsbCircleSize = s.GetDouble("map3d_adsb_size", 500)
             };
 

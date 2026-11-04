@@ -435,7 +435,11 @@ namespace MissionPlanner.Controls
             // Pass 2: mission and vehicle.
             GL.Clear(ClearBufferMask.DepthBufferBit);
             _mission.DrawPlanLine(_lines, _frame, ref overlayProjection, ref _view);
-            _mission.DrawMarkers(_frame, _viewCenter, _camera.X, _camera.Y, _settings.WaypointMarkerSize,
+            // the smoothed vehicle the camera follows, or the view's centre in free look
+            double nearX = _vehicle.X, nearY = _vehicle.Y;
+            if (!connected)
+                _frame.ToLocal(_viewCenter.Lat, _viewCenter.Lng, out nearX, out nearY);
+            _mission.DrawMarkers(_frame, nearX, nearY, _camera.X, _camera.Y, _settings.WaypointMarkerSize,
                 ref overlayProjection, ref _view);
 
             if (connected)

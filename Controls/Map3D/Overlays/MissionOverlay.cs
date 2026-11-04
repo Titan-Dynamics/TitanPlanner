@@ -231,9 +231,11 @@ namespace MissionPlanner.Controls.Scene3D
         }
 
         /// <summary>
-        /// Billboarded markers that face the camera and slowly spin, with an upright label.
+        /// Billboarded markers that face the camera and slowly spin, with an upright label. vehicleX and vehicleY are
+        /// where the vehicle is drawn, in scene coordinates: markers fade by their distance from it, which moves
+        /// smoothly where the telemetry steps.
         /// </summary>
-        public void DrawMarkers(WorldFrame frame, PointLatLngAlt vehicle, double cameraX, double cameraY,
+        public void DrawMarkers(WorldFrame frame, double vehicleX, double vehicleY, double cameraX, double cameraY,
             double markerHalfSize, ref Matrix4 projection, ref Matrix4 view)
         {
             if (_markerTexture == 0)
@@ -263,12 +265,13 @@ namespace MissionPlanner.Controls.Scene3D
             {
                 if (point.Lat == 0 && point.Lng == 0)
                     continue;
-                float opacity = MarkerOpacity(point.GetDistance(vehicle));
-                if (opacity <= 0)
-                    continue;
 
                 double x, y;
                 frame.ToLocal(point.Lat, point.Lng, out x, out y);
+                float opacity = MarkerOpacity(Math.Sqrt((x - vehicleX) * (x - vehicleX) + (y - vehicleY) * (y - vehicleY)));
+                if (opacity <= 0)
+                    continue;
+
                 double z = DrawAltitude(point);
 
                 string label = null;
