@@ -70,7 +70,8 @@ namespace MissionPlanner.GCSViews
         }
 
         /// <summary>
-        /// Called when a new frame arrives. On first frame, triggers resize to fix aspect ratio.
+        /// Called on the stream's thread when a new frame arrives. On first frame, triggers resize to fix aspect ratio
+        /// (which the HUD does on the UI thread).
         /// </summary>
         public static void OnHudGStreamerNewFrame()
         {

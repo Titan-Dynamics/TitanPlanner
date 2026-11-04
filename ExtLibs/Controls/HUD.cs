@@ -4144,6 +4144,22 @@ namespace MissionPlanner.Controls
 
         public void doResize()
         {
+            // A resize makes the GL context current, and a context is current on one thread at a time: made current
+            // on another thread (a video stream's), the UI thread can't draw the HUD again. So it runs on the UI thread.
+            if (InvokeRequired)
+            {
+                try
+                {
+                    BeginInvoke((Action) doResize);
+                }
+                catch (InvalidOperationException)
+                {
+                    // the handle is gone
+                }
+
+                return;
+            }
+
             OnResize(EventArgs.Empty);
         }
 
