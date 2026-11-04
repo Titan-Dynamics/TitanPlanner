@@ -313,7 +313,7 @@ Behaviour that differs from upstream because the fork fixed it:
 GitHub Actions builds Release and Debug, packages an MSI (`TitanPlanner-Installer.msi`) and zip, computes `checksums.txt` and `version.txt`, and publishes:
 - A **`development-build`** prerelease on every push to `development`
 - A **`TitanPlanner-<version>`** stable release on every push to `master`
-- Each release's notes list every commit since the previous release on its channel (the previous `development-build`, or the previous `TitanPlanner-*` tag), with the fork's commits first and the commits brought in from upstream in a collapsed section. The same notes are published as the release's `ChangeLog.txt`. `.github/scripts/release-notes.sh <development|master>` previews them locally
+- Each release's notes list every commit since the last `TitanPlanner-*` release (for the development build, everything it has that the newest release doesn't, so they read as the next release's would), with the fork's commits first and the commits brought in from upstream in a collapsed section. The same notes are published as the release's `ChangeLog.txt`. `.github/scripts/release-notes.sh <development|master>` previews them locally
 - Upstream's Linux and macOS workflows build here too, but their `linux-latest` / `osxlatest` prereleases are only published from the ArduPilot repository, so this fork's Releases page stays limited to the two channels above
 
 ## In-App Updater

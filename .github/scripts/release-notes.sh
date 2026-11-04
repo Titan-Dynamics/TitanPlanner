@@ -1,12 +1,15 @@
 #!/usr/bin/env bash
-# Release notes for the releases main.yml publishes: every commit since the
-# previous release on the same channel. The fork's own commits are listed first;
-# the ArduPilot/MissionPlanner commits brought in by upstream syncs follow in a
+# Release notes for the releases main.yml publishes, measured from the last
+# TitanPlanner-* release. The fork's own commits are listed first; the
+# ArduPilot/MissionPlanner commits brought in by upstream syncs follow in a
 # collapsed section.
 #
 #   release-notes.sh <development|master> [notes.md] [ChangeLog.txt]
 #
-#   development  since the commit the development-build tag points at
+#   development  what this build has that the newest release doesn't, so the
+#                notes read as the next release's would. That release need not
+#                be an ancestor: master can carry commits development lacks,
+#                such as README edits made on GitHub.
 #   master       since the newest TitanPlanner-* tag that is an ancestor of HEAD,
 #                skipping a tag on HEAD itself (a re-run of a released commit)
 #
@@ -30,20 +33,23 @@ base=
 since_md=
 since_txt=
 
+# since <tag>: measure from that release
+since() {
+  base=$(git rev-parse "$1^{commit}")
+  since_md="[${1/-/ }]($repo_url/releases/tag/$1)"
+  since_txt=${1/-/ }
+}
+
 case $channel in
   development)
-    if base=$(git rev-parse -q --verify 'refs/tags/development-build^{commit}'); then
-      since_md="the previous development build ([${base:0:7}]($repo_url/commit/$base))"
-      since_txt="the previous development build (${base:0:7})"
-    fi
+    tag=$(git tag -l 'TitanPlanner-*' --sort=-v:refname | head -n 1)
+    [ -z "$tag" ] || since "$tag"
     ;;
   master)
     for tag in $(git tag -l 'TitanPlanner-*' --sort=-v:refname); do
       commit=$(git rev-parse "$tag^{commit}")
       if [ "$commit" != "$head" ] && git merge-base --is-ancestor "$commit" "$head"; then
-        base=$commit
-        since_md="[${tag/-/ }]($repo_url/releases/tag/$tag)"
-        since_txt=${tag/-/ }
+        since "$tag"
         break
       fi
     done
@@ -98,7 +104,7 @@ md_escape() { sed -e 's/&/\&amp;/g' -e 's/</\&lt;/g' -e 's/>/\&gt;/g' -e 's/\*/\
 md_upstream_refs() { sed -E "s,(^|[^[:alnum:]_/])#([0-9]+),\\1$upstream_slug#\\2,g"; }
 
 if [ -z "$base" ]; then
-  intro_md="First release on this channel."
+  intro_md="First release."
   intro_txt=$intro_md
 elif [ ${#fork[@]} -eq 0 ] && [ ${#upstream[@]} -eq 0 ]; then
   intro_md="No new commits since $since_md."

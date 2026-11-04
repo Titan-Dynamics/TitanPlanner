@@ -87,7 +87,6 @@ jobs:
         if: ${{ env.IS_DEV == 'true' || env.IS_MASTER == 'true' }}
         shell: bash
         env:
-          GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
           VERSION: ${{ steps.version.outputs.VERSION }}
         run: |
@@ -109,14 +108,7 @@ jobs:
             channel=master
             export RELEASE_TITLE="TitanPlanner $VERSION"
           fi
-          # A re-run of the commit that is already the development build keeps that build's notes
-          if [ "$IS_DEV" = true ] && [ "$(git rev-parse -q --verify 'refs/tags/development-build^{commit}')" = "$GITHUB_SHA" ] &&
-             gh release download development-build -p ChangeLog.txt -D notes &&
-             gh release view development-build --json body -q .body > notes/release-notes.md; then
-            echo "Re-run of the current development build, keeping its notes"
-          else
-            bash .github/scripts/release-notes.sh "$channel" notes/release-notes.md notes/ChangeLog.txt
-          fi
+          bash .github/scripts/release-notes.sh "$channel" notes/release-notes.md notes/ChangeLog.txt
           cat notes/release-notes.md >> "$GITHUB_STEP_SUMMARY"
 
       - name: Publish development build

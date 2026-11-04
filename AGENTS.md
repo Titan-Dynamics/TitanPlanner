@@ -42,8 +42,9 @@ GitHub Actions (`.github/workflows/main.yml` = "DotNet Build", plus `android.yml
 and `TitanPlanner.zip` with `checksums.txt` / `version.txt`, and publishes a `development-build`
 prerelease on pushes to `development` and a `TitanPlanner-<version>` release on pushes to
 `master`; the in-app updater reads those. Release notes (body and the `ChangeLog.txt` asset) come
-from `.github/scripts/release-notes.sh`: every commit since the channel's previous release, fork
-commits separated from upstream's. The Linux/macOS workflows build but only publish
+from `.github/scripts/release-notes.sh`: every commit since the last `TitanPlanner-*` release (for
+the development build, what it has that the newest release doesn't), fork commits separated from
+upstream's. The Linux/macOS workflows build but only publish
 releases when running in the upstream ArduPilot repository.
 
 ## Tests
