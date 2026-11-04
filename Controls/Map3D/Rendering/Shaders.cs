@@ -77,9 +77,11 @@ void main(void) {
 
         public const string TexturedFragment = FloatPrecision + @"
 uniform sampler2D Texture;
+uniform float Opacity;
 varying vec2 vTexCoord;
 void main(void) {
-    gl_FragColor = texture2D(Texture, vTexCoord);
+    vec4 color = texture2D(Texture, vTexCoord);
+    gl_FragColor = vec4(color.rgb, color.a * Opacity);
 }
 ";
 

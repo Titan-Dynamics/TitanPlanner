@@ -14,24 +14,40 @@ namespace MissionPlanner.Controls.Scene3D
     {
         const int Size = 128;
 
-        readonly Dictionary<string, KeyValuePair<int, float>> _textures = new Dictionary<string, KeyValuePair<int, float>>();
+        struct Label
+        {
+            public int Texture;
+            public float Aspect, Bottom;
+        }
+
+        readonly Dictionary<string, Label> _textures = new Dictionary<string, Label>();
 
         public int Get(string label)
         {
-            float aspect;
-            return Get(label, out aspect);
+            float aspect, bottom;
+            return Get(label, out aspect, out bottom);
         }
 
-        /// <summary>The label's texture, and its width over its height.</summary>
-        public int Get(string label, out float aspect)
+        /// <summary>
+        /// The label's texture, its width over its height, and how far below the texture's middle the text's lowest
+        /// point is, as a share of half its height.
+        /// </summary>
+        public int Get(string label, out float aspect, out float bottom)
         {
-            KeyValuePair<int, float> made;
-            if (_textures.TryGetValue(label, out made))
+            Label made;
+            if (!_textures.TryGetValue(label, out made))
             {
-                aspect = made.Value;
-                return made.Key;
+                made = Make(label);
+                _textures[label] = made;
             }
 
+            aspect = made.Aspect;
+            bottom = made.Bottom;
+            return made.Texture;
+        }
+
+        static Label Make(string label)
+        {
             using (var font = new Font("Arial", 48, FontStyle.Bold))
             using (var format = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center })
             using (var path = new GraphicsPath())
@@ -39,7 +55,8 @@ namespace MissionPlanner.Controls.Scene3D
             {
                 // laid out about the origin first, to measure it
                 path.AddString(label, font.FontFamily, (int)font.Style, font.Size, new PointF(0, 0), format);
-                int width = Math.Max(Size, (int)Math.Ceiling(path.GetBounds().Width + outline.Width + 8));
+                var bounds = path.GetBounds();
+                int width = Math.Max(Size, (int)Math.Ceiling(bounds.Width + outline.Width + 8));
                 using (var matrix = new Matrix())
                 {
                     matrix.Translate(width / 2f, Size / 2f);
@@ -57,10 +74,13 @@ namespace MissionPlanner.Controls.Scene3D
                         g.FillPath(Brushes.White, path);
                     }
 
-                    aspect = (float)width / Size;
-                    int texture = GLTextures.CreateFromImage(bitmap, true);
-                    _textures[label] = new KeyValuePair<int, float>(texture, aspect);
-                    return texture;
+                    return new Label
+                    {
+                        Texture = GLTextures.CreateFromImage(bitmap, true),
+                        Aspect = (float)width / Size,
+                        // the outline reaches half its width past the glyphs
+                        Bottom = (bounds.Bottom + outline.Width / 2) / (Size / 2f)
+                    };
                 }
             }
         }
@@ -69,7 +89,7 @@ namespace MissionPlanner.Controls.Scene3D
         {
             foreach (var made in _textures.Values)
             {
-                int texture = made.Key;
+                int texture = made.Texture;
                 GLTextures.Delete(ref texture);
             }
 

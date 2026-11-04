@@ -51,20 +51,22 @@ namespace MissionPlanner.Controls.Scene3D
         readonly StreamBuffer _buffer = new StreamBuffer();
         readonly VertexList _vertices = new VertexList();
         readonly List<int> _textures = new List<int>();
+        readonly List<float> _opacities = new List<float>();
         GLProgram _program;
 
         public void Begin()
         {
             _vertices.Clear();
             _textures.Clear();
+            _opacities.Clear();
         }
 
         /// <summary>
         /// Adds a quad from four corners in the order top-left, top-right, bottom-left, bottom-right,
-        /// with UVs (u0,v0)-(u1,v1) running left-to-right and top-to-bottom.
+        /// with UVs (u0,v0)-(u1,v1) running left-to-right and top-to-bottom. Opacity scales the texture's alpha.
         /// </summary>
         public void Add(int texture, Vector3d topLeft, Vector3d topRight, Vector3d bottomLeft, Vector3d bottomRight,
-            float u0 = 0, float v0 = 0, float u1 = 1, float v1 = 1)
+            float u0 = 0, float v0 = 0, float u1 = 1, float v1 = 1, float opacity = 1)
         {
             if (texture == 0)
                 return;
@@ -76,6 +78,7 @@ namespace MissionPlanner.Controls.Scene3D
             Corner(bottomLeft, u0, v1);
             Corner(bottomRight, u1, v1);
             _textures.Add(texture);
+            _opacities.Add(opacity);
         }
 
         void Corner(Vector3d p, float u, float v)
@@ -101,8 +104,15 @@ namespace MissionPlanner.Controls.Scene3D
             _program.Pointer("Position", 3, Stride, 0);
             _program.Pointer("TexCoord", 2, Stride, 3);
 
+            float opacity = float.NaN;
             for (int i = 0; i < _textures.Count; i++)
             {
+                if (_opacities[i] != opacity)
+                {
+                    opacity = _opacities[i];
+                    _program.SetFloat("Opacity", opacity);
+                }
+
                 GL.BindTexture(TextureTarget.Texture2D, _textures[i]);
                 GL.DrawArrays(PrimitiveType.Triangles, i * 6, 6);
             }

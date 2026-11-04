@@ -163,14 +163,15 @@ the git log has those. `ChangeLog.txt` is upstream's and is not maintained here.
   (`SelectionParams.MaxZoomFor`), `TileLoader` fetches imagery (through the shared GMap cache), samples SRTM
   (`srtm.GetCell`) and builds meshes on worker threads, and `TerrainEngine` uploads and draws them on the render
   thread. `Rendering/` holds the GL helpers and GLSL 1.10/ES 2.0 shaders, `Overlays/` the mission, vehicle and
-  ADS-B drawing, `Scene/` the UTM frame, camera and pose smoothing. FlightData feeds it every vehicle with a position (`Map3D.SetVehicles`), and `Map3D.Vehicles.cs` gives each its own
-  tracker, trail and model, follows the selected one and draws the rest as the 2D map does (`GMapMarkerBase.InactiveDisplayStyle`), ringed
-  by `VehicleMarkerOverlay` at the waypoint markers' size. `VehicleTracker` dead-reckons and
-  Kalman-filters the pose (MAVLink velocity is north, east, down); the trail and ADS-B prediction smooth too,
-  and `Map3DSettings.SmoothMovement` turns all of it off for raw telemetry. `CloudRenderer` draws the layers
-  `Scene/CloudField` defines (a tiling noise texture, heights kept above the vehicle, and the coverage
-  thresholds for a cloud density, measured on the texture with the shader's sampling) as quads shaded in the
-  fragment shader. Selection, loading and the cloud field are pure logic with tests in
+  ADS-B drawing, `Scene/` the UTM frame, camera and pose smoothing. FlightData feeds it every vehicle with a position
+  (`Map3D.SetVehicles`), and `Map3D.Vehicles.cs` gives each its own tracker, trail and model, follows the selected one
+  and draws the rest as the 2D map does (`GMapMarkerBase.InactiveDisplayStyle`), marked by `VehicleMarkerOverlay`'s
+  beacon. `QuadRenderer` quads take an opacity, which the beacon and the waypoint markers' fade near the vehicle use.
+  `VehicleTracker` dead-reckons and Kalman-filters the pose (MAVLink velocity is north, east, down); the trail and
+  ADS-B prediction smooth too, and `Map3DSettings.SmoothMovement` turns all of it off for raw telemetry.
+  `CloudRenderer` draws the layers `Scene/CloudField` defines (a tiling noise texture, heights kept above the
+  vehicle, and the coverage thresholds for a cloud density, measured on the texture with the shader's sampling) as
+  quads shaded in the fragment shader. Selection, loading and the cloud field are pure logic with tests in
   `MissionPlannerTests/Controls/`.
 - **2D maps.** Setting `GMapControl.Position` or `Zoom` re-projects every overlay and repaints synchronously,
   and `GMapControl.Invalidate` is throttled to about 9 fps. The DATA map pans with `myGMAP.Pan` plus

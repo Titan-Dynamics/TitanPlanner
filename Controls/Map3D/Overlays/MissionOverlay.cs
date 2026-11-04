@@ -15,8 +15,11 @@ namespace MissionPlanner.Controls.Scene3D
     /// </summary>
     public sealed class MissionOverlay : IDisposable
     {
-        /// <summary>Markers closer than this to the vehicle (200 ft) are hidden.</summary>
-        const double MinMarkerDistance = 61.0;
+        /// <summary>
+        /// Markers closer than this to the vehicle (200 ft) fade, and are gone at a quarter of it, rather than vanishing
+        /// at once as the vehicle nears them.
+        /// </summary>
+        public const double MarkerFadeDistance = 61.0;
 
         readonly VertexList _planLine = new VertexList();
         readonly QuadRenderer _markers = new QuadRenderer();
@@ -260,7 +263,8 @@ namespace MissionPlanner.Controls.Scene3D
             {
                 if (point.Lat == 0 && point.Lng == 0)
                     continue;
-                if (point.GetDistance(vehicle) < MinMarkerDistance)
+                float opacity = MarkerOpacity(point.GetDistance(vehicle));
+                if (opacity <= 0)
                     continue;
 
                 double x, y;
@@ -293,7 +297,7 @@ namespace MissionPlanner.Controls.Scene3D
                     return new Vector3d(x + axisX * rh * markerHalfSize, y + axisY * rh * markerHalfSize, z + rv * markerHalfSize);
                 };
                 batch.Add(special ? _markerAltTexture : _markerTexture,
-                    spun(-1, 1), spun(1, 1), spun(-1, -1), spun(1, -1));
+                    spun(-1, 1), spun(1, 1), spun(-1, -1), spun(1, -1), opacity: opacity);
                 MarkersDrawn++;
 
                 if (label == null)
@@ -304,7 +308,8 @@ namespace MissionPlanner.Controls.Scene3D
                 double labelOffset = special ? -(markerHalfSize / 20) : markerHalfSize * 0.5;
                 Func<double, double, Vector3d> upright = (h, v) => new Vector3d(
                     x - axisX * h * labelHalfSize, y - axisY * h * labelHalfSize, z + v * labelHalfSize + labelOffset);
-                batch.Add(_labels.Get(label), upright(-1, 1), upright(1, 1), upright(-1, -1), upright(1, -1));
+                batch.Add(_labels.Get(label), upright(-1, 1), upright(1, 1), upright(-1, -1), upright(1, -1),
+                    opacity: opacity);
             }
 
             GL.Enable(EnableCap.Blend);
@@ -322,6 +327,13 @@ namespace MissionPlanner.Controls.Scene3D
 
             GL.DepthMask(true);
             GL.Disable(EnableCap.Blend);
+        }
+
+        /// <summary>A marker's opacity at a distance (metres) from the vehicle.</summary>
+        public static float MarkerOpacity(double distance)
+        {
+            double gone = MarkerFadeDistance / 4;
+            return (float)Math.Max(0, Math.Min(1, (distance - gone) / (MarkerFadeDistance - gone)));
         }
 
         static bool IsGuidedTarget(PointLatLngAlt point)

@@ -51,7 +51,7 @@ No Russian-localized HUD variant and no time readout; the CPU message and link s
 ## Real-Time Vehicle Rendering
 The connected vehicle renders in 3D with default STL models per MAV type (plane, quadplane, copter, rover, boat, sub, tricopter, etc.) in correct colours, over terrain drawn out to just past the horizon (30–150 km depending on altitude). The model is uploaded to the GPU once and lit in a shader.
 
-With several vehicles connected, every one is drawn with its own model, the ones not selected at half opacity as on the 2D map and in a translucent ring the size of the waypoint markers with its system ID above it, so they stand out from far off; selecting another puts the camera straight behind it, with its trail already recorded.
+With several vehicles connected, every one is drawn with its own model, the ones not selected at half opacity as on the 2D map, each with a locating beacon (rings that grow out to the size of the waypoint markers and fade) and its system ID just above it, so they stand out from far off; selecting another puts the camera straight behind it, with its trail already recorded.
 
 ## Terrain Streaming Engine
 Terrain streams Google Earth style:
@@ -84,7 +84,8 @@ ADS-B traffic is rendered with proper depth testing and pass ordering so it corr
 ## Persistence & UX
 - Camera distance, height, and angle saved on close
 - Settings dialog overhaul with persistence and out-of-range guards, opened from a translucent gear icon in the top-left corner
-- Configurable **Marker Size**, for the waypoints and the rings around other vehicles
+- Configurable **Marker Size**, for the waypoints and the other vehicles' beacons
+- Waypoint markers fade out as the vehicle comes within 61 m of them, gone at 15 m, rather than vanishing at once
 - Reset button defaults aligned with settings defaults
 - 2D ↔ 3D map waypoint and position synchronization
 - Required-valid-GPS gate before vehicle tracking begins

@@ -690,6 +690,54 @@ namespace MissionPlanner.Controls.Scene3D.Tests
     }
 
     [TestClass]
+    public class WaypointMarkerTests
+    {
+        [TestMethod]
+        public void MarkersFadeAsTheVehicleNearsThem()
+        {
+            double fade = MissionOverlay.MarkerFadeDistance;
+            Assert.AreEqual(1, MissionOverlay.MarkerOpacity(fade * 3), 1e-6);
+            Assert.AreEqual(1, MissionOverlay.MarkerOpacity(fade), 1e-6);
+            Assert.AreEqual(0, MissionOverlay.MarkerOpacity(fade / 4), 1e-6);
+            Assert.AreEqual(0, MissionOverlay.MarkerOpacity(0), 1e-6);
+
+            float last = 0;
+            for (double distance = fade / 4 + 1; distance < fade; distance += 1)
+            {
+                float opacity = MissionOverlay.MarkerOpacity(distance);
+                Assert.IsTrue(opacity > last && opacity < 1, "at " + distance + " m");
+                last = opacity;
+            }
+        }
+    }
+
+    [TestClass]
+    public class VehicleBeaconTests
+    {
+        [TestMethod]
+        public void ARingGrowsToTheFullSizeAndFadesOut()
+        {
+            double scale;
+            float opacity;
+            VehicleMarkerOverlay.Pulse(0, out scale, out opacity);
+            Assert.IsTrue(scale < 0.2 && opacity > 0.5, "starts small and bright");
+            VehicleMarkerOverlay.Pulse(1, out scale, out opacity);
+            Assert.AreEqual(1, scale, 1e-9);
+            Assert.AreEqual(0, opacity, 1e-6);
+
+            double lastScale = 0;
+            float lastOpacity = float.MaxValue;
+            for (double age = 0; age <= 1; age += 0.05)
+            {
+                VehicleMarkerOverlay.Pulse(age, out scale, out opacity);
+                Assert.IsTrue(scale > lastScale && opacity < lastOpacity, "at " + age);
+                lastScale = scale;
+                lastOpacity = opacity;
+            }
+        }
+    }
+
+    [TestClass]
     public class CloudFieldTests
     {
         [TestMethod]
