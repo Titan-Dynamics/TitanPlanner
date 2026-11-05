@@ -148,6 +148,9 @@ Visual-stick-controls Radio Calibration UI with upstream's reversing logic; poli
 ## Other Setup Pages
 GUI cleanups across Accelerometer Calibration, Compass, Failsafe, Flight Modes, Initial Setup Serial; Battery Monitor pages merged into one unified screen; voltage/current calibration enabled regardless of selected sensor. Flight Modes shows its modes and RC Options in side-by-side boxes and writes each change as it is made, with no Save button. The Planner settings page packs its boxes into equal-width columns across the whole window.
 
+## Joystick Configuration
+The Joystick configuration window lays out the joystick's inputs, the RC channels and the button assignments in side-by-side boxes. The inputs box shows every axis, slider and hat the joystick has, by the joystick's own names and the axis to choose for each, with live values and the buttons being pressed, enabled or not. Auto detect watches every axis the joystick has while its prompt is open and picks the one with the most travel.
+
 ## Configuration Profile Management
 Save and load named configuration profiles for the Mission Planner application itself.
 

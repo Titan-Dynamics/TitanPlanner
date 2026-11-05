@@ -74,6 +74,53 @@ namespace MissionPlanner.Joystick
             return joystick != null && !joystick.IsDisposed;
         }
 
+        /// <summary>
+        /// The axes, sliders and first hat DirectInput reports for the device, with its names for them ("X Axis",
+        /// "Throttle", "Rudder"...).
+        /// </summary>
+        public override List<KeyValuePair<joystickaxis, string>> GetAxes()
+        {
+            var axes = new List<KeyValuePair<joystickaxis, string>>();
+            try
+            {
+                var sliders = 0;
+                foreach (var obj in joystick.GetObjects(DeviceObjectTypeFlags.AbsoluteAxis |
+                                                        DeviceObjectTypeFlags.PointOfViewController))
+                {
+                    joystickaxis axis;
+                    if (obj.ObjectType == ObjectGuid.XAxis)
+                        axis = joystickaxis.X;
+                    else if (obj.ObjectType == ObjectGuid.YAxis)
+                        axis = joystickaxis.Y;
+                    else if (obj.ObjectType == ObjectGuid.ZAxis)
+                        axis = joystickaxis.Z;
+                    else if (obj.ObjectType == ObjectGuid.RxAxis)
+                        axis = joystickaxis.Rx;
+                    else if (obj.ObjectType == ObjectGuid.RyAxis)
+                        axis = joystickaxis.Ry;
+                    else if (obj.ObjectType == ObjectGuid.RzAxis)
+                        axis = joystickaxis.Rz;
+                    else if (obj.ObjectType == ObjectGuid.Slider)
+                        axis = sliders++ == 0 ? joystickaxis.Slider1 : joystickaxis.Slider2;
+                    else if (obj.ObjectType == ObjectGuid.PovController)
+                        axis = joystickaxis.Hatud1;
+                    else
+                        continue;
+
+                    // the state holds two sliders and reads the first hat
+                    if (axes.Any(a => a.Key == axis))
+                        continue;
+
+                    axes.Add(new KeyValuePair<joystickaxis, string>(axis, obj.Name.TrimUnPrintable()));
+                }
+            }
+            catch
+            {
+            } // not acquired
+
+            return axes.Count > 0 ? axes : base.GetAxes();
+        }
+
         public override IMyJoystickState GetCurrentState()
         {
             joystick.Poll();

@@ -1171,6 +1171,56 @@ namespace MissionPlanner.Joystick
             return ans;
         }
 
+        /// <summary>
+        /// The position of every axis in a state, by the axis it is chosen as; the hat is its point-of-view angle
+        /// (-1 centred).
+        /// </summary>
+        public static Dictionary<joystickaxis, int> ReadAxes(IMyJoystickState state)
+        {
+            var values = new Dictionary<joystickaxis, int>();
+
+            foreach (var property in typeof(IMyJoystickState).GetProperties())
+            {
+                if (property.PropertyType == typeof(int) &&
+                    Enum.TryParse(property.Name, out joystickaxis axis))
+                    values[axis] = (int) property.GetValue(state, null);
+            }
+
+            var slider = state.GetSlider();
+            if (slider != null && slider.Length > 0)
+                values[joystickaxis.Slider1] = slider[0];
+            if (slider != null && slider.Length > 1)
+                values[joystickaxis.Slider2] = slider[1];
+
+            var pov = state.GetPointOfView();
+            if (pov != null && pov.Length > 0)
+            {
+                values[joystickaxis.Hatud1] = pov[0];
+                values[joystickaxis.Hatlr2] = pov[0];
+            }
+
+            return values;
+        }
+
+        /// <summary>
+        /// The axes the joystick has, with the names it gives them, in its own order. Where the platform doesn't
+        /// say, every axis a joystick can report, named by the axis.
+        /// </summary>
+        public virtual List<KeyValuePair<joystickaxis, string>> GetAxes()
+        {
+            return Enum.GetValues(typeof(joystickaxis)).Cast<joystickaxis>()
+                .Where(a => a != joystickaxis.None && a != joystickaxis.Pass && a != joystickaxis.Hatlr2 &&
+                            a != joystickaxis.Custom1 && a != joystickaxis.Custom2 &&
+                            a != joystickaxis.UINT16_MAX)
+                .Select(a => new KeyValuePair<joystickaxis, string>(a, a.ToString()))
+                .ToList();
+        }
+
+        /// <summary>
+        /// Asks the user to move an axis, watches every axis the joystick has while the prompt is open, and picks the
+        /// one that travelled furthest (its highest reading less its lowest) once they click OK. A hat is picked only
+        /// when no axis travelled more than threshold.
+        /// </summary>
         public static joystickaxis getMovingAxis(string name, int threshold)
         {
             var js = getJoyStickByName(name);
@@ -1178,91 +1228,78 @@ namespace MissionPlanner.Joystick
             if (js == null)
                 return joystickaxis.ARx;
 
-            js.GetCurrentState();
+            // only the axes the joystick has, so one it doesn't have can't be picked
+            var axes = js.GetAxes().Select(a => a.Key).ToList();
 
-            System.Threading.Thread.Sleep(300);
-            
-            var obj = js.GetCurrentState();
-            Hashtable values = new Hashtable();
+            var min = new Dictionary<joystickaxis, int>();
+            var max = new Dictionary<joystickaxis, int>();
+            var stop = new ManualResetEventSlim();
 
-            // get the state of the joystick before.
-            Type type = obj.GetType();
-            PropertyInfo[] properties = type.GetProperties();
-            foreach (PropertyInfo property in properties)
+            // read the joystick while the prompt is open; the prompt holds the UI thread until OK
+            var watcher = new Thread(() =>
             {
-                values[property.Name] = int.Parse(property.GetValue(obj, null).ToString());
-            }
-            values["Slider1"] = obj.GetSlider()[0];
-            values["Slider2"] = obj.GetSlider()[1];
-            values["Hatud1"] = obj.GetPointOfView()[0];
-            values["Hatlr2"] = obj.GetPointOfView()[0];
-            values["Custom1"] = 0;
-            values["Custom2"] = 0;
-
-            CustomMessageBox.Show("Please move the joystick axis you want assigned to this function after clicking ok");
-
-            DateTime start = DateTime.Now;
-
-            while (start.AddSeconds(10) > DateTime.Now)
-            {
-                System.Threading.Thread.Sleep(50);
-                var nextstate = js.GetCurrentState();
-
-                int[] slider = nextstate.GetSlider();
-
-                int[] hat1 = nextstate.GetPointOfView();
-
-                type = nextstate.GetType();
-                properties = type.GetProperties();
-                foreach (PropertyInfo property in properties)
+                do
                 {
-                    //Console.WriteLine("Name: " + property.Name + ", Value: " + property.GetValue(obj, null));
-
-                    log.InfoFormat("test name {0} old {1} new {2} ", property.Name, values[property.Name],
-                        int.Parse(property.GetValue(nextstate, null).ToString()));
-                    log.InfoFormat("{0}  {1} {2}", property.Name, (int) values[property.Name],
-                        (int.Parse(property.GetValue(nextstate, null).ToString()) + threshold));
-                    if ((int) values[property.Name] >
-                        (int.Parse(property.GetValue(nextstate, null).ToString()) + threshold) ||
-                        (int) values[property.Name] <
-                        (int.Parse(property.GetValue(nextstate, null).ToString()) - threshold))
+                    try
                     {
-                        log.Info(property.Name);
-                        js.UnAcquireJoyStick();
-                        return (joystickaxis) Enum.Parse(typeof (joystickaxis), property.Name);
+                        var values = ReadAxes(js.GetCurrentState());
+                        lock (min)
+                        {
+                            foreach (var axis in axes)
+                            {
+                                if (!values.TryGetValue(axis, out var value))
+                                    continue;
+                                min[axis] = min.TryGetValue(axis, out var low) ? Math.Min(low, value) : value;
+                                max[axis] = max.TryGetValue(axis, out var high) ? Math.Max(high, value) : value;
+                            }
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        log.Warn("getMovingAxis", ex);
+                        return;
+                    }
+
+                } while (!stop.Wait(20));
+            }) { IsBackground = true, Name = "Joystick axis detect" };
+            watcher.Start();
+
+            CustomMessageBox.Show(
+                "Move the joystick axis you want for this channel through its full travel, a few times, then click OK.",
+                "Detect axis");
+
+            stop.Set();
+            watcher.Join(500);
+            js.UnAcquireJoyStick();
+
+            var best = joystickaxis.None;
+            var bestTravel = 0;
+            var hatMoved = joystickaxis.None;
+            lock (min)
+            {
+                foreach (var axis in min.Keys)
+                {
+                    var travel = max[axis] - min[axis];
+                    log.InfoFormat("getMovingAxis {0} travelled {1}", axis, travel);
+
+                    if (axis == joystickaxis.Hatud1 || axis == joystickaxis.Hatlr2)
+                    {
+                        if (travel != 0)
+                            hatMoved = axis;
+                    }
+                    else if (travel > bestTravel)
+                    {
+                        best = axis;
+                        bestTravel = travel;
                     }
                 }
-
-                // slider1
-                if ((int) values["Slider1"] > (slider[0] + threshold) ||
-                    (int) values["Slider1"] < (slider[0] - threshold))
-                {
-                    js.UnAcquireJoyStick();
-                    return joystickaxis.Slider1;
-                }
-
-                // slider2
-                if ((int) values["Slider2"] > (slider[1] + threshold) ||
-                    (int) values["Slider2"] < (slider[1] - threshold))
-                {
-                    js.UnAcquireJoyStick();
-                    return joystickaxis.Slider2;
-                }
-
-                // Hatud1
-                if ((int) values["Hatud1"] != (hat1[0]))
-                {
-                    js.UnAcquireJoyStick();
-                    return joystickaxis.Hatud1;
-                }
-
-                // Hatlr2
-                if ((int) values["Hatlr2"] != (hat1[0]))
-                {
-                    js.UnAcquireJoyStick();
-                    return joystickaxis.Hatlr2;
-                }
             }
+
+            if (bestTravel > threshold)
+                return best;
+
+            if (hatMoved != joystickaxis.None)
+                return hatMoved;
 
             CustomMessageBox.Show("No valid option was detected");
 

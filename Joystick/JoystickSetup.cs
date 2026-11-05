@@ -3,6 +3,7 @@ using MissionPlanner.Controls;
 using MissionPlanner.Utilities;
 using SharpDX.DirectInput;
 using System;
+using System.Collections.Generic;
 using System.Drawing;
 using System.IO.Compression;
 using System.Linq;
@@ -22,7 +23,197 @@ namespace MissionPlanner.Joystick
         {
             InitializeComponent();
 
+            // the window's title (ShowUserControl takes it from Text)
+            Text = "Joystick configuration";
+
             MissionPlanner.Utilities.Tracking.AddPage(this.GetType().ToString(), this.Text);
+        }
+
+        // left to right: the joystick's own inputs, the RC channels made from them, and the button assignments
+        private GroupBox inputsGroup;
+        private GroupBox channelsGroup;
+        private GroupBox buttonsGroup;
+        private Label inputsInfo;
+        private Label inputsButtons;
+        private Label buttonsInfo;
+        private bool buttonRowsShown;
+
+        // the live view reads the joystick on its own, enabled or not
+        private JoystickBase inputsJoystick;
+        private string inputsJoystickName;
+        private DateTime inputsRetry;
+        private readonly Dictionary<joystickaxis, InputRow> inputRows = new Dictionary<joystickaxis, InputRow>();
+        private readonly Timer inputsTimer = new Timer { Interval = 50 };
+
+        // an input's row: its name, a bar of where it is, and its value
+        private class InputRow
+        {
+            public Label Name;
+            public HorizontalProgressBar2 Bar;
+            public Label Value;
+            public bool Hat;
+        }
+
+        private const int InputNameWidth = 170;
+        private const int InputBarWidth = 110;
+        private const int InputValueWidth = 60;
+        private const int InputRowHeight = 22;
+
+        private static GroupBox CreateGroup(string title)
+        {
+            return new GroupBox
+            {
+                Text = title,
+                AutoSize = true,
+                AutoSizeMode = AutoSizeMode.GrowAndShrink,
+                Padding = new Padding(6)
+            };
+        }
+
+        /// <summary>
+        /// Puts the groups side by side under the options and sizes the page (and its window) to them.
+        /// </summary>
+        private void LayoutGroups()
+        {
+            var top = Math.Max(CHK_elevons.Bottom, chk_manualcontrol.Bottom) + 8;
+            inputsGroup.Location = new Point(5, top);
+            channelsGroup.Location = new Point(inputsGroup.Right + 6, top);
+            buttonsGroup.Location = new Point(channelsGroup.Right + 6, top);
+
+            var right = Controls.Cast<Control>().Where(c => c.Visible).Max(c => c.Right);
+            var bottom = Controls.Cast<Control>().Where(c => c.Visible).Max(c => c.Bottom);
+            Size = new Size(right + 10, bottom + 10);
+        }
+
+        /// <summary>
+        /// One bar per input the joystick has, named as the joystick names it, with the axis to choose for it.
+        /// </summary>
+        private void BuildInputRows()
+        {
+            foreach (var row in inputRows.Values)
+            {
+                foreach (var control in new Control[] { row.Name, row.Bar, row.Value })
+                {
+                    inputsGroup.Controls.Remove(control);
+                    control.Dispose();
+                }
+            }
+
+            inputRows.Clear();
+
+            // the text first, so the rows start under however many lines it wraps to
+            var rowWidth = InputNameWidth + InputBarWidth + InputValueWidth;
+            inputsInfo.MaximumSize = new Size(rowWidth, 0);
+            inputsInfo.Text = inputsJoystick != null
+                ? "Move a control to see which input it is. Choose the name in brackets for an RC channel."
+                : "Joystick not found. Plug it in, or choose it above.";
+
+            var y = inputsInfo.Bottom + 8;
+            if (inputsJoystick != null)
+            {
+                foreach (var axis in inputsJoystick.GetAxes())
+                {
+                    var row = new InputRow
+                    {
+                        Hat = axis.Key == joystickaxis.Hatud1 || axis.Key == joystickaxis.Hatlr2
+                    };
+                    row.Name = new Label
+                    {
+                        AutoSize = false,
+                        AutoEllipsis = true,
+                        Location = new Point(8, y),
+                        Size = new Size(InputNameWidth, InputRowHeight),
+                        TextAlign = ContentAlignment.MiddleLeft,
+                        Text = axis.Value + " (" + axis.Key + ")"
+                    };
+                    row.Bar = new HorizontalProgressBar2
+                    {
+                        Location = new Point(row.Name.Right, y + 3),
+                        Size = new Size(InputBarWidth, InputRowHeight - 6),
+                        Minimum = 0,
+                        // a hat reads its angle x100, -1 when centred
+                        Maximum = row.Hat ? 36000 : 65535,
+                        DrawLabel = false
+                    };
+                    row.Value = new Label
+                    {
+                        AutoSize = false,
+                        Location = new Point(row.Bar.Right, y),
+                        Size = new Size(InputValueWidth, InputRowHeight),
+                        TextAlign = ContentAlignment.MiddleRight
+                    };
+                    inputsGroup.Controls.AddRange(new Control[] { row.Name, row.Bar, row.Value });
+                    inputRows[axis.Key] = row;
+                    y += InputRowHeight + 2;
+                }
+            }
+
+            inputsButtons.Location = new Point(8, y + 6);
+            inputsButtons.Text = inputsJoystick != null ? "Buttons pressed: none" : "";
+
+            ThemeManager.ApplyThemeTo(inputsGroup);
+            LayoutGroups();
+        }
+
+        private void CloseInputs()
+        {
+            try
+            {
+                inputsJoystick?.Dispose();
+            }
+            catch
+            {
+            }
+
+            inputsJoystick = null;
+        }
+
+        private void inputsTimer_Tick(object sender, EventArgs e)
+        {
+            try
+            {
+                // (re)open on a new choice of joystick, and every couple of seconds while it isn't found
+                if (inputsJoystickName != CMB_joysticks.Text ||
+                    inputsJoystick == null && DateTime.Now > inputsRetry)
+                {
+                    var changed = inputsJoystickName != CMB_joysticks.Text;
+                    CloseInputs();
+                    inputsJoystickName = CMB_joysticks.Text;
+                    inputsJoystick = JoystickBase.getJoyStickByName(inputsJoystickName);
+                    inputsRetry = DateTime.Now.AddSeconds(2);
+                    if (changed || inputsJoystick != null)
+                        BuildInputRows();
+                }
+
+                if (inputsJoystick == null)
+                    return;
+
+                var state = inputsJoystick.GetCurrentState();
+                var values = JoystickBase.ReadAxes(state);
+                foreach (var row in inputRows)
+                {
+                    if (!values.TryGetValue(row.Key, out var value))
+                        continue;
+
+                    row.Value.Bar.Value = value;
+                    row.Value.Value.Text = !row.Value.Hat ? value.ToString()
+                        : value < 0 ? "centred" : value / 100 + "°";
+                }
+
+                // numbered as the button dropdowns number them
+                var pressed = (state.GetButtons() ?? new bool[0])
+                    .Select((down, number) => down ? number.ToString() : null)
+                    .Where(number => number != null)
+                    .ToList();
+                inputsButtons.Text = "Buttons pressed: " + (pressed.Count > 0 ? string.Join(", ", pressed) : "none");
+            }
+            catch
+            {
+                // unplugged: show it as not found and look for it again
+                CloseInputs();
+                inputsRetry = DateTime.Now.AddSeconds(2);
+                BuildInputRows();
+            }
         }
 
         private void Joystick_Load(object sender, EventArgs e)
@@ -68,9 +259,40 @@ namespace MissionPlanner.Joystick
 
             label14.Text += " " + MainV2.comPort.MAV.cs.firmware.ToString();
 
-            var y = label8.Bottom;
-
             this.SuspendLayout();
+
+            // options under the joystick row, then the groups
+            CHK_elevons.Location = new Point(CMB_joysticks.Left, BUT_enable.Bottom + 8);
+            chk_manualcontrol.Location = new Point(CHK_elevons.Right + 20, CHK_elevons.Top);
+
+            inputsGroup = CreateGroup("Joystick inputs");
+            inputsInfo = new Label { AutoSize = true, Location = new Point(8, 20) };
+            inputsButtons = new Label { AutoSize = true };
+            inputsGroup.Controls.Add(inputsInfo);
+            inputsGroup.Controls.Add(inputsButtons);
+            Controls.Add(inputsGroup);
+
+            // the channel rows under their column headings
+            channelsGroup = CreateGroup("RC channels");
+            var headingTop = 20;
+            foreach (var heading in new Control[] { label8, label7, label6, label9 })
+            {
+                heading.Parent = channelsGroup;
+                heading.Location = new Point(heading.Left + 6, headingTop);
+            }
+            Controls.Add(channelsGroup);
+
+            buttonsGroup = CreateGroup("Buttons");
+            buttonsInfo = new Label
+            {
+                AutoSize = true,
+                Location = new Point(8, 20),
+                Text = "Shown once the joystick is read."
+            };
+            buttonsGroup.Controls.Add(buttonsInfo);
+            Controls.Add(buttonsGroup);
+
+            var y = label8.Bottom + 4;
 
             for (int a = 1; a <= maxaxis; a++)
             {
@@ -84,7 +306,7 @@ namespace MissionPlanner.Joystick
                     ChannelValue = config.axis.ToString(),
                     ExpoValue = config.expo.ToString(),
                     ReverseValue = config.reverse,
-                    Location = new Point(0, y),
+                    Location = new Point(6, y),
                     Name = "axis" + a
                 };
 
@@ -105,25 +327,30 @@ namespace MissionPlanner.Joystick
                     }
                 };
 
-                Controls.Add(ax);
+                channelsGroup.Controls.Add(ax);
 
                 y += ax.Height;
-
-
-                if ((ax.Bottom + 30) > this.Height)
-                    this.Height = ax.Bottom;
-
-                if ((ax.Right) > this.Width)
-                    this.Width = ax.Right;
             }
+
+            BuildInputRows();
 
             this.ResumeLayout();
 
+            // again with the groups sized to what they now hold
+            LayoutGroups();
+
+            // the window was themed before these groups were made
+            ThemeManager.ApplyThemeTo(this);
+
             if (MainV2.joystick != null && MainV2.joystick.enabled)
-            {
-                timer1.Start();
                 BUT_enable.Text = "Disable";
-            }
+
+            // read the joystick for the channels and buttons whether or not it's enabled
+            if (CMB_joysticks.Items.Count > 0)
+                timer1.Start();
+
+            inputsTimer.Tick += inputsTimer_Tick;
+            inputsTimer.Start();
 
             startup = false;
         }
@@ -201,10 +428,49 @@ namespace MissionPlanner.Joystick
             Settings.Instance["joy_elevons"] = CHK_elevons.Checked.ToString();
         }
 
+        /// <summary>
+        /// The rows assigning the joystick's buttons, once it is being read (enabled, or read for this page).
+        /// </summary>
+        private void ShowButtonRows(JoystickBase joy)
+        {
+            if (buttonRowsShown || joy == null)
+                return;
+
+            noButtons = Math.Min(16, joy.getNumButtons());
+            if (noButtons == 0)
+                return;
+
+            buttonRowsShown = true;
+
+            buttonsGroup.SuspendLayout();
+            buttonsGroup.Controls.Remove(buttonsInfo);
+
+            var rowHeight = Controls.Find("axis" + 1, true).FirstOrDefault()?.Height ?? 28;
+            for (int f = 0; f < noButtons; f++)
+            {
+                string name = (f).ToString();
+
+                doButtontoUI(name, 8, 20 + f * rowHeight);
+
+                var config = joy.getButton(f);
+
+                joy.setButton(f, config);
+            }
+
+            buttonsGroup.ResumeLayout();
+
+            ThemeManager.ApplyThemeTo(buttonsGroup);
+
+            LayoutGroups();
+        }
+
         private void timer1_Tick(object sender, EventArgs e)
         {
             try
             {
+                if (MainV2.joystick != null && MainV2.joystick.enabled)
+                    ShowButtonRows(MainV2.joystick);
+
                 if (MainV2.joystick == null || MainV2.joystick.enabled == false)
                 {
                     //Console.WriteLine(DateTime.Now.Millisecond + " start ");
@@ -225,33 +491,12 @@ namespace MissionPlanner.Joystick
 
                         joy.name = CMB_joysticks.Text;
 
-                        noButtons = joy.getNumButtons();
-
-                        noButtons = Math.Min(16, noButtons);
-
-                        SuspendLayout();
-
                         MainV2.joystick = joy;
-
-                        var maxctl = Controls.Find("axis" + 1, false).FirstOrDefault();
-
-                        for (int f = 0; f < noButtons; f++)
-                        {
-                            string name = (f).ToString();
-
-                            doButtontoUI(name, maxctl.Right + 100, maxctl.Top + f * maxctl.Height);
-
-                            var config = joy.getButton(f);
-
-                            joy.setButton(f, config);
-                        }
-
-                        ResumeLayout();
-
-                        ThemeManager.ApplyThemeTo(this);
 
                         CMB_joysticks.SelectedIndex = CMB_joysticks.Items.IndexOf(joy.name);
                     }
+
+                    ShowButtonRows(MainV2.joystick);
 
                     MainV2.joystick.elevons = CHK_elevons.Checked;
 
@@ -299,7 +544,7 @@ namespace MissionPlanner.Joystick
                 {
                     string name = (f).ToString();
 
-                    var items = this.Controls.Find("hbar" + name, false);
+                    var items = buttonsGroup.Controls.Find("hbar" + name, false);
 
                     if (items.Length > 0)
                         ((HorizontalProgressBar)items[0]).Value =
@@ -340,7 +585,7 @@ namespace MissionPlanner.Joystick
         {
             string name = ((MyButton)sender).Name.Replace("mybut", "");
 
-            ComboBox cmb = (ComboBox)(this.Controls.Find("cmbbutton" + name, false)[0]);
+            ComboBox cmb = (ComboBox)(buttonsGroup.Controls.Find("cmbbutton" + name, false)[0]);
             cmb.Text = JoystickBase.getPressedButton(CMB_joysticks.Text).ToString();
         }
 
@@ -432,13 +677,7 @@ namespace MissionPlanner.Joystick
             but_settings.Tag = cmbaction;
 
             // do this here so putting in text works
-            this.Controls.AddRange(new Control[] { butlabel, butnumberlist, but_detect, hbar, cmbaction, but_settings });
-
-            if ((but_settings.Bottom + 30) > this.Height)
-                this.Height += 25;
-
-            if ((but_settings.Right) > this.Width)
-                this.Width = but_settings.Right + 5;
+            buttonsGroup.Controls.AddRange(new Control[] { butlabel, butnumberlist, but_detect, hbar, cmbaction, but_settings });
         }
 
         void cmbaction_SelectedIndexChanged(object sender, EventArgs e)
@@ -502,6 +741,8 @@ namespace MissionPlanner.Joystick
         private void JoystickSetup_FormClosed(object sender, FormClosedEventArgs e)
         {
             timer1.Stop();
+            inputsTimer.Stop();
+            CloseInputs();
 
             if (MainV2.joystick != null && MainV2.joystick.enabled == false)
             {
@@ -527,6 +768,8 @@ namespace MissionPlanner.Joystick
         public void Deactivate()
         {
             timer1.Stop();
+            inputsTimer.Stop();
+            CloseInputs();
 
             if (MainV2.joystick != null && MainV2.joystick.enabled == false)
             {
