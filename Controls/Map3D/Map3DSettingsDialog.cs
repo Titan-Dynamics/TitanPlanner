@@ -127,7 +127,7 @@ namespace MissionPlanner.Controls
                 addCheckbox(chkTurnRadius);
                 var chkTrail = new CheckBox { Text = "Flight Path Trail", Checked = settings.ShowTrail };
                 addCheckbox(chkTrail);
-                var chkFpv = new CheckBox { Text = "FPV Mode (Camera At Aircraft)", Checked = settings.FpvMode };
+                var chkFpv = new CheckBox { Text = "FPV Mode (Alt-F)", Checked = settings.FpvMode };
                 chkFpv.CheckedChanged += (s, e) =>
                 {
                     numDist.Enabled = !chkFpv.Checked;

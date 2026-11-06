@@ -531,6 +531,10 @@ public class Map3D: OpenGLtest
     public void SetVehicles(List<VehicleFeed> feeds)
     {
     }
+
+    public void ToggleFpvMode()
+    {
+    }
 }
 
 

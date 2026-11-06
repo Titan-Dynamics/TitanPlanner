@@ -67,7 +67,7 @@ Terrain streams Google Earth style:
 - **Stats For Nerds** (3D map Settings, off by default): a colour-coded panel with FPS and a frame-time graph, terrain streaming internals (tiles, per-zoom histogram, GPU memory, queue, load rate, failures, elevation status), the camera view and GPU info.
 
 ## Camera & Visual Effects
-- **FPV mode** with smooth camera movement and pitch-matched heading lines
+- **FPV mode** with smooth camera movement and pitch-matched heading lines; Alt-F swaps between FPV and the chase view
 - **HUD Overlay** setting: the DATA tab's HUD, with its items and plugin drawings, over the 3D view without its sky and ground
 - **Clouds**: three drifting layers (cumulus, patchy mid-level cloud and high streaks) at least a kilometre above the vehicle, with cloudy and clear stretches, shaded from below, hidden behind high terrain and fading into the horizon; a **Cloud Density** setting from 0 (none) to 100, default 50, sets how much of the sky they cover
 - **Orbital camera** mode

@@ -1481,6 +1481,13 @@ namespace MissionPlanner.GCSViews
 
         protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
         {
+            // Alt-F swaps the 3D map between FPV and the chase view
+            if (keyData == (Keys.Alt | Keys.F) && map3DControl != null && map3DControl.Visible)
+            {
+                map3DControl.ToggleFpvMode();
+                return true;
+            }
+
             if (keyData == (Keys.Control | Keys.D1))
             {
                 _themedTabStrip.SelectedIndex = 0;

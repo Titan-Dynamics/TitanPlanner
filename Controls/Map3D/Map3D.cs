@@ -724,6 +724,15 @@ namespace MissionPlanner.Controls
             this.ResumeLayout(false);
         }
 
+        /// <summary>Swaps the camera between FPV and the chase view (Alt-F on the FLY screen), kept like the setting.</summary>
+        public void ToggleFpvMode()
+        {
+            _settings.FpvMode = !_settings.FpvMode;
+            _settings.Save();
+            MarkActive();
+            Invalidate();
+        }
+
         private void OpenSettings()
         {
             Map3DSettingsDialog.Show(this, _settings);
