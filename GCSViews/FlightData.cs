@@ -644,7 +644,7 @@ namespace MissionPlanner.GCSViews
             // Set up action combobox through FlightDataActions
             flightDataActions1.CMB_action.DataSource = ActionList;
 
-            flightDataActions1.CMB_modes.DataSource = ArduPilot.Common.getModesList(MainV2.comPort.MAV.cs.firmware);
+            flightDataActions1.CMB_modes.DataSource = ArduPilot.Common.getModesList(MainV2.comPort.MAV);
             flightDataActions1.CMB_modes.ValueMember = "Key";
             flightDataActions1.CMB_modes.DisplayMember = "Value";
 
@@ -3499,7 +3499,7 @@ namespace MissionPlanner.GCSViews
         private void CMB_modes_Click(object sender, EventArgs e)
         {
             string current_value = flightDataActions1.CMB_modes.Text;
-            flightDataActions1.CMB_modes.DataSource = ArduPilot.Common.getModesList(MainV2.comPort.MAV.cs.firmware);
+            flightDataActions1.CMB_modes.DataSource = ArduPilot.Common.getModesList(MainV2.comPort.MAV);
             flightDataActions1.CMB_modes.ValueMember = "Key";
             flightDataActions1.CMB_modes.DisplayMember = "Value";
             flightDataActions1.CMB_modes.Text = current_value;

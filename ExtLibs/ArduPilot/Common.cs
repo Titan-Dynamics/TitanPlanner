@@ -252,6 +252,46 @@ union px4_custom_mode {
             return null;
         }
 
+        // ArduPlane's VTOL modes, which only a quadplane has: QSTABILIZE, QHOVER, QLOITER, QLAND, QRTL, QAUTOTUNE,
+        // QACRO and Loiter to QLand
+        private static readonly HashSet<int> QuadPlaneModes = new HashSet<int> { 17, 18, 19, 20, 21, 22, 23, 25 };
+
+        /// <summary>
+        /// The modes the vehicle can be put in: its firmware's, without a plane's VTOL modes unless it is a quadplane.
+        /// To name a mode the vehicle reports, use getModesList(firmware), which has them all.
+        /// </summary>
+        public static List<KeyValuePair<int, string>> getModesList(MAVState mav)
+        {
+            var firmware = mav?.cs?.firmware ?? Firmwares.ArduCopter2;
+            var modes = getModesList(firmware);
+            if (modes == null || firmware != Firmwares.ArduPlane || IsQuadPlane(mav))
+                return modes;
+
+            return modes.Where(mode => !QuadPlaneModes.Contains(mode.Key)).ToList();
+        }
+
+        /// <summary>
+        /// Whether the vehicle is a quadplane: an ArduPlane with Q_ENABLE set, or, before its parameters arrive, one
+        /// reporting a VTOL type.
+        /// </summary>
+        public static bool IsQuadPlane(MAVState mav)
+        {
+            if (mav?.cs == null || mav.cs.firmware != Firmwares.ArduPlane)
+                return false;
+
+            try
+            {
+                if (mav.param.ContainsKey("Q_ENABLE"))
+                    return mav.param["Q_ENABLE"].Value != 0;
+            }
+            catch
+            {
+                // the parameters being reloaded
+            }
+
+            return mav.aptype.ToString().StartsWith("VTOL_");
+        }
+
         public static string speechConversion(MAVState MAV, string input)
         {
             if (MAV.cs.wpno == 0)

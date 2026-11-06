@@ -39,6 +39,7 @@ namespace MissionPlanner.Controls
         private List<string> _fltModes = new List<string>();
         // the connected vehicle's firmware and its modes: the pins the toolbar shows (RefreshVehicleModes)
         private ArduPilot.Firmwares? _vehicleFirmware;
+        private bool _vehicleQuadPlane;
         private HashSet<string> _vehicleModes = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         private Timer _updateTimer;
         private const string PinnedSettingsKey = "ModeSelectorPinned";
@@ -570,19 +571,22 @@ namespace MissionPlanner.Controls
         }
 
         /// <summary>
-        /// Takes the modes the connected vehicle's firmware has, which decide the pins the toolbar shows.
+        /// Takes the modes the connected vehicle has (a plane's Q modes only on a quadplane), which decide the pins
+        /// the toolbar shows.
         /// </summary>
         private void RefreshVehicleModes()
         {
-            var firmware = MainV2.comPort?.MAV?.cs?.firmware;
+            var mav = MainV2.comPort?.MAV;
+            var firmware = mav?.cs?.firmware;
             _vehicleFirmware = firmware;
+            _vehicleQuadPlane = ArduPilot.Common.IsQuadPlane(mav);
 
             var modes = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             try
             {
                 if (firmware != null)
                 {
-                    foreach (var mode in ArduPilot.Common.getModesList(firmware.Value))
+                    foreach (var mode in ArduPilot.Common.getModesList(mav))
                         modes.Add(mode.Value);
                 }
             }
@@ -953,8 +957,10 @@ namespace MissionPlanner.Controls
                 {
                     var cs = MainV2.comPort?.MAV?.cs;
 
-                    // Another vehicle (a copter after a plane) without disconnecting: its own modes on the toolbar
-                    if (cs != null && cs.firmware != _vehicleFirmware)
+                    // Another vehicle (a copter after a plane) without disconnecting, or a plane found to be a
+                    // quadplane (its parameters arriving, Q_ENABLE changed): its own modes on the toolbar
+                    if (cs != null && (cs.firmware != _vehicleFirmware ||
+                                       ArduPilot.Common.IsQuadPlane(MainV2.comPort.MAV) != _vehicleQuadPlane))
                     {
                         RefreshVehicleModes();
                         _visiblePinnedCount = ToolbarModes().Count;
@@ -1389,7 +1395,7 @@ namespace MissionPlanner.Controls
             // Load modes
             try
             {
-                var modesList = ArduPilot.Common.getModesList(MainV2.comPort?.MAV?.cs?.firmware ?? ArduPilot.Firmwares.ArduCopter2);
+                var modesList = ArduPilot.Common.getModesList(MainV2.comPort?.MAV);
                 _popup.SetModes(modesList);
             }
             catch { }
