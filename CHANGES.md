@@ -102,10 +102,12 @@ GPU acceleration is enabled application-wide, with a registry-level Windows GPU-
 ## New Themed Tab Strip
 Replaced the dated FlightData tab bar with a modern themed strip and refreshed icons.
 
+Alt-D and Alt-P open the Dashboard and Params tabs, as their tooltips say.
+
 ## New / Re-purposed Tabs
 - **Params tab** in FlightData and a Params panel co-located on the map
 - **Tuning tab** in FlightData (vehicle-aware: plane/copter/rover)
-- **Video tab** in place of the HUD's right-click Video menu: one source at a time (capture device, RTSP stream, MJPEG stream or GStreamer pipeline) with one Start/Stop button and a status indicator across the top (stopped, connecting, playing and its size, no video), remembered between launches, an RTSP URL that plays as entered with a HereLink preset, and boxes for the HUD overlay and OSD color, and for recording the HUD (with an Open Folder button)
+- **Video tab** in place of the HUD's right-click Video menu: one source at a time (capture device, RTSP stream, MJPEG stream or GStreamer pipeline) with one Start/Stop button and a status indicator across the top (stopped, connecting, playing and its size, no video), remembered between launches, an RTSP URL that plays as entered with a HereLink preset, and boxes for the HUD overlay (Alt-H flips it) and OSD color, and for recording the HUD (with an Open Folder button)
 - **Inspector tab** (MAVLink Inspector exposed without `Ctrl+F`), in the theme's colours with field values in the accent colour
 - **Logs tab** unifying former Dataflash and Telemetry tabs
 - Working **Status tab** in FlightData

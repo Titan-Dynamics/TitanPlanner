@@ -528,6 +528,10 @@ namespace MissionPlanner.GCSViews
             _statusControl.Dock = DockStyle.Fill;
             tabStatus.Controls.Add(_statusControl);
 
+            // the tabs with a shortcut (ProcessCmdKey) give it on hover
+            tabQuick.ToolTipText = tabQuick.Text + " (Alt-D)";
+            tabParams.ToolTipText = tabParams.Text + " (Alt-P)";
+
             // Replace TabControl with ThemedTabStrip
             ReplaceTabControlWithThemedTabStrip();
 
@@ -1485,6 +1489,26 @@ namespace MissionPlanner.GCSViews
             if (keyData == (Keys.Alt | Keys.F) && map3DControl != null && map3DControl.Visible)
             {
                 map3DControl.ToggleFpvMode();
+                return true;
+            }
+
+            // Alt-H flips the HUD overlay, as its checkbox on the Video tab does
+            if (keyData == (Keys.Alt | Keys.H))
+            {
+                flightPlannerVideoOptions1.ToggleHudOverlay();
+                return true;
+            }
+
+            // Alt-D and Alt-P open the Dashboard and Params tabs, when they are shown
+            if (keyData == (Keys.Alt | Keys.D))
+            {
+                _themedTabStrip.SelectTabByTabPage(tabQuick);
+                return true;
+            }
+
+            if (keyData == (Keys.Alt | Keys.P))
+            {
+                _themedTabStrip.SelectTabByTabPage(tabParams);
                 return true;
             }
 

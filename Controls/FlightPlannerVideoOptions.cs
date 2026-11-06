@@ -188,7 +188,7 @@ namespace MissionPlanner.Controls
             grpSource = NewBox("Video Source", tableSource);
 
             // Display: what the HUD draws over the video
-            chkHudShow = new CheckBox { AutoSize = true, Text = "HUD overlay", UseVisualStyleBackColor = true };
+            chkHudShow = new CheckBox { AutoSize = true, Text = "HUD Overlay (Alt-H)", UseVisualStyleBackColor = true };
             tableDisplay = NewTable(2);
             AddRow(tableDisplay, chkHudShow);
             lblOsdColor = NewLabel("OSD Color");
@@ -1084,6 +1084,16 @@ namespace MissionPlanner.Controls
         {
             GCSViews.FlightData.myhud.hudon = chkHudShow.Checked;
             Settings.Instance["CHK_hudshow"] = chkHudShow.Checked.ToString();
+        }
+
+        /// <summary>
+        /// Flips the HUD overlay as a click on its checkbox does (Alt-H on the FLY screen).
+        /// </summary>
+        public void ToggleHudOverlay()
+        {
+            // the checkbox takes the setting when the tab loads, and the planner settings can change it too
+            chkHudShow.Checked = Settings.Instance.GetBoolean("CHK_hudshow", GCSViews.FlightData.myhud.hudon);
+            chkHudShow.Checked = !chkHudShow.Checked;
         }
 
         private void BtnRecord_Click(object sender, EventArgs e)
