@@ -140,15 +140,7 @@ namespace MissionPlanner.Controls
 
         public void AddTab(string text, Control content)
         {
-            AddTab(text, content, null);
-        }
-
-        /// <param name="toolTipText">shown on hover in place of the tab's name, to give its shortcut say</param>
-        public void AddTab(string text, Control content, string toolTipText)
-        {
             var button = new ToolStripButton(text);
-            if (!string.IsNullOrEmpty(toolTipText))
-                button.ToolTipText = toolTipText;
             button.DisplayStyle = ToolStripItemDisplayStyle.Text;
             button.ForeColor = ThemeManager.TextColor;
             button.Padding = new Padding(8, 4, 8, 4);
@@ -252,7 +244,7 @@ namespace MissionPlanner.Controls
             _originalTabPages[panel] = tabPage;
             _tabPagesList.Add(tabPage);
 
-            AddTab(tabPage.Text, panel, tabPage.ToolTipText);
+            AddTab(tabPage.Text, panel);
         }
 
         private void TabButton_Click(object sender, EventArgs e)

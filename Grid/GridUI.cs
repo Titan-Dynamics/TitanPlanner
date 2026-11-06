@@ -27,6 +27,7 @@ using MissionPlanner.Controls;
 
 namespace MissionPlanner.Grid
 {
+    [KeyboardShortcutScope("Survey (Grid)", 6)]
     public partial class GridUI : Form
     {
         private static readonly ILog log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
@@ -1895,20 +1896,23 @@ namespace MissionPlanner.Grid
 
         protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
         {
-            if (keyData == (Keys.Control | Keys.O))
-            {
-                LoadGrid();
-
+            // the shortcuts are the [KeyboardShortcut] methods below
+            if (KeyboardShortcuts.Handle(this, ref msg, keyData))
                 return true;
-            }
-            if (keyData == (Keys.Control | Keys.S))
-            {
-                SaveGrid();
-
-                return true;
-            }
 
             return base.ProcessCmdKey(ref msg, keyData);
+        }
+
+        [KeyboardShortcut(Keys.Control | Keys.O, "Load a survey grid")]
+        private void ShortcutLoadGrid()
+        {
+            LoadGrid();
+        }
+
+        [KeyboardShortcut(Keys.Control | Keys.S, "Save the survey grid")]
+        private void ShortcutSaveGrid()
+        {
+            SaveGrid();
         }
 
         private void NUM_Lane_Dist_ValueChanged(object sender, EventArgs e)

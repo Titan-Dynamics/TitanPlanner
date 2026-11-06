@@ -36,6 +36,7 @@ using IronPython.Runtime.Operations;
 
 namespace MissionPlanner.Log
 {
+    [KeyboardShortcutScope("Log Browser", 7)]
     public partial class LogBrowse : Form
     {
         private static readonly ILog log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
@@ -183,26 +184,29 @@ namespace MissionPlanner.Log
 
         protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
         {
-            if (keyData == (Keys.Control | Keys.G))
-            {
-                string lineno = "0";
-                InputBox.Show("Line no", "Enter Line Number", ref lineno);
-
-                int line = int.Parse(lineno);
-
-                try
-                {
-                    dataGridView1.CurrentCell = dataGridView1[1, line - 1];
-                }
-                catch
-                {
-                    CustomMessageBox.Show("Line Doesn't Exist");
-                }
-
+            // the shortcuts are the [KeyboardShortcut] methods below
+            if (KeyboardShortcuts.Handle(this, ref msg, keyData))
                 return true;
-            }
 
             return base.ProcessCmdKey(ref msg, keyData);
+        }
+
+        [KeyboardShortcut(Keys.Control | Keys.G, "Go to a line")]
+        private void ShortcutGoToLine()
+        {
+            string lineno = "0";
+            InputBox.Show("Line no", "Enter Line Number", ref lineno);
+
+            int line = int.Parse(lineno);
+
+            try
+            {
+                dataGridView1.CurrentCell = dataGridView1[1, line - 1];
+            }
+            catch
+            {
+                CustomMessageBox.Show("Line Doesn't Exist");
+            }
         }
 
         public LogBrowse()

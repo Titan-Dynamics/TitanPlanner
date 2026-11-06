@@ -124,6 +124,10 @@ The solution has ~93 projects; treat `ExtLibs/` as the bulk of the real function
   scanning the tree — useful when files are added/removed but kept out of sync with the project.
 - **`ServiceLocator`** (`ExtLibs/Interfaces/ServiceLocator.cs`) is the lightweight DI used to inject
   platform-specific implementations (resolve with `ServiceLocator.Get<T>()`).
+- **Keyboard shortcuts** are methods marked `[KeyboardShortcut(keys, description)]` (`Utilities/KeyboardShortcuts.cs`),
+  run by the class's `ProcessCmdKey` through `KeyboardShortcuts.Handle` and listed by the Planner settings page
+  under the class's `[KeyboardShortcutScope]`. Add a shortcut that way, not as a `keyData ==` check, or it won't
+  be listed; `KeyboardShortcuts.Label` puts a shortcut's keys in a label or tooltip.
 - **`.editorconfig`** intentionally downgrades many `CAxxxx` analyzer rules to suggestion/silent —
   don't treat those as actionable warnings.
 - **`Resources/`** holds icons/images; themes are `*.mpsystheme` files driven by `ThemeManager.cs`.

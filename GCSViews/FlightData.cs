@@ -38,6 +38,7 @@ using UnauthorizedAccessException = System.UnauthorizedAccessException;
 
 namespace MissionPlanner.GCSViews
 {
+    [KeyboardShortcutScope("FLY screen", 1)]
     public partial class FlightData : MyUserControl, IActivate, IDeactivate
     {
         public static FlightData instance;
@@ -527,10 +528,6 @@ namespace MissionPlanner.GCSViews
             _statusControl = new Controls.StatusControl();
             _statusControl.Dock = DockStyle.Fill;
             tabStatus.Controls.Add(_statusControl);
-
-            // the tabs with a shortcut (ProcessCmdKey) give it on hover
-            tabQuick.ToolTipText = tabQuick.Text + " (Alt-D)";
-            tabParams.ToolTipText = tabParams.Text + " (Alt-P)";
 
             // Replace TabControl with ThemedTabStrip
             ReplaceTabControlWithThemedTabStrip();
@@ -1485,111 +1482,74 @@ namespace MissionPlanner.GCSViews
 
         protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
         {
-            // Alt-F swaps the 3D map between FPV and the chase view
-            if (keyData == (Keys.Alt | Keys.F) && map3DControl != null && map3DControl.Visible)
-            {
-                map3DControl.ToggleFpvMode();
-                return true;
-            }
+            // the shortcuts are the [KeyboardShortcut] methods below
+            return KeyboardShortcuts.Handle(this, ref msg, keyData);
+        }
 
-            // Alt-H flips the HUD overlay, as its checkbox on the Video tab does
-            if (keyData == (Keys.Alt | Keys.H))
-            {
-                flightPlannerVideoOptions1.ToggleHudOverlay();
-                return true;
-            }
+        [KeyboardShortcut(Keys.Alt | Keys.F, "Swap the 3D map between FPV and the chase view")]
+        internal bool ShortcutFpv()
+        {
+            if (map3DControl == null || !map3DControl.Visible)
+                return false;
 
-            // Alt-D and Alt-P open the Dashboard and Params tabs, when they are shown
-            if (keyData == (Keys.Alt | Keys.D))
-            {
-                _themedTabStrip.SelectTabByTabPage(tabQuick);
-                return true;
-            }
+            map3DControl.ToggleFpvMode();
+            return true;
+        }
 
-            if (keyData == (Keys.Alt | Keys.P))
-            {
-                _themedTabStrip.SelectTabByTabPage(tabParams);
-                return true;
-            }
+        [KeyboardShortcut(Keys.Alt | Keys.H, "Show or hide the HUD over the video (the Video tab's HUD Overlay)")]
+        internal void ShortcutHudOverlay()
+        {
+            flightPlannerVideoOptions1.ToggleHudOverlay();
+        }
 
-            if (keyData == (Keys.Control | Keys.D1))
-            {
-                _themedTabStrip.SelectedIndex = 0;
-                return true;
-            }
-            else if (keyData == (Keys.Control | Keys.D2))
-            {
-                _themedTabStrip.SelectedIndex = 1;
-                return true;
-            }
-            else if (keyData == (Keys.Control | Keys.D3))
-            {
-                _themedTabStrip.SelectedIndex = 2;
-                return true;
-            }
-            else if (keyData == (Keys.Control | Keys.D4))
-            {
-                _themedTabStrip.SelectedIndex = 3;
-                return true;
-            }
-            else if (keyData == (Keys.Control | Keys.D5))
-            {
-                _themedTabStrip.SelectedIndex = 4;
-                return true;
-            }
-            else if (keyData == (Keys.Control | Keys.D6))
-            {
-                _themedTabStrip.SelectedIndex = 5;
-                return true;
-            }
-            else if (keyData == (Keys.Control | Keys.D7))
-            {
-                _themedTabStrip.SelectedIndex = 6;
-                return true;
-            }
-            else if (keyData == (Keys.Control | Keys.D8))
-            {
-                _themedTabStrip.SelectedIndex = 7;
-                return true;
-            }
-            else if (keyData == (Keys.Control | Keys.D9))
-            {
-                _themedTabStrip.SelectedIndex = 8;
-                return true;
-            }
-            else if (keyData == (Keys.Control | Keys.D0))
-            {
-                _themedTabStrip.SelectedIndex = 9;
-                return true;
-            }
+        [KeyboardShortcut(Keys.Control | Keys.D1, "Open the tab at that place along the tabs (0 for the tenth)")]
+        [KeyboardShortcut(Keys.Control | Keys.D2, "Open the tab at that place along the tabs (0 for the tenth)")]
+        [KeyboardShortcut(Keys.Control | Keys.D3, "Open the tab at that place along the tabs (0 for the tenth)")]
+        [KeyboardShortcut(Keys.Control | Keys.D4, "Open the tab at that place along the tabs (0 for the tenth)")]
+        [KeyboardShortcut(Keys.Control | Keys.D5, "Open the tab at that place along the tabs (0 for the tenth)")]
+        [KeyboardShortcut(Keys.Control | Keys.D6, "Open the tab at that place along the tabs (0 for the tenth)")]
+        [KeyboardShortcut(Keys.Control | Keys.D7, "Open the tab at that place along the tabs (0 for the tenth)")]
+        [KeyboardShortcut(Keys.Control | Keys.D8, "Open the tab at that place along the tabs (0 for the tenth)")]
+        [KeyboardShortcut(Keys.Control | Keys.D9, "Open the tab at that place along the tabs (0 for the tenth)")]
+        [KeyboardShortcut(Keys.Control | Keys.D0, "Open the tab at that place along the tabs (0 for the tenth)")]
+        private void ShortcutTabAt(Keys keys)
+        {
+            int digit = (keys & Keys.KeyCode) - Keys.D0;
+            _themedTabStrip.SelectedIndex = digit == 0 ? 9 : digit - 1;
+        }
 
-            if (keyData == (Keys.Space))
-            {
-                if (MainV2.comPort.logplaybackfile != null)
-                {
-                    BUT_playlog_Click(null, null);
-                    return true;
-                }
-            }
-            else if (keyData == (Keys.Subtract))
-            {
-                if (LogPlayBackSpeed > 1)
-                    LogPlayBackSpeed--;
-                else
-                    LogPlayBackSpeed /= 2;
+        [KeyboardShortcut(Keys.Space, "Play or pause the log being played back")]
+        private bool ShortcutPlayLog()
+        {
+            if (MainV2.comPort.logplaybackfile == null)
+                return false;
 
-                updateLogPlayPosition();
-            }
-            else if (keyData == (Keys.Add))
-            {
-                if (LogPlayBackSpeed > 1)
-                    LogPlayBackSpeed++;
-                else
-                    LogPlayBackSpeed *= 2;
+            BUT_playlog_Click(null, null);
+            return true;
+        }
 
-                updateLogPlayPosition();
-            }
+        // the playback speed keys go on to the focused control too
+        [KeyboardShortcut(Keys.Subtract, "Slow the log playback down")]
+        private bool ShortcutPlaybackSlower()
+        {
+            if (LogPlayBackSpeed > 1)
+                LogPlayBackSpeed--;
+            else
+                LogPlayBackSpeed /= 2;
 
+            updateLogPlayPosition();
+            return false;
+        }
+
+        [KeyboardShortcut(Keys.Add, "Speed the log playback up")]
+        private bool ShortcutPlaybackFaster()
+        {
+            if (LogPlayBackSpeed > 1)
+                LogPlayBackSpeed++;
+            else
+                LogPlayBackSpeed *= 2;
+
+            updateLogPlayPosition();
             return false;
         }
 

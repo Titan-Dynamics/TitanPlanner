@@ -17,6 +17,7 @@ using DroneCAN;
 
 namespace MissionPlanner.Controls
 {
+    [KeyboardShortcutScope("Parameter pages", 3)]
     public partial class DroneCANParams : MyUserControl, IActivate, IDeactivate
     {
         // ?
@@ -151,13 +152,14 @@ namespace MissionPlanner.Controls
 
         protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
         {
-            if (keyData == (Keys.Control | Keys.S))
-            {
-                BUT_writePIDS_Click(null, null);
-                return true;
-            }
+            // the shortcuts are the [KeyboardShortcut] methods below
+            return KeyboardShortcuts.Handle(this, ref msg, keyData);
+        }
 
-            return false;
+        [KeyboardShortcut(Keys.Control | Keys.S, "Write the changed parameters")]
+        private void ShortcutWrite()
+        {
+            BUT_writePIDS_Click(null, null);
         }
 
         private static string AddNewLinesForTooltip(string text)

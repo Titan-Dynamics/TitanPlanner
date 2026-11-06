@@ -23,6 +23,7 @@ using MissionPlanner.ArduPilot;
 
 namespace MissionPlanner.GCSViews
 {
+    [KeyboardShortcutScope("SIMULATION screen", 4)]
     public partial class SITL : MyUserControl, IActivate
     {
         internal static readonly ILog log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
@@ -1122,19 +1123,23 @@ namespace MissionPlanner.GCSViews
 
         protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
         {
-            if (keyData == (Keys.Control | Keys.S))
-            {
-                StartSwarmChain();
+            // the shortcuts are the [KeyboardShortcut] methods below
+            if (KeyboardShortcuts.Handle(this, ref msg, keyData))
                 return true;
-            }
-
-            if (keyData == (Keys.Control | Keys.D))
-            {
-                _ = StartSwarmSeperate(Firmwares.ArduCopter2);
-                return true;
-            }
 
             return base.ProcessCmdKey(ref msg, keyData);
+        }
+
+        [KeyboardShortcut(Keys.Control | Keys.S, "Start a swarm of simulated vehicles, each following the one before")]
+        private void ShortcutSwarmChain()
+        {
+            StartSwarmChain();
+        }
+
+        [KeyboardShortcut(Keys.Control | Keys.D, "Start a swarm of separate simulated copters")]
+        private void ShortcutSwarmSeparate()
+        {
+            _ = StartSwarmSeperate(Firmwares.ArduCopter2);
         }
 
         public async Task StartSwarmSeperate(Firmwares firmware)

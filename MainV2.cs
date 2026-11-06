@@ -49,6 +49,7 @@ using DroneCAN;
 
 namespace MissionPlanner
 {
+    [KeyboardShortcutScope("Everywhere", 0)]
     public partial class MainV2 : Form
     {
         private static readonly ILog log =
@@ -4378,154 +4379,9 @@ namespace MissionPlanner
                 return false;
             }
 
-            if (keyData == Keys.F12)
-            {
-                MenuConnect_Click(null, null);
+            // the shortcuts are the [KeyboardShortcut] methods below
+            if (KeyboardShortcuts.Handle(this, ref msg, keyData))
                 return true;
-            }
-
-            if (keyData == Keys.F2)
-            {
-                MenuFlightData_Click(null, null);
-                return true;
-            }
-
-            if (keyData == Keys.F3)
-            {
-                MenuFlightPlanner_Click(null, null);
-                return true;
-            }
-
-            if (keyData == Keys.F4)
-            {
-                MenuTuning_Click(null, null);
-                return true;
-            }
-
-            if (keyData == Keys.F5)
-            {
-                comPort.getParamList();
-                MyView.ShowScreen(MyView.current.Name);
-                return true;
-            }
-
-            if (keyData == (Keys.Control | Keys.F)) // temp
-            {
-                Form frm = new temp();
-                ThemeManager.ApplyThemeTo(frm);
-                frm.Show();
-                return true;
-            }
-
-            /*if (keyData == (Keys.Control | Keys.S)) // screenshot
-            {
-                ScreenShot();
-                return true;
-            }*/
-            if (keyData == (Keys.Control | Keys.P))
-            {
-                new PluginUI().Show();
-                return true;
-            }
-
-            if (keyData == (Keys.Control | Keys.G)) // nmea out
-            {
-                Form frm = new SerialOutputNMEA();
-                ThemeManager.ApplyThemeTo(frm);
-                frm.Show();
-                return true;
-            }
-
-            if (keyData == (Keys.Control | Keys.X))
-            {
-                new GMAPCache().ShowUserControl();
-                return true;
-            }
-
-            if (keyData == (Keys.Control | Keys.L)) // limits
-            {
-                //new DigitalSkyUI().ShowUserControl();
-
-                new SpectrogramUI().Show();
-
-                return true;
-            }
-
-            if (keyData == (Keys.Control | Keys.R)) // reboot autopilot
-            {
-                if (comPort.BaseStream.IsOpen)
-                {
-                    if (CustomMessageBox.Show("Are you sure you want to reboot the autopilot?", "Reboot",
-                            MessageBoxButtons.YesNo) == (int)DialogResult.Yes)
-                    {
-                        try
-                        {
-                            comPort.doReboot(false, true);
-                        }
-                        catch
-                        {
-                            CustomMessageBox.Show(Strings.CommandFailed, Strings.ERROR);
-                        }
-                    }
-                }
-
-                return true;
-            }
-
-            if (keyData == (Keys.Control | Keys.W)) // test ac config
-            {
-                new PropagationSettings().Show();
-
-                return true;
-            }
-
-            if (keyData == (Keys.Control | Keys.Z))
-            {
-                //ScanHW.Scan(comPort);
-                new Camera().test(MainV2.comPort);
-                return true;
-            }
-
-            if (keyData == (Keys.Control | Keys.T)) // for override connect
-            {
-                try
-                {
-                    MainV2.comPort.Open(false);
-                }
-                catch (Exception ex)
-                {
-                    CustomMessageBox.Show(ex.ToString());
-                }
-
-                return true;
-            }
-
-            if (keyData == (Keys.Control | Keys.Y)) // for ryan beall and ollyw42
-            {
-                // write
-                try
-                {
-                    MainV2.comPort.doCommand(MainV2.comPort.sysidcurrent, (byte) MainV2.comPort.compidcurrent,
-                        MAVLink.MAV_CMD.PREFLIGHT_STORAGE, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
-                }
-                catch
-                {
-                    CustomMessageBox.Show("Invalid command");
-                    return true;
-                }
-
-                //read
-                ///////MainV2.comPort.doCommand(MAVLink09.MAV_CMD.PREFLIGHT_STORAGE, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
-                CustomMessageBox.Show("Done MAV_ACTION_STORAGE_WRITE");
-                return true;
-            }
-
-            if (keyData == (Keys.Control | Keys.J))
-            {
-                new DevopsUI().ShowUserControl();
-
-                return true;
-            }
 
             if (ProcessCmdKeyCallback != null)
             {
@@ -4538,6 +4394,146 @@ namespace MissionPlanner
         public delegate bool ProcessCmdKeyHandler(ref Message msg, Keys keyData);
 
         public event ProcessCmdKeyHandler ProcessCmdKeyCallback;
+
+        [KeyboardShortcut(Keys.F12, "Connect or disconnect")]
+        private void ShortcutConnect()
+        {
+            MenuConnect_Click(null, null);
+        }
+
+        [KeyboardShortcut(Keys.F2, "Open the FLY screen")]
+        private void ShortcutFly()
+        {
+            MenuFlightData_Click(null, null);
+        }
+
+        [KeyboardShortcut(Keys.F3, "Open the PLAN screen")]
+        private void ShortcutPlan()
+        {
+            MenuFlightPlanner_Click(null, null);
+        }
+
+        [KeyboardShortcut(Keys.F4, "Open the CONFIG screen")]
+        private void ShortcutConfig()
+        {
+            MenuTuning_Click(null, null);
+        }
+
+        [KeyboardShortcut(Keys.F5, "Download the parameters again and reload the screen")]
+        private void ShortcutRefreshParams()
+        {
+            comPort.getParamList();
+            MyView.ShowScreen(MyView.current.Name);
+        }
+
+        [KeyboardShortcut(Keys.Control | Keys.F, "Open the Tools window")]
+        private void ShortcutTools()
+        {
+            Form frm = new temp();
+            ThemeManager.ApplyThemeTo(frm);
+            frm.Show();
+        }
+
+        [KeyboardShortcut(Keys.Control | Keys.P, "Open the plugin manager")]
+        private void ShortcutPlugins()
+        {
+            new PluginUI().Show();
+        }
+
+        [KeyboardShortcut(Keys.Control | Keys.G, "Send the vehicle's position out as NMEA")]
+        private void ShortcutNmeaOut()
+        {
+            Form frm = new SerialOutputNMEA();
+            ThemeManager.ApplyThemeTo(frm);
+            frm.Show();
+        }
+
+        [KeyboardShortcut(Keys.Control | Keys.X, "Open the map cache")]
+        private void ShortcutMapCache()
+        {
+            new GMAPCache().ShowUserControl();
+        }
+
+        [KeyboardShortcut(Keys.Control | Keys.L, "Open the spectrogram")]
+        private void ShortcutSpectrogram()
+        {
+            //new DigitalSkyUI().ShowUserControl();
+
+            new SpectrogramUI().Show();
+        }
+
+        [KeyboardShortcut(Keys.Control | Keys.R, "Reboot the autopilot")]
+        private void ShortcutReboot()
+        {
+            if (comPort.BaseStream.IsOpen)
+            {
+                if (CustomMessageBox.Show("Are you sure you want to reboot the autopilot?", "Reboot",
+                        MessageBoxButtons.YesNo) == (int)DialogResult.Yes)
+                {
+                    try
+                    {
+                        comPort.doReboot(false, true);
+                    }
+                    catch
+                    {
+                        CustomMessageBox.Show(Strings.CommandFailed, Strings.ERROR);
+                    }
+                }
+            }
+        }
+
+        [KeyboardShortcut(Keys.Control | Keys.W, "Open the propagation settings")]
+        private void ShortcutPropagation()
+        {
+            new PropagationSettings().Show();
+        }
+
+        [KeyboardShortcut(Keys.Control | Keys.Z, "Ask the camera for its information and start its video stream")]
+        private void ShortcutCameraTest()
+        {
+            //ScanHW.Scan(comPort);
+            new Camera().test(MainV2.comPort);
+        }
+
+        [KeyboardShortcut(Keys.Control | Keys.T, "Open the connection without downloading the parameters")]
+        private void ShortcutOpenConnection()
+        {
+            try
+            {
+                MainV2.comPort.Open(false);
+            }
+            catch (Exception ex)
+            {
+                CustomMessageBox.Show(ex.ToString());
+            }
+        }
+
+        [KeyboardShortcut(Keys.Control | Keys.Y, "Have the autopilot save its parameters to storage")]
+        private void ShortcutWriteStorage()
+        {
+            // for ryan beall and ollyw42
+            // write
+            try
+            {
+                MainV2.comPort.doCommand(MainV2.comPort.sysidcurrent, (byte) MainV2.comPort.compidcurrent,
+                    MAVLink.MAV_CMD.PREFLIGHT_STORAGE, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
+            }
+            catch
+            {
+                CustomMessageBox.Show("Invalid command");
+                return;
+            }
+
+            //read
+            ///////MainV2.comPort.doCommand(MAVLink09.MAV_CMD.PREFLIGHT_STORAGE, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
+            CustomMessageBox.Show("Done MAV_ACTION_STORAGE_WRITE");
+        }
+
+        [KeyboardShortcut(Keys.Control | Keys.J, "Open the DevOps tools")]
+        private void ShortcutDevops()
+        {
+            new DevopsUI().ShowUserControl();
+        }
 
         public void changelanguage(CultureInfo ci)
         {
@@ -4806,6 +4802,10 @@ namespace MissionPlanner
 
         protected override void WndProc(ref Message m)
         {
+            // releasing Alt after an Alt shortcut would otherwise select the menu
+            if (KeyboardShortcuts.SuppressMenuKey(ref m))
+                return;
+
             switch (m.Msg)
             {
                 case WM_CREATE:

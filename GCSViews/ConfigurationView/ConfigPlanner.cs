@@ -81,6 +81,7 @@ namespace MissionPlanner.GCSViews.ConfigurationView
             layoutRoot.Controls.Add(CreateSpeechAndAudioGroup());
             layoutRoot.Controls.Add(CreateUpdatesGroup());
             layoutRoot.Controls.Add(CreateConfigurationGroup());
+            layoutRoot.Controls.Add(CreateKeyboardShortcutsGroup());
 
             Controls.Clear();
             Controls.Add(layoutRoot);
@@ -90,18 +91,23 @@ namespace MissionPlanner.GCSViews.ConfigurationView
 
         /// <summary>
         /// Lays the setting groups out in equal-width columns, putting each in turn under the shortest column, so
-        /// boxes of different heights pack without gaps.
+        /// boxes of different heights pack without gaps. Groups tagged <see cref="FullWidth"/> go under all the
+        /// columns, as wide as they are together.
         /// </summary>
         private class GroupColumnsPanel : Panel
         {
             private const int MinColumnWidth = 400;
             private const int Gap = 10;
 
+            public static readonly object FullWidth = new object();
+
             protected override void OnLayout(LayoutEventArgs levent)
             {
-                var groups = Controls.Cast<Control>().Where(c => c.Visible).ToList();
+                var visible = Controls.Cast<Control>().Where(c => c.Visible).ToList();
+                var groups = visible.Where(c => c.Tag != FullWidth).ToList();
+                var wide = visible.Where(c => c.Tag == FullWidth).ToList();
                 int width = ClientSize.Width - Padding.Horizontal;
-                if (groups.Count == 0 || width <= 0)
+                if (visible.Count == 0 || width <= 0)
                 {
                     base.OnLayout(levent);
                     return;
@@ -109,13 +115,15 @@ namespace MissionPlanner.GCSViews.ConfigurationView
 
                 int columns = Math.Max(1, Math.Min(groups.Count, (width + Gap) / (MinColumnWidth + Gap)));
                 int columnWidth = Math.Max(MinColumnWidth, (width - (columns - 1) * Gap) / columns);
+                int fullWidth = columns * columnWidth + (columns - 1) * Gap;
 
-                // the groups size their height to their content; pin their width to the column's
+                // the groups size their height to their content; pin their width to the column's (or all of them)
                 SuspendLayout();
-                foreach (var group in groups)
+                foreach (var group in visible)
                 {
-                    group.MinimumSize = new Size(columnWidth, 0);
-                    group.MaximumSize = new Size(columnWidth, 0);
+                    int groupWidth = wide.Contains(group) ? fullWidth : columnWidth;
+                    group.MinimumSize = new Size(groupWidth, 0);
+                    group.MaximumSize = new Size(groupWidth, 0);
                 }
                 ResumeLayout(false);
 
@@ -129,6 +137,13 @@ namespace MissionPlanner.GCSViews.ConfigurationView
                     int column = Array.IndexOf(bottoms, bottoms.Min());
                     group.Location = new Point(origin.X + column * (columnWidth + Gap), origin.Y + bottoms[column]);
                     bottoms[column] += group.Height + Gap;
+                }
+
+                int bottom = bottoms.Max();
+                foreach (var group in wide)
+                {
+                    group.Location = new Point(origin.X, origin.Y + bottom);
+                    bottom += group.Height + Gap;
                 }
                 ResumeLayout(false);
 
@@ -253,6 +268,49 @@ namespace MissionPlanner.GCSViews.ConfigurationView
             saveFlow.Controls.Add(BUT_saveconfig);
             table.Controls.Add(saveFlow, 1, 1);
             table.SetColumnSpan(saveFlow, 2);
+
+            group.Controls.Add(table);
+            return group;
+        }
+
+        /// <summary>
+        /// The keyboard shortcuts, by where they work, read from their [KeyboardShortcut] declarations: a shortcut
+        /// added or changed in the code shows here as it is.
+        /// </summary>
+        private Control CreateKeyboardShortcutsGroup()
+        {
+            var group = CreateGroupBox("Keyboard Shortcuts");
+            group.Tag = GroupColumnsPanel.FullWidth;
+            var table = CreateTableLayout(2);
+
+            string scope = null;
+            int row = 0;
+            foreach (var shortcut in KeyboardShortcuts.All)
+            {
+                if (shortcut.Scope != scope)
+                {
+                    scope = shortcut.Scope;
+                    var header = new Label
+                    {
+                        AutoSize = true,
+                        Text = scope,
+                        Margin = new Padding(3, row == 0 ? 3 : 12, 3, 3)
+                    };
+                    header.Font = new Font(header.Font, FontStyle.Bold);
+                    table.Controls.Add(header, 0, row);
+                    table.SetColumnSpan(header, 2);
+                    row++;
+                }
+
+                table.Controls.Add(new Label
+                {
+                    AutoSize = true,
+                    Text = shortcut.KeysText,
+                    Margin = new Padding(15, 3, 20, 3)
+                }, 0, row);
+                table.Controls.Add(new Label { AutoSize = true, Text = shortcut.Description }, 1, row);
+                row++;
+            }
 
             group.Controls.Add(table);
             return group;

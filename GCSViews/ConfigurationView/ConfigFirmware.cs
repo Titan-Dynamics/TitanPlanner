@@ -15,6 +15,7 @@ using System.Windows.Forms;
 
 namespace MissionPlanner.GCSViews.ConfigurationView
 {
+    [KeyboardShortcutScope("Install Firmware", 5)]
     public partial class ConfigFirmware : MyUserControl, IActivate, IDeactivate
     {
         private static readonly ILog log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
@@ -111,21 +112,31 @@ namespace MissionPlanner.GCSViews.ConfigurationView
             //CTRL+O moved to CMB_history_label_Click
             //CTRL+C moved to Custom_firmware_label_Click
 
-            if (keyData == (Keys.Control | Keys.Q))
-            {
-                CustomMessageBox.Show(Strings.TrunkWarning, Strings.Trunk);
-                firmwareurl = "https://github.com/ArduPilot/binary/raw/master/dev/firmwarelatest.xml;https://firmware.ardupilot.org/Tools/MissionPlanner/dev/firmwarelatest.xml";
-
-                softwares.Clear();
-                UpdateFWList();
-                CMB_history.Visible = false;
-            }
-            else if (keyData == (Keys.Control | Keys.P))
-            {
-                findfirmware(softwares.First(a => { return a.name.ToLower().Contains("px4"); }));
-            }
+            // the shortcuts are the [KeyboardShortcut] methods below
+            if (KeyboardShortcuts.Handle(this, ref msg, keyData))
+                return true;
 
             return base.ProcessCmdKey(ref msg, keyData);
+        }
+
+        // the firmware keys go on to the focused control too
+        [KeyboardShortcut(Keys.Control | Keys.Q, "List the development (latest) firmware")]
+        private bool ShortcutDevFirmware()
+        {
+            CustomMessageBox.Show(Strings.TrunkWarning, Strings.Trunk);
+            firmwareurl = "https://github.com/ArduPilot/binary/raw/master/dev/firmwarelatest.xml;https://firmware.ardupilot.org/Tools/MissionPlanner/dev/firmwarelatest.xml";
+
+            softwares.Clear();
+            UpdateFWList();
+            CMB_history.Visible = false;
+            return false;
+        }
+
+        [KeyboardShortcut(Keys.Control | Keys.P, "Install the PX4 firmware")]
+        private bool ShortcutPx4Firmware()
+        {
+            findfirmware(softwares.First(a => { return a.name.ToLower().Contains("px4"); }));
+            return false;
         }
 
         private void UpdateFWList()

@@ -188,7 +188,13 @@ namespace MissionPlanner.Controls
             grpSource = NewBox("Video Source", tableSource);
 
             // Display: what the HUD draws over the video
-            chkHudShow = new CheckBox { AutoSize = true, Text = "HUD Overlay (Alt-H)", UseVisualStyleBackColor = true };
+            chkHudShow = new CheckBox
+            {
+                AutoSize = true,
+                Text = KeyboardShortcuts.Label("HUD Overlay", typeof(GCSViews.FlightData),
+                    nameof(GCSViews.FlightData.ShortcutHudOverlay)),
+                UseVisualStyleBackColor = true
+            };
             tableDisplay = NewTable(2);
             AddRow(tableDisplay, chkHudShow);
             lblOsdColor = NewLabel("OSD Color");

@@ -58,6 +58,7 @@ using MissionPlanner.Utilities.Mission;
 
 namespace MissionPlanner.GCSViews
 {
+    [KeyboardShortcutScope("PLAN screen", 2)]
     public partial class FlightPlanner : MyUserControl, IDeactivate, IActivate
     {
         public FlightPlanner()
@@ -402,72 +403,80 @@ namespace MissionPlanner.GCSViews
 
         protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
         {
-            // undo
-            if (keyData == (Keys.Control | Keys.Z))
-            {
-                if (history.Count > 0)
-                {
-                    int no = history.Count - 1;
-                    var pop = history[no];
-                    history.RemoveAt(no);
-                    WPtoScreen(pop);
-                }
-
+            // the shortcuts are the [KeyboardShortcut] methods below
+            if (KeyboardShortcuts.Handle(this, ref msg, keyData))
                 return true;
-            }
-
-            // open wp file
-            if (keyData == (Keys.Control | Keys.O))
-            {
-                loadWPFileToolStripMenuItem_Click(null, null);
-                return true;
-            }
-
-            // save wp file
-            if (keyData == (Keys.Control | Keys.S))
-            {
-                saveWPFileToolStripMenuItem_Click(null, null);
-                return true;
-            }
-
-            if (keyData == (Keys.Control | Keys.N))
-            {
-                GMapControl.GDI = !GMapControl.GDI;
-                return true;
-            }
-
-            if (keyData == (Keys.Control | Keys.M))
-            {
-                // get the command list from the datagrid
-                var commandlist = GetCommandList();
-                MainV2.comPort.MAV.wps[0] = new Locationwp().Set(MainV2.comPort.MAV.cs.PlannedHomeLocation.Lat,
-                    MainV2.comPort.MAV.cs.PlannedHomeLocation.Lng, MainV2.comPort.MAV.cs.PlannedHomeLocation.Alt, 0);
-                int a = 1;
-                commandlist.ForEach(i =>
-                {
-                    MAVLink.mavlink_mission_item_int_t item = i;
-                    item.seq = (ushort) a;
-                    MainV2.comPort.MAV.wps[a] = item;
-                    a++;
-                });
-
-                return true;
-            }
-
-            if (keyData == (Keys.Control | Keys.F | Keys.Shift))
-            {
-                but_writewpfast_Click(this, EventArgs.Empty);
-            }
-            if (keyData == (Keys.Control | Keys.W | Keys.Shift))
-            {
-                BUT_write_Click(this, EventArgs.Empty);
-            }
-            if (keyData == (Keys.Control | Keys.R | Keys.Shift))
-            {
-                BUT_read_Click(this, EventArgs.Empty);
-            }
 
             return base.ProcessCmdKey(ref msg, keyData);
+        }
+
+        [KeyboardShortcut(Keys.Control | Keys.Z, "Undo the last change to the plan")]
+        private void ShortcutUndo()
+        {
+            if (history.Count > 0)
+            {
+                int no = history.Count - 1;
+                var pop = history[no];
+                history.RemoveAt(no);
+                WPtoScreen(pop);
+            }
+        }
+
+        [KeyboardShortcut(Keys.Control | Keys.O, "Load a mission file")]
+        private void ShortcutLoadFile()
+        {
+            loadWPFileToolStripMenuItem_Click(null, null);
+        }
+
+        [KeyboardShortcut(Keys.Control | Keys.S, "Save the mission to a file")]
+        private void ShortcutSaveFile()
+        {
+            saveWPFileToolStripMenuItem_Click(null, null);
+        }
+
+        [KeyboardShortcut(Keys.Control | Keys.N, "Switch the maps' GDI drawing on or off")]
+        private void ShortcutGdi()
+        {
+            GMapControl.GDI = !GMapControl.GDI;
+        }
+
+        [KeyboardShortcut(Keys.Control | Keys.M, "Take the plan as the vehicle's mission here, without writing it")]
+        private void ShortcutPlanAsMission()
+        {
+            // get the command list from the datagrid
+            var commandlist = GetCommandList();
+            MainV2.comPort.MAV.wps[0] = new Locationwp().Set(MainV2.comPort.MAV.cs.PlannedHomeLocation.Lat,
+                MainV2.comPort.MAV.cs.PlannedHomeLocation.Lng, MainV2.comPort.MAV.cs.PlannedHomeLocation.Alt, 0);
+            int a = 1;
+            commandlist.ForEach(i =>
+            {
+                MAVLink.mavlink_mission_item_int_t item = i;
+                item.seq = (ushort) a;
+                MainV2.comPort.MAV.wps[a] = item;
+                a++;
+            });
+        }
+
+        // the write and read keys go on to the focused control too
+        [KeyboardShortcut(Keys.Control | Keys.Shift | Keys.F, "Write the mission to the vehicle, fast")]
+        private bool ShortcutWriteFast()
+        {
+            but_writewpfast_Click(this, EventArgs.Empty);
+            return false;
+        }
+
+        [KeyboardShortcut(Keys.Control | Keys.Shift | Keys.W, "Write the mission to the vehicle")]
+        private bool ShortcutWrite()
+        {
+            BUT_write_Click(this, EventArgs.Empty);
+            return false;
+        }
+
+        [KeyboardShortcut(Keys.Control | Keys.Shift | Keys.R, "Read the mission from the vehicle")]
+        private bool ShortcutRead()
+        {
+            BUT_read_Click(this, EventArgs.Empty);
+            return false;
         }
 
         public enum altmode

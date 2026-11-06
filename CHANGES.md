@@ -102,8 +102,6 @@ GPU acceleration is enabled application-wide, with a registry-level Windows GPU-
 ## New Themed Tab Strip
 Replaced the dated FlightData tab bar with a modern themed strip and refreshed icons.
 
-Alt-D and Alt-P open the Dashboard and Params tabs, as their tooltips say.
-
 ## New / Re-purposed Tabs
 - **Params tab** in FlightData and a Params panel co-located on the map
 - **Tuning tab** in FlightData (vehicle-aware: plane/copter/rover)
@@ -148,7 +146,7 @@ A revamped Servo Output panel with click-or-drag sliders for trim, an "Equidista
 Visual-stick-controls Radio Calibration UI with upstream's reversing logic; polished accel calibration.
 
 ## Other Setup Pages
-GUI cleanups across Accelerometer Calibration, Compass, Failsafe, Flight Modes, Initial Setup Serial; Battery Monitor pages merged into one unified screen; voltage/current calibration enabled regardless of selected sensor. Flight Modes shows its modes and RC Options in side-by-side boxes and writes each change as it is made, with no Save button. The Planner settings page packs its boxes into equal-width columns across the whole window.
+GUI cleanups across Accelerometer Calibration, Compass, Failsafe, Flight Modes, Initial Setup Serial; Battery Monitor pages merged into one unified screen; voltage/current calibration enabled regardless of selected sensor. Flight Modes shows its modes and RC Options in side-by-side boxes and writes each change as it is made, with no Save button. The Planner settings page packs its boxes into equal-width columns across the whole window, with a Keyboard Shortcuts box across the bottom listing every shortcut by where it works.
 
 ## Joystick Configuration
 The Joystick configuration window lays out the joystick's inputs, the RC channels and the button assignments in side-by-side boxes. The inputs box shows every axis, slider and hat the joystick has, by the joystick's own names and the axis to choose for each, with live values and the buttons being pressed, enabled or not. Auto detect watches every axis the joystick has while its prompt is open and picks the one with the most travel.

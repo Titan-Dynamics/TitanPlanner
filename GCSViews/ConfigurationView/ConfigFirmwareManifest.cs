@@ -17,6 +17,7 @@ using System.Windows.Forms;
 
 namespace MissionPlanner.GCSViews.ConfigurationView
 {
+    [KeyboardShortcutScope("Install Firmware", 5)]
     public partial class ConfigFirmwareManifest : UserControl, IActivate, IDeactivate
     {
         private static readonly ILog log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
@@ -399,13 +400,21 @@ namespace MissionPlanner.GCSViews.ConfigurationView
 
         protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
         {
-            if (keyData == (Keys.Control | Keys.Q))
-            {
-                CustomMessageBox.Show(Strings.TrunkWarning, Strings.Trunk);
-                REL_Type = APFirmware.RELEASE_TYPES.DEV;
-                Activate();
-            }
+            // the shortcuts are the [KeyboardShortcut] methods below
+            if (KeyboardShortcuts.Handle(this, ref msg, keyData))
+                return true;
+
             return base.ProcessCmdKey(ref msg, keyData);
+        }
+
+        // the key goes on to the focused control too
+        [KeyboardShortcut(Keys.Control | Keys.Q, "List the development (latest) firmware")]
+        private bool ShortcutDevFirmware()
+        {
+            CustomMessageBox.Show(Strings.TrunkWarning, Strings.Trunk);
+            REL_Type = APFirmware.RELEASE_TYPES.DEV;
+            Activate();
+            return false;
         }
 
         private string custom_fw_dir = Settings.Instance["FirmwareFileDirectory"] ?? "";
