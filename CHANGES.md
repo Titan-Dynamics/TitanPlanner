@@ -302,6 +302,7 @@ Behaviour that differs from upstream because the fork fixed it:
 - Starting a camera that another program holds open fails gracefully instead of crashing
 - Dashboard items repaint after context-menu edits, the panel never outgrows its tab, and the default layout has no duplicate "distance to home"
 - The 3D map's nav-bearing line points at the actual waypoint, and the PLAN and DATA maps stay in sync
+- Survey (Grid) camera footprints follow the PLAN altitude mode: in Terrain they keep their size over rising ground, in Absolute they are taken from the altitude above sea level, and none is drawn where the camera would be at or under the ground; upstream always takes the altitude as relative to home
 - Aborting a script when none is running is a no-op rather than a crash
 - With Bluetooth on, the scan for Bluetooth telemetry radios doesn't crash the app as it finishes
 - Servo Output's function dropdown shows the real value for REAL32-stored integer params such as `SERVOn_FUNCTION`; upstream truncates and can show the option below (Gripper for LandingGear)

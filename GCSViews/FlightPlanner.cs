@@ -102,6 +102,9 @@ namespace MissionPlanner.GCSViews
         private Dictionary<string, double[]> cmdParamMultipliers = new Dictionary<string, double[]>();
         private GMapMarkerRect CurentRectMarker;
         private altmode currentaltmode = (altmode) Settings.Instance.GetInt32("FPaltmode", (int)altmode.Relative);
+
+        /// <summary>The altitude frame new waypoints are given (the altitude mode chosen on the PLAN screen).</summary>
+        public altmode CurrentAltMode => currentaltmode;
         private GMapMarker CurrentGMapMarker;
         public GMapMarker currentMarker;
         private GMapMarkerPOI CurrentPOIMarker;

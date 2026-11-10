@@ -370,22 +370,11 @@ namespace MissionPlanner.Controls.TerrainProfile
         static double ItemAltitude(Locationwp item, double lat, double lng, double reference,
             Func<double, double, double> terrain, out bool followsTerrain)
         {
-            followsTerrain = false;
-            switch ((MAVLink.MAV_FRAME)item.frame)
-            {
-                case MAVLink.MAV_FRAME.GLOBAL:
-                case MAVLink.MAV_FRAME.GLOBAL_INT:
-                    return item.alt;
-
-                case MAVLink.MAV_FRAME.GLOBAL_TERRAIN_ALT:
-                case MAVLink.MAV_FRAME.GLOBAL_TERRAIN_ALT_INT:
-                    followsTerrain = true;
-                    double ground = terrain(lat, lng);
-                    return (double.IsNaN(ground) ? reference : ground) + item.alt;
-
-                default:
-                    return reference + item.alt;
-            }
+            var frame = (MAVLink.MAV_FRAME)item.frame;
+            followsTerrain = MissionAltitude.FollowsTerrain(frame);
+            // the ground is looked up only for a terrain frame
+            double ground = followsTerrain ? terrain(lat, lng) : double.NaN;
+            return MissionAltitude.ToAsl(item.alt, frame, reference, ground);
         }
 
         // The rally points (RALLY_POINT items away from 0, 0), labelled R and their row. Their altitude follows the

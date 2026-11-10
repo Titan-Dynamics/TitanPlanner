@@ -665,6 +665,9 @@ namespace MissionPlanner.Grid
             double maxgroundelevation = double.MinValue;
             double mingroundelevation = double.MaxValue;
             double startalt = plugin.Host.cs.PlannedHomeLocation.Alt;
+            // the frame PLAN gives the survey's waypoints (AddWPtoList), so each footprint is taken from the height the
+            // camera flies at: above home, above sea level, or above the ground under it
+            var frame = (MAVLink.MAV_FRAME)MainV2.instance.FlightPlanner.CurrentAltMode;
 
             foreach (var item in grid)
             {
@@ -691,12 +694,16 @@ namespace MissionPlanner.Grid
                     {
                         if (TXT_fovH.Text != "")
                         {
-                            if (CHK_footprints.Checked)
+                            // the camera above sea level, and above the ground under it: none to show at or under it
+                            double cameraAsl = MissionAltitude.ToAsl(item.Alt, frame, startalt, currentalt);
+                            double cameraAgl = cameraAsl - currentalt;
+
+                            if (CHK_footprints.Checked && cameraAgl > 0)
                             {
                                 double fovh = double.Parse(TXT_fovH.Text);
                                 double fovv = double.Parse(TXT_fovV.Text);
 
-                                getFOV(item.Alt + startalt - currentalt, ref fovh, ref fovv);
+                                getFOV(cameraAgl, ref fovh, ref fovv);
 
                                 double startangle = 0;
 
@@ -722,7 +729,7 @@ namespace MissionPlanner.Grid
                                 double fovva = 0;
                                 getFOVangle(ref fovha, ref fovva);
                                 var itemcopy = new PointLatLngAlt(item);
-                                itemcopy.Alt += startalt;
+                                itemcopy.Alt = cameraAsl;
                                 var temp = ImageProjection.calc(itemcopy, 0, 0, bearing + startangle, fovha, fovva);
 
                                 List<PointLatLng> footprint = new List<PointLatLng>();
