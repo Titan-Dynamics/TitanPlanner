@@ -203,4 +203,10 @@ the git log has those. `ChangeLog.txt` is upstream's and is not maintained here.
   parameters); an unchanged signature rebuilds nothing. It rebuilds on a worker thread, taking the ground from a
   loaded GeoTIFF elevation model first (as `srtm.getAltitude` does), else `srtm.GetCell`, and retries while tiles
   download. It replaces upstream's `ElevationProfile` dialog.
+- **Joystick.** `JoystickBase.mainloop` reads the joystick at `JoystickBase.RateHz` (25 to 100 Hz, the Send Rate on the
+  joystick page) and signals each reading; `MainV2.joysticksend` waits on `WaitForReading` and sends it straight away
+  (RC_CHANNELS_OVERRIDE, or MANUAL_CONTROL). `JoystickBase.FineTimer` holds Windows' timer at 1 ms while the joystick or
+  its page runs, as at the default 15.6 ms no wait is short enough for more than about 64 Hz. `Joystick/JoystickSetup`
+  builds the whole page in Load (its timer only shows live values) and its rows choose with `ChoiceBox`, which makes a
+  ComboBox only while open: a ComboBox per row (a native window holding every item) took seconds to create.
 - **Commits.** Messages carry no AI attribution trailers. Do not commit or push unless asked.

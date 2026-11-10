@@ -2400,8 +2400,10 @@ namespace MissionPlanner
         /// </summary>
         private async void joysticksend()
         {
-            float rate = 50; // 1000 / 50 = 20 hz
+            // the least time between packets in ms, half the joystick's period (set each time round)
+            float rate = 50;
             int count = 0;
+            var sinceSend = System.Diagnostics.Stopwatch.StartNew();
 
             DateTime lastratechange = DateTime.Now;
 
@@ -2418,6 +2420,17 @@ namespace MissionPlanner
                         log.Error("Mono: closing joystick thread");
                         break;
                     }
+
+                    // each reading of the joystick goes out as soon as it is taken, at the joystick's rate;
+                    // without a joystick, look again shortly
+                    var reading = joystick;
+                    if (reading != null && reading.enabled)
+                        await reading.WaitForReading(TimeSpan.FromMilliseconds(100)).ConfigureAwait(false);
+                    else
+                        await Task.Delay(40).ConfigureAwait(false);
+
+                    // half a period, so a reading a little early still goes
+                    rate = 500f / Joystick.JoystickBase.RateHz;
 
                     if (!MONO)
                     {
@@ -2507,7 +2520,7 @@ namespace MissionPlanner
                                 if (joystick.getJoystickAxis(18) != Joystick.joystickaxis.None)
                                     rc.chan18_raw = (ushort) MainV2.comPort.MAV.cs.rcoverridech18;
 
-                                if (lastjoystick.AddMilliseconds(rate) < DateTime.Now)
+                                if (sinceSend.Elapsed.TotalMilliseconds >= rate)
                                 {
                                     /*
                                 if (MainV2.comPort.MAV.cs.rssi > 0 && MainV2.comPort.MAV.cs.remrssi > 0)
@@ -2555,6 +2568,7 @@ namespace MissionPlanner
 
                                         count++;
                                         lastjoystick = DateTime.Now;
+                                        sinceSend.Restart();
                                     }
                                 }
                             }
@@ -2573,7 +2587,7 @@ namespace MissionPlanner
                                 if (joystick.getJoystickAxis(4) != Joystick.joystickaxis.None)
                                     rc.r = MainV2.comPort.MAV.cs.rcoverridech4;
 
-                                if (lastjoystick.AddMilliseconds(rate) < DateTime.Now)
+                                if (sinceSend.Elapsed.TotalMilliseconds >= rate)
                                 {
                                     if (!comPort.BaseStream.IsOpen)
                                         continue;
@@ -2591,13 +2605,12 @@ namespace MissionPlanner
 
                                         count++;
                                         lastjoystick = DateTime.Now;
+                                        sinceSend.Restart();
                                     }
                                 }
                             }
                         }
                     }
-
-                    await Task.Delay(40).ConfigureAwait(false);
                 }
                 catch
                 {

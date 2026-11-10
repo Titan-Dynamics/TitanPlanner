@@ -999,6 +999,67 @@ namespace MissionPlanner.Joystick
         {
         }
 
+        public const int MinRateHz = 25;
+        public const int MaxRateHz = 100;
+        public const int DefaultRateHz = 50;
+
+        private static int rateHz;
+
+        /// <summary>
+        /// How many times a second the joystick is read and its channels sent to the vehicle, MinRateHz to MaxRateHz;
+        /// a change takes effect at once and is remembered.
+        /// </summary>
+        public static int RateHz
+        {
+            get
+            {
+                if (rateHz == 0)
+                    rateHz = Clamp(Settings.Instance.GetInt32("joystick_rate_hz", DefaultRateHz));
+                return rateHz;
+            }
+            set
+            {
+                rateHz = Clamp(value);
+                Settings.Instance["joystick_rate_hz"] = rateHz.ToString();
+            }
+        }
+
+        private static int Clamp(int hz) => Math.Max(MinRateHz, Math.Min(MaxRateHz, hz));
+
+        /// <summary>
+        /// Windows' timer at 1 ms until the result is disposed, so waits and timers can keep to RateHz: at its default
+        /// 15.6 ms none is shorter, which holds them to about 64 Hz. Elsewhere, or if it can't, null (nothing to undo).
+        /// </summary>
+        public static IDisposable FineTimer()
+        {
+            return pid == PlatformID.Win32NT ? JoystickWindows.BeginFineTimer() : null;
+        }
+
+        // released after each reading, for the sender waiting on it (at most one waiting)
+        private readonly SemaphoreSlim reading = new SemaphoreSlim(0, 1);
+
+        private void SignalReading()
+        {
+            try
+            {
+                if (reading.CurrentCount == 0)
+                    reading.Release();
+            }
+            catch (SemaphoreFullException)
+            {
+                // already signalled
+            }
+        }
+
+        /// <summary>
+        /// Waits for the joystick's next reading, so its channels go out as soon as they are worked out; false if none
+        /// came within the timeout.
+        /// </summary>
+        public System.Threading.Tasks.Task<bool> WaitForReading(TimeSpan timeout)
+        {
+            return reading.WaitAsync(timeout);
+        }
+
         public virtual bool start(string name)
         {
             this.name = name;
@@ -1029,11 +1090,22 @@ namespace MissionPlanner.Joystick
         /// </summary>
         protected virtual void mainloop()
         {
+            // read at RateHz on a schedule, so the work each time doesn't slow it down
+            var clock = System.Diagnostics.Stopwatch.StartNew();
+            var next = TimeSpan.Zero;
+
             while (enabled && IsJoystickValid())
             {
                 try
                 {
-                    System.Threading.Thread.Sleep(50);
+                    var period = TimeSpan.FromSeconds(1.0 / RateHz);
+                    next += period;
+                    var wait = next - clock.Elapsed;
+                    if (wait > TimeSpan.Zero)
+                        System.Threading.Thread.Sleep(wait);
+                    else if (wait < -period)
+                        next = clock.Elapsed; // held up: start the schedule again from now
+
                     //joystick stuff
                     state = GetCurrentState();
 
@@ -1126,6 +1198,9 @@ namespace MissionPlanner.Joystick
                     if (getJoystickAxis(18) != joystickaxis.None) Interface.MAV.cs.rcoverridech18 = pickchannel(18, JoyChannels[18].axis, JoyChannels[18].reverse, JoyChannels[18].expo);
 
 
+                    // the channels are ready to send
+                    SignalReading();
+
                     // disable button actions when not connected.
                     if (Interface.BaseStream.IsOpen)
                         DoJoystickButtonFunction();
@@ -1155,7 +1230,6 @@ namespace MissionPlanner.Joystick
 
             short ans = pickchannel(channel, JoyChannels[channel].axis, JoyChannels[channel].reverse,
                 JoyChannels[channel].expo);
-            log.DebugFormat("{0} = {1} = {2}", channel, ans, state.X);
             return ans;
         }
 
@@ -1167,7 +1241,6 @@ namespace MissionPlanner.Joystick
             state = GetCurrentState();
 
             short ans = pickchannel(channel, JoyChannels[channel].axis, false, 0);
-            log.DebugFormat("{0} = {1} = {2}", channel, ans, state.X);
             return ans;
         }
 
@@ -1272,38 +1345,47 @@ namespace MissionPlanner.Joystick
             watcher.Join(500);
             js.UnAcquireJoyStick();
 
+            joystickaxis moved;
+            lock (min)
+                moved = MostMovedAxis(min, max, threshold);
+
+            if (moved == joystickaxis.None)
+                CustomMessageBox.Show("No valid option was detected");
+
+            return moved;
+        }
+
+        /// <summary>
+        /// The axis that travelled furthest (its highest reading less its lowest) if that is more than threshold, else
+        /// a hat that moved, else None.
+        /// </summary>
+        public static joystickaxis MostMovedAxis(IDictionary<joystickaxis, int> min, IDictionary<joystickaxis, int> max,
+            int threshold)
+        {
             var best = joystickaxis.None;
             var bestTravel = 0;
             var hatMoved = joystickaxis.None;
-            lock (min)
+            foreach (var axis in min.Keys)
             {
-                foreach (var axis in min.Keys)
-                {
-                    var travel = max[axis] - min[axis];
-                    log.InfoFormat("getMovingAxis {0} travelled {1}", axis, travel);
+                var travel = max[axis] - min[axis];
+                log.InfoFormat("axis {0} travelled {1}", axis, travel);
 
-                    if (axis == joystickaxis.Hatud1 || axis == joystickaxis.Hatlr2)
-                    {
-                        if (travel != 0)
-                            hatMoved = axis;
-                    }
-                    else if (travel > bestTravel)
-                    {
-                        best = axis;
-                        bestTravel = travel;
-                    }
+                if (axis == joystickaxis.Hatud1 || axis == joystickaxis.Hatlr2)
+                {
+                    if (travel != 0)
+                        hatMoved = axis;
+                }
+                else if (travel > bestTravel)
+                {
+                    best = axis;
+                    bestTravel = travel;
                 }
             }
 
             if (bestTravel > threshold)
                 return best;
 
-            if (hatMoved != joystickaxis.None)
-                return hatMoved;
-
-            CustomMessageBox.Show("No valid option was detected");
-
-            return joystickaxis.None;
+            return hatMoved;
         }
 
         public static IList<string> getDevices()

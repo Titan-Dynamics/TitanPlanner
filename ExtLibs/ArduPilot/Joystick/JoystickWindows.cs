@@ -15,6 +15,49 @@ namespace MissionPlanner.Joystick
          
         }
 
+        [System.Runtime.InteropServices.DllImport("winmm.dll")]
+        private static extern uint timeBeginPeriod(uint milliseconds);
+
+        [System.Runtime.InteropServices.DllImport("winmm.dll")]
+        private static extern uint timeEndPeriod(uint milliseconds);
+
+        /// <summary>
+        /// Windows' timer at 1 ms until the result is disposed, null if it can't be.
+        /// </summary>
+        internal static IDisposable BeginFineTimer()
+        {
+            try
+            {
+                if (timeBeginPeriod(1) == 0)
+                    return new TimerPeriod();
+            }
+            catch
+            {
+            }
+
+            return null;
+        }
+
+        private sealed class TimerPeriod : IDisposable
+        {
+            private int ended;
+
+            public void Dispose()
+            {
+                if (System.Threading.Interlocked.Exchange(ref ended, 1) == 0)
+                    timeEndPeriod(1);
+            }
+        }
+
+        /// <summary>
+        /// The loop with Windows' timer at 1 ms while it runs (see JoystickBase.FineTimer).
+        /// </summary>
+        protected override void mainloop()
+        {
+            using (BeginFineTimer())
+                base.mainloop();
+        }
+
         public override void Dispose()
         {
             Dispose(true);
@@ -54,6 +97,11 @@ namespace MissionPlanner.Joystick
         {
             joystick = getJoyStickByNameInternal(name);
 
+            return Acquire();
+        }
+
+        private bool Acquire()
+        {
             if (joystick == null)
                 return false;
 
@@ -168,8 +216,10 @@ namespace MissionPlanner.Joystick
             {
                 if (device.ProductName.TrimUnPrintable() == name)
                 {
+                    // the device found, without listing the devices again
                     var js = new JoystickWindows(() => null);
-                    js.AcquireJoystick(name);
+                    js.joystick = new SharpDX.DirectInput.Joystick(new DirectInput(), device.InstanceGuid);
+                    js.Acquire();
                     return js;
                 }
             }
