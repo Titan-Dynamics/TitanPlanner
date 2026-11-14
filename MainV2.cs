@@ -1189,6 +1189,12 @@ namespace MissionPlanner
 
             MissionPlanner.Controls.PreFlight.CheckListItem.defaultsrc = MainV2.comPort.MAV.cs;
 
+            // the vehicle selected goes to the front of the background parameter downloads. This is raised for the
+            // system id and again for the component id, so the pair may not be a vehicle yet.
+            if (MainV2.comPort.MAVlist.Contains(MainV2.comPort.sysidcurrent, (byte) MainV2.comPort.compidcurrent, false))
+                VehicleParamLoader.Instance.Prioritise(MainV2.comPort, MainV2.comPort.sysidcurrent,
+                    (byte) MainV2.comPort.compidcurrent);
+
             // when uploading a firmware we dont want to reload this screen.
             if (instance.MyView.current.Control != null &&
                 instance.MyView.current.Control.GetType() == typeof(GCSViews.InitialSetup))
@@ -1483,6 +1489,9 @@ namespace MissionPlanner
         {
             log.Info("We are disconnecting");
 
+            // the background parameter downloads of this link's vehicles stop with it
+            VehicleParamLoader.Instance.Reset(comPort);
+
             // Reset auto-connect flag so it can try again on next plug-in
             _usbAutoConnect?.ResetState();
 
@@ -1546,6 +1555,9 @@ namespace MissionPlanner
         {
             bool skipconnectcheck = false;
             log.Info($"We are connecting to {portname} {baud}");
+
+            // nothing of this link is downloaded in the background until the connect has its own vehicle
+            VehicleParamLoader.Instance.Reset(comPort);
             switch (portname)
             {
                 case "preset":
@@ -1765,17 +1777,24 @@ namespace MissionPlanner
                     {
                         if (Settings.Instance.GetBoolean("Params_BG", false))
                         {
+                            // so the loader of the link's other vehicles doesn't download this one as well
+                            var loadingmav = comPort.MAV;
+                            VehicleParamLoader.Instance.ExternalStarted(comPort, loadingmav);
                             Task.Run(() =>
                             {
                                 try
                                 {
-                                    comPort.getParamListMavftp(comPort.MAV.sysid, comPort.MAV.compid);
+                                    comPort.getParamListMavftp(loadingmav.sysid, loadingmav.compid);
                                     // pages showing params reload on this, as after a getParamList
                                     this.BeginInvokeIfRequired(() => comPort.OnParamListChanged());
                                 }
                                 catch
                                 {
 
+                                }
+                                finally
+                                {
+                                    VehicleParamLoader.Instance.ExternalFinished(comPort, loadingmav);
                                 }
                             });
                         }
@@ -1785,6 +1804,10 @@ namespace MissionPlanner
                         }
                     }
                 }
+
+                // the link's other vehicles get their parameters in the background, so switching to one is instant
+                if (getparams)
+                    VehicleParamLoader.Instance.PortReady(comPort);
 
                 // check for newer firmware
                 if (showui)

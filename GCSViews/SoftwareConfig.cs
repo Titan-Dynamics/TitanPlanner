@@ -113,6 +113,10 @@ namespace MissionPlanner.GCSViews
                     return false;
                 }
 
+                // a vehicle whose background download hasn't started has no parameters and no count yet
+                if (VehicleParamLoader.Instance.IsLoading(MainV2.comPort.MAV))
+                    return false;
+
                 return true;
             }
         }

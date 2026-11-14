@@ -172,6 +172,21 @@ namespace MissionPlanner
             }
         }
 
+        // A FLY screen tab list saved before the Swarm tab existed only shows the tabs it names, so the tab is added
+        // to it, once: taking it off again in Customize Tabs keeps it off.
+        private static void AddSwarmTab()
+        {
+            if (Settings.Instance.GetBoolean("swarm_tab_migrated"))
+                return;
+
+            var saved = Settings.Instance["tabcontrolactions"];
+            var added = TabListMigration.AddTab(saved, "tabSwarm", "tabParams");
+            if (added != saved)
+                Settings.Instance["tabcontrolactions"] = added;
+
+            Settings.Instance["swarm_tab_migrated"] = "true";
+        }
+
         [MethodImpl(MethodImplOptions.NoInlining)]
         public static void Start(string[] args)
         {
@@ -185,6 +200,7 @@ namespace MissionPlanner
             // before anything reads Settings: bring settings over from the previous data folder
             DataFolderMigration.CopySettings();
             HandleTDEditionUpgrade();
+            AddSwarmTab();
             Program.args = args;
             Console.WriteLine(
                 "If your error is about Microsoft.DirectX.DirectInput, please install the latest directx redist from here http://www.microsoft.com/en-us/download/details.aspx?id=35 \n\n");

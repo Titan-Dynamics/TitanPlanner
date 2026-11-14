@@ -16,7 +16,7 @@
 
 ## Enhancements
 
-This fork implements every feature we've always yearned for with considerable UI/UX upgrades, a reworked HUD, a real-time 3D map with vehicle rendering (and ADSB), an overhauled parameter editor and tab layout, a Betaflight-style motor setup, USB auto-connect, offline map packs for air-gapped planning, and dozens of large improvements throughout the app.
+This fork implements every feature we've always yearned for with considerable UI/UX upgrades, a reworked HUD, a real-time 3D map with vehicle rendering (and ADSB), an overhauled parameter editor and tab layout, a Betaflight-style motor setup, USB auto-connect, offline map packs for air-gapped planning, several aircraft flown from one ground station with a stacked orbit command, and dozens of large improvements throughout the app.
 
 **See [CHANGES.md](CHANGES.md) for the full list of features and fixes added in this fork.**
 

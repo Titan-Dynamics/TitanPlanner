@@ -42,6 +42,9 @@ namespace MissionPlanner.Controls
                 // It is now safe to fetch params
                 mav.getParamList();
 
+                // and the link's other vehicles, in the background
+                VehicleParamLoader.Instance.PortReady(mav);
+
                 MainV2._connectionControl.UpdateSysIDS();
             }
             catch (Exception)

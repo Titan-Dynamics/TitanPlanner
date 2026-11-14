@@ -114,6 +114,7 @@ namespace MissionPlanner.GCSViews
         public SITL()
         {
             InitializeComponent();
+            AddPlaneSwarmChainButton();
 
             if (!Directory.Exists(sitldirectory))
                 Directory.CreateDirectory(sitldirectory);
@@ -1306,7 +1307,11 @@ SIM_DRIFT_TIME=0
             }
         }
 
-        public async void StartSwarmChain()
+        /// <summary>
+        /// Starts a swarm on one link: each vehicle passes the next one's MAVLink on, so they all arrive on the first
+        /// one's port and are told apart by system id.
+        /// </summary>
+        public async void StartSwarmChain(Firmwares firmware = Firmwares.ArduCopter2)
         {
             var max = 10;
 
@@ -1329,8 +1334,8 @@ SIM_DRIFT_TIME=0
             {
             }
 
-            var exepath = CheckandGetSITLImage("ArduCopter.elf");
-            var model = "+";
+            var exepath = CheckandGetSITLImage(firmware == Firmwares.ArduPlane ? "ArduPlane.elf" : "ArduCopter.elf");
+            var model = firmware == Firmwares.ArduPlane ? "plane" : "+";
 
             var config= await GetDefaultConfig(model);
             max--;
@@ -1424,7 +1429,13 @@ SIM_DRIFT_TIME=0
                     MainV2.instance.doConnect(MainV2.comPort, "preset", "5760", false);
                     try
                     {
-                        _ = MainV2.comPort.getParamListMavftpAsync(MainV2.comPort.sysidcurrent, (byte)MainV2.comPort.compidcurrent);
+                        // this downloads the vehicle selected; the loader does the others on the link
+                        var port = MainV2.comPort;
+                        var first = port.MAV;
+                        VehicleParamLoader.Instance.ExternalStarted(port, first);
+                        _ = port.getParamListMavftpAsync(first.sysid, first.compid)
+                            .ContinueWith(t => VehicleParamLoader.Instance.ExternalFinished(port, first));
+                        VehicleParamLoader.Instance.PortReady(port);
                     }
                     catch
                     {
@@ -1443,6 +1454,23 @@ SIM_DRIFT_TIME=0
         private void but_swarmseq_Click(object sender, EventArgs e)
         {
              StartSwarmChain();
+        }
+
+        // beside the designer's swarm buttons
+        private void AddPlaneSwarmChainButton()
+        {
+            var button = new MyButton
+            {
+                Name = "but_swarmplaneseq",
+                Text = "Plane Swarm - Single link",
+                Location = new System.Drawing.Point(but_swarmrover.Right + 6, but_swarmrover.Top),
+                Size = new System.Drawing.Size(165, but_swarmrover.Height),
+                Anchor = but_swarmrover.Anchor,
+                Font = but_swarmrover.Font,
+                TabIndex = but_swarmrover.TabIndex + 1
+            };
+            button.Click += (s, e) => StartSwarmChain(Firmwares.ArduPlane);
+            but_swarmrover.Parent.Controls.Add(button);
         }
 
         private void but_swarmlink_Click(object sender, EventArgs e)

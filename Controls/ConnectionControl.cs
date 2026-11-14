@@ -1,6 +1,7 @@
 ﻿using MissionPlanner.Comms;
 using System;
 using System.Drawing;
+using MissionPlanner.Utilities;
 using System.Windows.Forms;
 
 namespace MissionPlanner.Controls
@@ -135,7 +136,18 @@ namespace MissionPlanner.Controls
                     MainV2.comPort.sysidcurrent = temp.sysid;
                     MainV2.comPort.compidcurrent = temp.compid;
 
-                    if (MainV2.comPort.MAV.param.TotalReceived < MainV2.comPort.MAV.param.TotalReported && 
+                    // the vehicles of a link are loaded in the background after the connect: one that is waiting
+                    // goes to the front of that queue, and only one it can't load gets the download with the dialog
+                    var loading = VehicleParamLoader.Instance.Prioritise(MainV2.comPort, temp.sysid, (byte) temp.compid);
+
+                    if (loading == ParamLoadState.Loaded)
+                    {
+                        // what shows this vehicle's parameters reloads on this, as after a download
+                        MainV2.comPort.OnParamListChanged();
+                    }
+                    else if ((loading == ParamLoadState.NeedsManual || loading == ParamLoadState.Failed ||
+                              (loading == ParamLoadState.None &&
+                               MainV2.comPort.MAV.param.TotalReceived < MainV2.comPort.MAV.param.TotalReported)) &&
                         /*MainV2.comPort.MAV.compid == (byte)MAVLink.MAV_COMPONENT.MAV_COMP_ID_AUTOPILOT1 && */
                         !(Control.ModifierKeys == Keys.Control))
                         MainV2.comPort.getParamList();

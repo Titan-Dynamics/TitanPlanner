@@ -8,6 +8,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using MissionPlanner.Controls;
+using MissionPlanner.Utilities;
 
 namespace MissionPlanner.GCSViews.ConfigurationView
 {
@@ -21,6 +22,10 @@ namespace MissionPlanner.GCSViews.ConfigurationView
                 {
                     return false;
                 }
+
+                // a vehicle whose background download hasn't started has no parameters and no count yet
+                if (VehicleParamLoader.Instance.IsLoading(MainV2.comPort.MAV))
+                    return false;
 
                 return true;
             }
@@ -49,6 +54,14 @@ namespace MissionPlanner.GCSViews.ConfigurationView
 
         private void but_forceparams_Click(object sender, EventArgs e)
         {
+            // the background download is doing it: a second download would only share the link with it
+            if (VehicleParamLoader.Instance.IsLoading(MainV2.comPort.MAV))
+            {
+                VehicleParamLoader.Instance.Prioritise(MainV2.comPort, MainV2.comPort.MAV.sysid,
+                    MainV2.comPort.MAV.compid);
+                return;
+            }
+
             MainV2.comPort.getParamList();
         }
     }
