@@ -17,6 +17,15 @@ namespace MissionPlanner.Utilities
         /// <summary>A gap under this share of the separation blocks the plan.</summary>
         public const double MinGapShare = 0.5;
 
+        /// <summary>The least separation: each aircraft's altitude comes from its own baro and GPS.</summary>
+        public const double MinSeparationM = 10;
+
+        /// <summary>A separation under this is warned about.</summary>
+        public const double WarnSeparationM = 20;
+
+        /// <summary>The least height of every slot above the ground at the center (a Terrain floor's height).</summary>
+        public const double MinClearanceM = 30;
+
         public class Aircraft
         {
             /// <summary>What the operator knows the aircraft by, for the messages.</summary>
@@ -103,6 +112,12 @@ namespace MissionPlanner.Utilities
 
             if (!(separationM > 0))
                 errors.Add("The separation has to be more than zero.");
+            else if (separationM < MinSeparationM)
+                errors.Add("The separation (" + formatAlt(separationM) + ") is under the least allowed, " +
+                           formatAlt(MinSeparationM) + ".");
+            else if (separationM < WarnSeparationM)
+                warnings.Add("The separation (" + formatAlt(separationM) + ") leaves little room for the aircraft's " +
+                             "altitude errors.");
 
             if (absolute)
             {
@@ -114,15 +129,27 @@ namespace MissionPlanner.Utilities
                         errors.Add("The floor (" + formatAlt(floorM) + " above sea level) is not above the field (" +
                                    formatAlt(field) + ").");
                 }
-
-                if (!double.IsNaN(groundAmslAtCentreM) && !(floorM > groundAmslAtCentreM))
-                    errors.Add("The floor (" + formatAlt(floorM) + " above sea level) is not above the ground at the " +
-                               "centre (" + formatAlt(groundAmslAtCentreM) + ").");
             }
-            else
+            else if (!terrain && !(floorM > 0))
             {
-                if (!(floorM > 0))
-                    errors.Add("The floor has to be more than zero.");
+                errors.Add("The floor has to be more than zero.");
+            }
+
+            if (terrain)
+            {
+                // above the ground under each aircraft, which it follows round the circle
+                if (!(floorM >= MinClearanceM))
+                    errors.Add("The floor (" + formatAlt(floorM) + " above the ground) is under " +
+                               formatAlt(MinClearanceM) + ".");
+            }
+            else if (!double.IsNaN(groundAmslAtCentreM) && slots.Count > 0)
+            {
+                // the lowest slot above sea level: in Relative each counts from its own aircraft's home
+                var lowest = slots.OrderBy(s => s.TargetAmslM).First();
+                if (!(lowest.TargetAmslM - groundAmslAtCentreM >= MinClearanceM))
+                    errors.Add(lowest.Aircraft.Name + "'s slot (" + formatAlt(lowest.TargetAmslM) +
+                               " above sea level) is less than " + formatAlt(MinClearanceM) +
+                               " above the ground at the center (" + formatAlt(groundAmslAtCentreM) + ").");
             }
 
             if (!absolute && !terrain && separationM > 0)
@@ -161,6 +188,44 @@ namespace MissionPlanner.Utilities
             var climbing = plan.Slots.Where(s => s.Climbs).OrderByDescending(s => s.Index);
             var descending = plan.Slots.Where(s => !s.Climbs).OrderBy(s => s.Index);
             return climbing.Concat(descending).ToList();
+        }
+
+        /// <summary>
+        /// For a retry: the aircraft still to go that would pass a level the stack already holds. Each climbs or
+        /// descends from where it is to its slot, and must neither cross the level of an aircraft already in the stack
+        /// nor start within half a separation of it. The levels share one datum (above sea level, or above the ground
+        /// for Terrain); one not known (NaN) can't be checked and counts as a conflict. A message for each conflict.
+        /// </summary>
+        public static List<string> RetryConflicts(IEnumerable<(string Name, double NowM, double TargetM)> remaining,
+            IEnumerable<(string Name, double LevelM)> taken, double separationM, Func<double, string> formatAlt = null)
+        {
+            if (formatAlt == null)
+                formatAlt = m => m.ToString("0") + " m";
+
+            var held = (taken ?? Enumerable.Empty<(string Name, double LevelM)>()).ToList();
+            var messages = new List<string>();
+            foreach (var aircraft in remaining ?? Enumerable.Empty<(string Name, double NowM, double TargetM)>())
+            {
+                if (double.IsNaN(aircraft.NowM) || double.IsNaN(aircraft.TargetM))
+                {
+                    messages.Add(aircraft.Name + "'s height isn't known, so its way to its slot can't be checked.");
+                    continue;
+                }
+
+                var low = Math.Min(aircraft.NowM, aircraft.TargetM) - separationM / 2;
+                var high = Math.Max(aircraft.NowM, aircraft.TargetM) + separationM / 2;
+                foreach (var level in held)
+                {
+                    if (double.IsNaN(level.LevelM))
+                        messages.Add(level.Name + "'s level isn't known, so " + aircraft.Name +
+                                     "'s way to its slot can't be checked.");
+                    else if (level.LevelM >= low && level.LevelM <= high)
+                        messages.Add(aircraft.Name + " would pass " + level.Name + " at " + formatAlt(level.LevelM) +
+                                     ".");
+                }
+            }
+
+            return messages;
         }
     }
 }

@@ -1189,9 +1189,11 @@ namespace MissionPlanner
 
             MissionPlanner.Controls.PreFlight.CheckListItem.defaultsrc = MainV2.comPort.MAV.cs;
 
-            // the vehicle selected goes to the front of the background parameter downloads. This is raised for the
-            // system id and again for the component id, so the pair may not be a vehicle yet.
-            if (MainV2.comPort.MAVlist.Contains(MainV2.comPort.sysidcurrent, (byte) MainV2.comPort.compidcurrent, false))
+            // the vehicle selected goes to the front of the background parameter downloads, unless Ctrl skips its
+            // parameters. This is raised for the system id and again for the component id, so the pair may not be a
+            // vehicle yet.
+            if (Control.ModifierKeys != Keys.Control &&
+                MainV2.comPort.MAVlist.Contains(MainV2.comPort.sysidcurrent, (byte) MainV2.comPort.compidcurrent, false))
                 VehicleParamLoader.Instance.Prioritise(MainV2.comPort, MainV2.comPort.sysidcurrent,
                     (byte) MainV2.comPort.compidcurrent);
 

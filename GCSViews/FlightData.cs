@@ -5755,7 +5755,7 @@ namespace MissionPlanner.GCSViews
                 _themedTabStrip.SelectTabByTabPage(tabSwarm);
             else
                 CustomMessageBox.Show(
-                    "The centre is set. Show the Swarm tab to send the stack (right-click the tabs, Customize Tabs).",
+                    "The center is set. Show the Swarm tab to send the stack (right-click the tabs, Customize Tabs).",
                     "Stacked Orbit");
         }
 

@@ -138,7 +138,10 @@ namespace MissionPlanner.Controls
 
                     // the vehicles of a link are loaded in the background after the connect: one that is waiting
                     // goes to the front of that queue, and only one it can't load gets the download with the dialog
-                    var loading = VehicleParamLoader.Instance.Prioritise(MainV2.comPort, temp.sysid, (byte) temp.compid);
+                    // Ctrl skips the parameters, the background download as well
+                    var loading = Control.ModifierKeys == Keys.Control
+                        ? (VehicleParamLoader.IsComplete(MainV2.comPort.MAV) ? ParamLoadState.Loaded : ParamLoadState.None)
+                        : VehicleParamLoader.Instance.Prioritise(MainV2.comPort, temp.sysid, (byte) temp.compid);
 
                     if (loading == ParamLoadState.Loaded)
                     {

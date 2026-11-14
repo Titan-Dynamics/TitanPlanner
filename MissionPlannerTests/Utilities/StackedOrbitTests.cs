@@ -157,6 +157,49 @@ namespace MissionPlanner.Utilities.Tests
         }
 
         [TestMethod]
+        public void TheSeparationHasALeast()
+        {
+            Assert.IsFalse(StackedOrbit.Build(Three(), Relative, Floor, 5).Valid);
+
+            var close = StackedOrbit.Build(Three(), Relative, Floor, 15);
+            Assert.IsTrue(close.Valid);
+            Assert.AreEqual(1, close.Warnings.Count);
+        }
+
+        [TestMethod]
+        public void EverySlotClearsTheGroundAtTheCenter()
+        {
+            // the floor at 400 m above sea level, 20 m over ground at 380 m, then 40 m over ground at 360 m
+            Assert.IsFalse(StackedOrbit.Build(Three(), Relative, Floor, Sep, 380).Valid);
+            Assert.IsTrue(StackedOrbit.Build(Three(), Relative, Floor, Sep, 360).Valid);
+
+            // Absolute: 450 m over ground at 430 m
+            Assert.IsFalse(StackedOrbit.Build(Three(), Absolute, 450, Sep, 430).Valid);
+
+            // Terrain: the floor is the height above the ground
+            Assert.IsFalse(StackedOrbit.Build(Three(), Terrain, 20, Sep, 350).Valid);
+            Assert.IsTrue(StackedOrbit.Build(Three(), Terrain, 30, Sep).Valid);
+        }
+
+        [TestMethod]
+        public void ARetryMayNotPassALevelTheStackHolds()
+        {
+            var taken = new[] {("Aircraft 3", 430.0)};
+
+            // down through 430 to 400
+            Assert.AreEqual(1, StackedOrbit.RetryConflicts(new[] {("Aircraft 1", 470.0, 400.0)}, taken, Sep).Count);
+            // up to 400 from under it
+            Assert.AreEqual(0, StackedOrbit.RetryConflicts(new[] {("Aircraft 1", 380.0, 400.0)}, taken, Sep).Count);
+            // starting within half a separation of it
+            Assert.AreEqual(1, StackedOrbit.RetryConflicts(new[] {("Aircraft 1", 420.0, 400.0)}, taken, Sep).Count);
+            // down to the slot a separation above it
+            Assert.AreEqual(0, StackedOrbit.RetryConflicts(new[] {("Aircraft 2", 500.0, 460.0)}, taken, Sep).Count);
+            // where it is isn't known
+            Assert.AreEqual(1,
+                StackedOrbit.RetryConflicts(new[] {("Aircraft 1", double.NaN, 400.0)}, taken, Sep).Count);
+        }
+
+        [TestMethod]
         public void EveryAircraftIsSentOnce()
         {
             var plan = StackedOrbit.Build(Three(), Terrain, Floor, Sep);

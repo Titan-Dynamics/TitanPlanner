@@ -4,6 +4,7 @@ using MissionPlanner.Utilities;
 using System;
 using System.Collections.Generic;
 using System.Drawing;
+using System.Globalization;
 using System.Linq;
 using System.Reflection;
 using System.Text;
@@ -92,6 +93,7 @@ namespace MissionPlanner.Controls
         private MAVLink.MAV_FRAME sentFrame;
         private PointLatLngAlt sentCentre;
         private List<SendItem> sentItems;
+        private double sentSeparationM;
         private volatile bool sending;
         private volatile bool cancelSend;
 
@@ -110,8 +112,8 @@ namespace MissionPlanner.Controls
         {
             InitializeComponent();
 
-            floorM = Settings.Instance.GetDouble(FloorSetting, floorM);
-            separationM = Settings.Instance.GetDouble(SeparationSetting, separationM);
+            floorM = SavedMetres(FloorSetting, floorM);
+            separationM = SavedMetres(SeparationSetting, separationM);
 
             var frame = (MAVLink.MAV_FRAME) Settings.Instance.GetByte(FrameSetting,
                 (byte) MAVLink.MAV_FRAME.GLOBAL_RELATIVE_ALT);
@@ -127,6 +129,15 @@ namespace MissionPlanner.Controls
         }
 
         private MAVLink.MAV_FRAME Frame => ((FrameChoice) cmbFrame.SelectedItem).Frame;
+
+        // saved with the invariant culture, so read with it: Settings.GetDouble reads with the PC's, where 91.44 is 9144
+        private static double SavedMetres(string key, double fallback)
+        {
+            return double.TryParse(Settings.Instance[key], NumberStyles.Float, CultureInfo.InvariantCulture,
+                       out var value) && value > 0
+                ? value
+                : fallback;
+        }
 
         public void Activate()
         {
@@ -166,12 +177,14 @@ namespace MissionPlanner.Controls
         private void ShowCentre()
         {
             lblCentre.Text = centre == null
-                ? "Centre: right-click the map and choose Stacked Orbit Here"
-                : "Centre: " + centre.Lat.ToString("0.000000") + ", " + centre.Lng.ToString("0.000000");
+                ? "Center: right-click the map and choose Stacked Orbit Here"
+                : "Center: " + centre.Lat.ToString("0.000000") + ", " + centre.Lng.ToString("0.000000");
         }
 
         private static string Alt(double metres)
         {
+            if (double.IsNaN(metres))
+                return "?";
             return (metres * CurrentState.multiplieralt).ToString("0") + " " + CurrentState.AltUnit;
         }
 
@@ -259,6 +272,42 @@ namespace MissionPlanner.Controls
         private static double RelativeM(MAVState mav)
         {
             return mav.cs.alt / CurrentState.multiplieralt + mav.cs.altoffsethome;
+        }
+
+        // where the aircraft is now in the frame's terms: above sea level, above the ground under it, or above home
+        private static double NowM(MAVState mav, MAVLink.MAV_FRAME frame)
+        {
+            if (frame == MAVLink.MAV_FRAME.GLOBAL)
+                return AmslM(mav);
+            if (MissionAltitude.FollowsTerrain(frame))
+                return AmslM(mav) - GroundM(mav.cs.lat, mav.cs.lng);
+            return RelativeM(mav);
+        }
+
+        // the ground under a point, NaN while its elevation isn't known
+        private static double GroundM(double lat, double lng)
+        {
+            try
+            {
+                var ground = srtm.getAltitude(lat, lng);
+                return ground.currenttype == srtm.tiletype.valid ? ground.alt : double.NaN;
+            }
+            catch
+            {
+                return double.NaN;
+            }
+        }
+
+        // a slot's level, and an aircraft's now, in one datum for comparing aircraft: above the ground for Terrain,
+        // above sea level otherwise (in Relative each aircraft counts from its own home)
+        private static double SlotLevelM(StackedOrbit.Slot slot, MAVLink.MAV_FRAME frame)
+        {
+            return MissionAltitude.FollowsTerrain(frame) ? slot.TargetM : slot.TargetAmslM;
+        }
+
+        private static double LevelNowM(MAVState mav, MAVLink.MAV_FRAME frame)
+        {
+            return MissionAltitude.FollowsTerrain(frame) ? NowM(mav, frame) : AmslM(mav);
         }
 
         /// <summary>The radius a plane circles a guided point at, from its parameters.</summary>
@@ -353,9 +402,8 @@ namespace MissionPlanner.Controls
                         row.GridRow = grid.Rows[index];
                         row.GridRow.Tag = row;
                         rows.Add(row);
-                        // those flying start ticked; the rest are the operator's to add
-                        row.GridRow.Cells[colInclude.Index].Value = row.Selectable && mav.cs.armed &&
-                                                                   !mav.cs.landed && !mav.cs.failsafe && Fresh(mav);
+                        // none starts ticked: the operator chooses each aircraft to command
+                        row.GridRow.Cells[colInclude.Index].Value = false;
                     }
 
                     UpdateRow(row);
@@ -390,7 +438,7 @@ namespace MissionPlanner.Controls
             cells[colInclude.Index].ReadOnly = !row.Selectable || sending;
             cells[colAircraft.Index].Value = mav.sysid + (MainV2.Comports.Count > 1 ? " " + PortName(row.Port) : "");
             cells[colMode.Index].Value = (mav.cs.mode ?? "") + (mav.cs.armed ? "" : " (disarmed)");
-            cells[colAlt.Index].Value = Alt(Frame == MAVLink.MAV_FRAME.GLOBAL ? AmslM(mav) : RelativeM(mav));
+            cells[colAlt.Index].Value = Alt(NowM(mav, Frame));
             cells[colParams.Index].Value = ParamText(mav);
             cells[colStatus.Index].Value = StatusText(row);
 
@@ -505,7 +553,16 @@ namespace MissionPlanner.Controls
                 };
             });
 
-            return StackedOrbit.Build(aircraft, Frame, floorM, separationM, groundAtCentreM, Alt);
+            var plan = StackedOrbit.Build(aircraft, Frame, floorM, separationM, groundAtCentreM, Alt);
+
+            // the clearance above the ground at the center is checked once its elevation is known
+            if (centre != null && double.IsNaN(groundAtCentreM) && !MissionAltitude.FollowsTerrain(Frame))
+                plan.Warnings = plan.Warnings.Concat(new[]
+                {
+                    "The ground at the center isn't known (no elevation data), so the clearance above it isn't checked."
+                }).ToList();
+
+            return plan;
         }
 
         private void ShowMessage(StackedOrbit.Plan preview)
@@ -598,7 +655,7 @@ namespace MissionPlanner.Controls
             foreach (var slot in plan.Slots.Reverse())
             {
                 var row = (Row) slot.Aircraft.Tag;
-                var now = plan.Frame == MAVLink.MAV_FRAME.GLOBAL ? AmslM(row.Mav) : RelativeM(row.Mav);
+                var now = NowM(row.Mav, plan.Frame);
                 var line = "Aircraft " + row.Mav.sysid + ": " + Alt(slot.TargetM) + " (now " + Alt(now) + ")";
                 var note = PreSendNote(row);
                 if (note != "")
@@ -627,6 +684,7 @@ namespace MissionPlanner.Controls
                 row.Result = "";
             }
 
+            sentSeparationM = plan.SeparationM;
             StartSend(items, plan.Frame, centre, items);
         }
 
@@ -644,6 +702,21 @@ namespace MissionPlanner.Controls
             var remaining = sentItems.Where(i => i.Row.Sent != Sent.Accepted).ToList();
             if (remaining.Count == 0)
                 return;
+
+            // the slots were set by where the aircraft were: those still to go mustn't pass a level the others now hold
+            var conflicts = StackedOrbit.RetryConflicts(
+                remaining.Select(i => ("Aircraft " + i.Row.Mav.sysid, LevelNowM(i.Row.Mav, sentFrame),
+                    SlotLevelM(i.Slot, sentFrame))),
+                sentItems.Where(i => i.Row.Sent == Sent.Accepted)
+                    .Select(i => ("Aircraft " + i.Row.Mav.sysid, SlotLevelM(i.Slot, sentFrame))),
+                sentSeparationM, Alt);
+            if (conflicts.Count > 0)
+            {
+                CustomMessageBox.Show(
+                    "Retry would send aircraft through levels the stack now holds:\n\n" + string.Join("\n", conflicts) +
+                    "\n\nSend a new stack instead.", "Stacked Orbit");
+                return;
+            }
 
             var text = new StringBuilder();
             text.AppendLine("Send the same slots to the " + remaining.Count + " aircraft not yet in the stack?");

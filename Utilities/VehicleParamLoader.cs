@@ -28,6 +28,15 @@ namespace MissionPlanner.Utilities
 
         private const string ParamFile = "@PARAM/param.pck?withdefaults=1";
 
+        /// <summary>The Planner setting that turns the background downloads off.</summary>
+        public const string EnabledSetting = "param_background_others";
+
+        /// <summary>
+        /// Whether a link's other vehicles get their parameters in the background. On a slow link shared by several
+        /// aircraft the transfers take a while and share it with everything else, so they can be turned off.
+        /// </summary>
+        public static bool Enabled => Settings.Instance.GetBoolean(EnabledSetting, true);
+
         private readonly VehicleParamQueue _queue = new VehicleParamQueue();
 
         // ports whose connect has finished with the vehicle it selected
@@ -154,6 +163,12 @@ namespace MissionPlanner.Utilities
             if (!Eligible(port, mav))
                 return ParamLoadState.None;
 
+            // turned off: one already being downloaded finishes, the rest are left to the dialog's download
+            if (!Enabled)
+                return _queue.StateOf(port, sysid, compid, mav) == ParamLoadState.Loading
+                    ? ParamLoadState.Loading
+                    : ParamLoadState.None;
+
             // the selection also changes during the connect, which downloads that vehicle itself
             lock (_lock)
             {
@@ -274,6 +289,9 @@ namespace MissionPlanner.Utilities
                             continue;
                     }
 
+                    if (!Enabled)
+                        continue;
+
                     var entry = _queue.TryDequeue();
                     if (entry != null)
                         Download(entry);
@@ -305,12 +323,17 @@ namespace MissionPlanner.Utilities
                     continue;
                 }
 
-                if (port.logreadmode)
+                if (port.logreadmode || !Enabled)
                     continue;
 
                 foreach (var mav in port.MAVlist)
                 {
                     if (!Eligible(port, mav) || IsComplete(mav))
+                        continue;
+
+                    // the vehicle selected is the connect's or the switch's to load, so a download cancelled, or
+                    // skipped with Ctrl, stays that way
+                    if (mav.sysid == port.sysidcurrent && mav.compid == port.compidcurrent)
                         continue;
 
                     if (_queue.StateOf(port, mav.sysid, mav.compid, mav) != ParamLoadState.None)

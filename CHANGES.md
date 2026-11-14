@@ -172,18 +172,16 @@ ELRS airport support added.
 Several aircraft on one link, told apart by their MAVLink system id, flown from one ground station.
 
 ## Switching Aircraft
-Every aircraft on a link has its parameters downloaded in the background after the connect, one aircraft at a time over MAVFTP, so switching to another (the system id selector, or a click on its map icon) is immediate. The aircraft switched to goes to the front of the queue, the Config pages show their loading page until its parameters arrive, and an aircraft without MAVFTP gets the download dialog the first time it is selected.
+The other aircraft on a link get their parameters in the background after the connect, so switching to one (the system id selector, or a click on its map icon) is immediate, and the one switched to goes first. An aircraft without MAVFTP gets the download dialog the first time it is selected. The Planner settings can turn the background downloads off for a slow link shared by several aircraft.
 
 ## Swarm Tab
-The aircraft on every link in one list: system id, mode, altitude, the state of its parameters and the result of the last command sent to it. Planes can be ticked for a command; those armed and flying start ticked.
+The aircraft on every link in one list: system id, mode, altitude, the state of its parameters and the result of the last command sent to it. Planes are ticked to be commanded.
 
 ## Stacked Orbit
-Sends the ticked planes to circle one point, one above the other: right-click the map and choose **Stacked Orbit Here**, then set the floor altitude and the separation between aircraft (in the altitude units chosen in the Planner settings) and whether the altitudes are relative, absolute or above terrain.
-- The lowest aircraft takes the floor, the next lowest the slot above, and so on, so none has to pass another's level to reach its own. The list shows each aircraft's slot before anything is sent.
-- Each plane circles at its own loiter radius. The map marks the centre with the widest of those circles.
-- A confirmation lists every aircraft with its altitude now and the one it will be sent to, and what is confirmed is what is sent.
-- The aircraft are commanded one at a time (those climbing from the top down, then those descending from the bottom up), each switched to GUIDED and given the point, with the answer shown beside it. The send stops at the first aircraft that refuses or doesn't answer, and **Retry** sends the same slots to those not yet in the stack.
-- An absolute floor at or under the field or the ground at the centre is refused, as are relative altitudes where the aircraft's homes are at heights different enough to close the gaps.
+Sends the ticked planes to circle one point, one above the other: right-click the map and choose **Stacked Orbit Here**, then set the floor and the separation (in the altitude units chosen in the Planner settings) and whether the altitudes are relative, absolute or above terrain.
+- The lowest aircraft takes the floor, the next lowest the slot above, and so on. The list shows each aircraft's slot before anything is sent, and the map marks the center with the widest of the planes' loiter circles.
+- A confirmation lists every aircraft with its altitude now and its slot, and what is confirmed is what is sent: one aircraft at a time, each switched to GUIDED and given the point, stopping at the first that refuses or doesn't answer. **Retry** sends the rest to the same slots, unless one would pass a level the stack now holds.
+- Refused: a separation under 10 m, a slot less than 30 m above the ground at the center (a Terrain floor under 30 m), an absolute floor under the field, and relative altitudes where the aircraft's homes differ enough to close the gaps.
 
 The SIMULATION screen's **Plane Swarm - Single link** starts a swarm of planes on one link to try it with.
 
