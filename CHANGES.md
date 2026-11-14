@@ -107,6 +107,7 @@ Replaced the dated FlightData tab bar with a modern themed strip and refreshed i
 - **Tuning tab** in FlightData (vehicle-aware: plane/copter/rover)
 - **Video tab** in place of the HUD's right-click Video menu: one source at a time (capture device, RTSP stream, MJPEG stream or GStreamer pipeline) with one Start/Stop button and a status indicator across the top (stopped, connecting, playing and its size, no video), remembered between launches, an RTSP URL that plays as entered with a HereLink preset, and boxes for the HUD overlay (Alt-H flips it) and OSD color, and for recording the HUD (with an Open Folder button)
 - **Inspector tab** (MAVLink Inspector exposed without `Ctrl+F`), in the theme's colours with field values in the accent colour
+- **Swarm tab** in FlightData for commands sent to several aircraft at once (see Multiple Aircraft)
 - **Logs tab** unifying former Dataflash and Telemetry tabs
 - Working **Status tab** in FlightData
 - **Help tab** hidden by default; Gauges tab hidden by default
@@ -163,6 +164,26 @@ A dedicated USB auto-connect path with VID coverage for all common flight contro
 
 ## ELRS
 ELRS airport support added.
+
+---
+
+# Multiple Aircraft
+
+Several aircraft on one link, told apart by their MAVLink system id, flown from one ground station.
+
+## Switching Aircraft
+The other aircraft on a link get their parameters in the background after the connect, so switching to one (the system id selector, or a click on its map icon) is immediate, and the one switched to goes first. An aircraft without MAVFTP gets the download dialog the first time it is selected. The Planner settings can turn the background downloads off for a slow link shared by several aircraft.
+
+## Swarm Tab
+The aircraft on every link in one list: system id, mode, altitude, the state of its parameters and the result of the last command sent to it. Planes are ticked to be commanded.
+
+## Stacked Orbit
+Sends the ticked planes to circle one point, one above the other: right-click the map and choose **Stacked Orbit Here**, then set the floor and the separation (in the altitude units chosen in the Planner settings) and whether the altitudes are relative, absolute or above terrain.
+- The lowest aircraft takes the floor, the next lowest the slot above, and so on. The list shows each aircraft's slot before anything is sent, and the map marks the center with the widest of the planes' loiter circles.
+- A confirmation lists every aircraft with its altitude now and its slot, and what is confirmed is what is sent: one aircraft at a time, each switched to GUIDED and given the point, stopping at the first that refuses or doesn't answer. **Retry** sends the rest to the same slots, unless one would pass a level the stack now holds.
+- Refused: a separation under 10 m, a slot less than 30 m above the ground at the center (a Terrain floor under 30 m), an absolute floor under the field, and relative altitudes where the aircraft's homes differ enough to close the gaps.
+
+The SIMULATION screen's **Plane Swarm - Single link** starts a swarm of planes on one link to try it with.
 
 ---
 

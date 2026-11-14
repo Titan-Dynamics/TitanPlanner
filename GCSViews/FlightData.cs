@@ -159,6 +159,8 @@ namespace MissionPlanner.GCSViews
         internal static GMapOverlay geofence;
         internal static GMapOverlay photosoverlay;
         internal static GMapOverlay poioverlay = new GMapOverlay("POI");
+        // the orbit centre chosen for the Swarm tab. Only the UI thread touches it.
+        internal static GMapOverlay swarmoverlay = new GMapOverlay("swarm");
         internal static GMapOverlay cameraBounds;
         internal static GMapOverlay rallypointoverlay;
         internal static GMapOverlay tfrpolygons;
@@ -381,6 +383,10 @@ namespace MissionPlanner.GCSViews
         // Status tab control
         private Controls.StatusControl _statusControl;
 
+        // the Swarm tab is built in code and joins the designer's tabs when they move to the ThemedTabStrip
+        public TabPage tabSwarm;
+        private Controls.SwarmControl _swarmControl;
+
         private CheckBox CB_3dmap;
 
         // Split ratio persistence
@@ -529,8 +535,16 @@ namespace MissionPlanner.GCSViews
             _statusControl.Dock = DockStyle.Fill;
             tabStatus.Controls.Add(_statusControl);
 
+            // and the Swarm tab
+            _swarmControl = new Controls.SwarmControl();
+            _swarmControl.Dock = DockStyle.Fill;
+            _swarmControl.MapChanged += (sender, e) => UpdateSwarmOverlay();
+            tabSwarm = new TabPage {Name = "tabSwarm", Text = "Swarm"};
+            tabSwarm.Controls.Add(_swarmControl);
+
             // Replace TabControl with ThemedTabStrip
             ReplaceTabControlWithThemedTabStrip();
+            AddStackedOrbitMenuItem();
 
             instance = this;
 
@@ -725,6 +739,8 @@ namespace MissionPlanner.GCSViews
             gMapControl1.Overlays.Add(rallypointoverlay);
 
             gMapControl1.Overlays.Add(poioverlay);
+
+            gMapControl1.Overlays.Add(swarmoverlay);
 
             float gspeedMax = Settings.Instance.GetFloat("GspeedMAX");
             if (gspeedMax != 0)
@@ -1126,6 +1142,9 @@ namespace MissionPlanner.GCSViews
                 tabPages.Add(tabPage);
             }
 
+            // the tab built in code, after Params
+            tabPages.Insert(tabPages.IndexOf(tabParams) + 1, tabSwarm);
+
             // Remove all tab pages from old control (so controls aren't disposed)
             tabControlactions.TabPages.Clear();
 
@@ -1328,6 +1347,8 @@ namespace MissionPlanner.GCSViews
             TabListDisplay.Add(tabTuning.Name, MainV2.DisplayConfiguration.displayTuningTab);
 
             TabListDisplay.Add(tabInspector.Name, MainV2.DisplayConfiguration.displayInspectorTab);
+
+            TabListDisplay.Add(tabSwarm.Name, MainV2.DisplayConfiguration.displaySwarmTab);
         }
 
         private void loadTabControlActions()
@@ -5710,6 +5731,67 @@ namespace MissionPlanner.GCSViews
             POI.UpdateOverlay(poioverlay);
         }
 
+        // "Stacked Orbit Here" on the map menu, after the fly-to items: the point clicked becomes the centre the
+        // Swarm tab stacks its aircraft around
+        private void AddStackedOrbitMenuItem()
+        {
+            var item = new ToolStripMenuItem("Stacked Orbit Here") {Name = "stackedOrbitHereToolStripMenuItem"};
+            item.Click += stackedOrbitHereToolStripMenuItem_Click;
+            contextMenuStripMap.Items.Insert(contextMenuStripMap.Items.IndexOf(flyToCoordsToolStripMenuItem) + 1, item);
+        }
+
+        private void stackedOrbitHereToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            if (MouseDownStart.Lat == 0.0 || MouseDownStart.Lng == 0.0)
+            {
+                CustomMessageBox.Show(Strings.BadCoords, Strings.ERROR);
+                return;
+            }
+
+            _swarmControl.SetCentre(new PointLatLngAlt(MouseDownStart.Lat, MouseDownStart.Lng));
+
+            // nothing is sent from here: the tab shows the stack and has the Send button
+            if (_themedTabStrip.TabPages.Contains(tabSwarm))
+                _themedTabStrip.SelectTabByTabPage(tabSwarm);
+            else
+                CustomMessageBox.Show(
+                    "The center is set. Show the Swarm tab to send the stack (right-click the tabs, Customize Tabs).",
+                    "Stacked Orbit");
+        }
+
+        // the orbit centre on the map, with the circle the widest of the ticked aircraft will fly
+        private void UpdateSwarmOverlay()
+        {
+            if (InvokeRequired)
+            {
+                BeginInvoke((Action) UpdateSwarmOverlay);
+                return;
+            }
+
+            swarmoverlay.Markers.Clear();
+
+            var centre = _swarmControl.Centre;
+            if (centre != null)
+            {
+                var point = new PointLatLng(centre.Lat, centre.Lng);
+                var marker = new GMarkerGoogle(point, GMarkerGoogleType.orange)
+                {
+                    ToolTipMode = MarkerTooltipMode.OnMouseOver,
+                    ToolTipText = "Stacked Orbit",
+                    Tag = "Stacked Orbit"
+                };
+                swarmoverlay.Markers.Add(marker);
+                swarmoverlay.Markers.Add(new GMapMarkerRect(point)
+                {
+                    InnerMarker = marker,
+                    wprad = _swarmControl.OrbitRadiusM ?? 0,
+                    Color = Color.Orange
+                });
+            }
+
+            gMapControl1.Invalidate();
+        }
+
         private void PointCameraCoordsToolStripMenuItem1_Click(object sender, EventArgs e)
         {
             var location = "";
@@ -6808,6 +6890,12 @@ namespace MissionPlanner.GCSViews
             {
                 _statusControl.Stop();
             }
+
+            // the aircraft list only updates while it is showing
+            if (_themedTabStrip.SelectedTab == tabSwarm)
+                _swarmControl.Activate();
+            else
+                _swarmControl.Deactivate();
 
             if (_themedTabStrip.SelectedTab == tabPagemessages)
             {

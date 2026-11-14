@@ -209,4 +209,10 @@ the git log has those. `ChangeLog.txt` is upstream's and is not maintained here.
   its page runs, as at the default 15.6 ms no wait is short enough for more than about 64 Hz. `Joystick/JoystickSetup`
   builds the whole page in Load (its timer only shows live values) and its rows choose with `ChoiceBox`, which makes a
   ComboBox only while open: a ComboBox per row (a native window holding every item) took seconds to create.
+- **Multiple aircraft.** `Utilities/VehicleParamLoader` downloads the parameters of a link's other autopilots over
+  MAVFTP after the connect, one at a time (`VehicleParamQueue`), never the selected one (the connect's or the switch's
+  to load, so a cancel or Ctrl holds), off while `Suspend()` is held for commands and when the Planner setting
+  (`VehicleParamLoader.Enabled`) is. `Utilities/StackedOrbit` is the stacked orbit's pure logic (slots, the separation,
+  ground clearance and home-height checks, the send order, the retry check), tested in
+  `MissionPlannerTests/Utilities/StackedOrbitTests.cs`; `Controls/SwarmControl`, the FLY screen's Swarm tab, sends it.
 - **Commits.** Messages carry no AI attribution trailers. Do not commit or push unless asked.

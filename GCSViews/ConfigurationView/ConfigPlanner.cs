@@ -25,6 +25,7 @@ namespace MissionPlanner.GCSViews.ConfigurationView
         static temp temp;
         private GroupColumnsPanel layoutRoot;
         private readonly CheckBox CHK_startFullscreen;
+        private readonly CheckBox CHK_paramsOthers;
 
         public ConfigPlanner()
         {
@@ -37,6 +38,17 @@ namespace MissionPlanner.GCSViews.ConfigurationView
                 Text = "Always start fullscreen"
             };
             CHK_startFullscreen.CheckedChanged += CHK_startFullscreen_CheckedChanged;
+
+            // the parameters of a link's other aircraft, downloaded after the connect
+            CHK_paramsOthers = new CheckBox
+            {
+                Name = "CHK_paramsOthers",
+                AutoSize = true,
+                Text = "Download Other Aircraft's Params in Background",
+                Checked = VehicleParamLoader.Enabled
+            };
+            CHK_paramsOthers.CheckedChanged += (sender, e) =>
+                Settings.Instance[VehicleParamLoader.EnabledSetting] = CHK_paramsOthers.Checked.ToString();
 
             InitializeComponent();
             CMB_Layout.Items.Add(DisplayNames.Basic);
@@ -236,6 +248,7 @@ namespace MissionPlanner.GCSViews.ConfigurationView
             optionsFlow.Controls.Add(CHK_beta);
             optionsFlow.Controls.Add(CHK_Password);
             optionsFlow.Controls.Add(CHK_params_bg);
+            optionsFlow.Controls.Add(CHK_paramsOthers);
             optionsFlow.Controls.Add(CHK_AutoParamCommit);
             optionsFlow.Controls.Add(chk_slowMachine);
             optionsFlow.Controls.Add(CHK_startFullscreen);

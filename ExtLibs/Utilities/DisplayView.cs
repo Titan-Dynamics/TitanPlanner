@@ -64,6 +64,7 @@ namespace MissionPlanner.Utilities
         public Boolean displayVideoTab { get; set; } = true;
         public Boolean displayTuningTab { get; set; } = true;
         public Boolean displayInspectorTab { get; set; } = true;
+        public Boolean displaySwarmTab { get; set; } = true;
 
         //flight plan
         public Boolean displayRallyPointsMenu { get; set; } = true;
@@ -161,6 +162,7 @@ namespace MissionPlanner.Utilities
             displayVideoTab = true;
             displayTuningTab = true;
             displayInspectorTab = true;
+            displaySwarmTab = true;
 
             //flight plan
             displayRallyPointsMenu = true;
@@ -296,6 +298,7 @@ namespace MissionPlanner.Utilities
                 displayVideoTab = true,
                 displayTuningTab = true,
                 displayInspectorTab = true,
+                displaySwarmTab = true,
 
                 //flight plan
                 displayRallyPointsMenu = true,
@@ -385,6 +388,7 @@ namespace MissionPlanner.Utilities
                 displayVideoTab = true,
                 displayTuningTab = true,
                 displayInspectorTab = true,
+                displaySwarmTab = true,
 
                 //flight plan
                 displayRallyPointsMenu = true,
