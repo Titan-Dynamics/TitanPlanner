@@ -210,13 +210,15 @@ namespace MissionPlanner.Controls
             {
                 showGps = true;
 
-                // Now try to fit pinned buttons
+                // Now try to fit pinned buttons, and the divider before the first of the user's own
+                int fltCount = PinnedFltModeCount();
                 for (int i = 0; i < pinnedButtonWidths.Count; i++)
                 {
-                    int testWidth = minRequired + pinnedWidth + pinnedButtonWidths[i] + gpsWidth;
+                    int width = pinnedButtonWidths[i] + (fltCount > 0 && i == fltCount ? DividerWidth : 0);
+                    int testWidth = minRequired + pinnedWidth + width + gpsWidth;
                     if (testWidth <= availableWidth)
                     {
-                        pinnedWidth += pinnedButtonWidths[i];
+                        pinnedWidth += width;
                         visiblePinned++;
                     }
                     else
@@ -571,6 +573,42 @@ namespace MissionPlanner.Controls
         }
 
         /// <summary>
+        /// How many of the toolbar's modes are the configured FLTMODEs Pin All puts first: the divider goes after them.
+        /// </summary>
+        private int PinnedFltModeCount()
+        {
+            return _pinAllFltModes ? _fltModes.Take(6).Distinct().Count() : 0;
+        }
+
+        /// <summary>The width of the line between the configured modes and the user's own pins.</summary>
+        private const int DividerWidth = 13;
+
+        /// <summary>
+        /// A short vertical line in the text colour, between the configured modes Pin All docks and the user's own
+        /// pins, as the dropdown has a line between its configured modes and the rest. A Label, so the theme sets only
+        /// its colour.
+        /// </summary>
+        private static Control CreateDivider()
+        {
+            var divider = new Label
+            {
+                AutoSize = false,
+                Text = "",
+                BackColor = Color.Transparent,
+                Dock = DockStyle.Fill,
+                Margin = new Padding(0)
+            };
+            divider.Paint += (s, e) =>
+            {
+                int x = divider.Width / 2;
+                int inset = divider.Height / 5;
+                using (var pen = new Pen(Color.FromArgb(110, divider.ForeColor)))
+                    e.Graphics.DrawLine(pen, x, inset, x, divider.Height - inset);
+            };
+            return divider;
+        }
+
+        /// <summary>
         /// Takes the modes the connected vehicle has (a plane's Q modes only on a quadplane), which decide the pins
         /// the toolbar shows.
         /// </summary>
@@ -639,6 +677,8 @@ namespace MissionPlanner.Controls
                 : toolbarModes.Count;
 
             var modesToShow = toolbarModes.Take(maxVisible).ToList();
+            int fltCount = PinnedFltModeCount();
+            bool divider = fltCount > 0 && modesToShow.Count > fltCount;
 
             Color textColor, darkBgColor, greenColor;
             try
@@ -665,7 +705,7 @@ namespace MissionPlanner.Controls
                 Dock = DockStyle.Fill,
                 AutoSize = true,
                 RowCount = 1,
-                ColumnCount = modesToShow.Count,
+                ColumnCount = modesToShow.Count + (divider ? 1 : 0),
                 BackColor = Color.Transparent,
                 Margin = new Padding(0),
                 Padding = new Padding(0)
@@ -673,8 +713,16 @@ namespace MissionPlanner.Controls
             newPanel.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
 
             int col = 0;
-            foreach (var mode in modesToShow)
+            for (int i = 0; i < modesToShow.Count; i++)
             {
+                var mode = modesToShow[i];
+                if (divider && i == fltCount)
+                {
+                    newPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, DividerWidth));
+                    newPanel.Controls.Add(CreateDivider(), col, 0);
+                    col++;
+                }
+
                 string displayName = mode;
                 int btnWidth = TextRenderer.MeasureText(displayName, new Font("Segoe UI", 9F)).Width + 16;
                 newPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, btnWidth + 4));
