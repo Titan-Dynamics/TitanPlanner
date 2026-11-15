@@ -223,7 +223,7 @@ Arm/disarm indicator and a clickable GPS status popup with detailed real-time te
 - **Gauge display mode** for any dashboard item
 - 270° gauges with blinking on out-of-range values
 - Minimum 25% panel sizes enforced
-- Battery `Wh` used and `Wh/km` available as Quick tab metrics
+- Battery `Wh` used, and the instantaneous `mAh/km` and `Wh/km` (the present current and power over the ground speed), available as Quick tab metrics
 
 ## Defaults & Persistence
 Sensible default Quick tab options on first run; reset and reset-all per-item; loiter radius increments by 10 instead of 1.
@@ -315,6 +315,7 @@ Behaviour that differs from upstream because the fork fixed it:
 - The EKF status window keeps working on long sessions instead of failing with a GDI+ error ([#31](https://github.com/Titan-Dynamics/TitanPlanner/issues/31))
 - SSH (terminal, SCP/SFTP log download, Solo tools) uses SSH.NET 2026, with current key exchanges and ciphers and the `ScpClient` security fixes (upstream PR [#3729](https://github.com/ArduPilot/MissionPlanner/pull/3729))
 - The Actions tab's **Parachute_Release** releases the parachute; upstream's Do_Parachute sends it as Disable, which turns the parachute off until a reboot (upstream PR [#3854](https://github.com/ArduPilot/MissionPlanner/pull/3854))
+- On Plane, the guided target's altitude on the map follows a **Set Alt** from the Actions tab
 - The Actions tab's commands send the reserved param3 as 0 (Preflight_Calibration still sets it); upstream sends 1, which an autopilot strict about reserved params refuses and Loiter_Unlim reads as a 1 m radius (upstream PR [#3853](https://github.com/ArduPilot/MissionPlanner/pull/3853))
 - The initial parameters calculator's after-flight advice matches the vehicle: on Copter 4.7 `PSC_D_ACC_P` / `PSC_D_ACC_I` at 0.1 / 0.2 × `MOT_THST_HOVER` (upstream gives the older gains' values, ten times too high), and the `Q_` names on QuadPlanes (upstream PR [#3829](https://github.com/ArduPilot/MissionPlanner/pull/3829))
 - ADS-B from adsb.lol works (it requires a User-Agent) and stays within its rate limit

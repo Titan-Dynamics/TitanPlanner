@@ -4560,6 +4560,15 @@ Mission Planner waits for 2 valid heartbeat packets before connecting
                     throw new Exception("Alt Change Failed");
                 }
 
+                // Plane moves its guided target to the new altitude: the target shown moves with it
+                var mav = MAVlist[sysid, compid];
+                if (mav.cs.firmware == Firmwares.ArduPlane &&
+                    string.Equals(mav.cs.mode, "GUIDED", StringComparison.OrdinalIgnoreCase))
+                {
+                    mav.GuidedMode.z = (float) gotohere.alt;
+                    mav.GuidedMode.frame = (byte) MAV_FRAME.GLOBAL_RELATIVE_ALT;
+                }
+
                 /*
                 // currently plane supports just an alt change, copter requires all lat/lng/alt
                 setPositionTargetGlobalInt(sysid, (byte)compid,

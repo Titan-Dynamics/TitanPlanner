@@ -77,14 +77,6 @@ namespace MissionPlanner
 
         private DateTime _lastcurrent = DateTime.MinValue;
 
-        // For instantaneous mah/km and wh/km calculations
-        private DateTime _lastEfficiencyUpdate = DateTime.MinValue;
-        private double _lastEfficiencyMah = 0;
-        private double _lastEfficiencyWh = 0;
-        private float _lastEfficiencyDist = 0;
-        private double _instantMahperkm = 0;
-        private double _instantWhperkm = 0;
-
         private DateTime _lastcurrent2 = DateTime.MinValue;
         private float _localsnrdb;
 
@@ -1561,14 +1553,7 @@ namespace MissionPlanner
         [GroupText("Battery")]
         [DisplayFieldName("battery_mahperkm.Field")]
         [DisplayText("Bat efficiency (mah/km)")]
-        public double battery_mahperkm
-        {
-            get
-            {
-                UpdateInstantaneousEfficiency();
-                return _instantMahperkm;
-            }
-        }
+        public double battery_mahperkm => PerKm(current * 1000.0);
 
         [GroupText("Battery")]
         [DisplayFieldName("battery_usedwh.Field")]
@@ -1578,52 +1563,24 @@ namespace MissionPlanner
         [GroupText("Battery")]
         [DisplayFieldName("battery_whperkm.Field")]
         [DisplayText("Bat efficiency (Wh/km)")]
-        public double battery_whperkm
+        public double battery_whperkm => PerKm(watts);
+
+        /// <summary>
+        /// The instantaneous cost per km of a draw per hour (mA, W), from the last current, voltage and ground
+        /// speed received: mAh/km, Wh/km. 0 at 1 m/s or less, where it runs to infinity.
+        /// </summary>
+        private double PerKm(double perHour)
         {
-            get
-            {
-                UpdateInstantaneousEfficiency();
-                return _instantWhperkm;
-            }
-        }
-
-        private void UpdateInstantaneousEfficiency()
-        {
-            var now = datetime;
-            if (_lastEfficiencyUpdate == DateTime.MinValue)
-            {
-                _lastEfficiencyUpdate = now;
-                _lastEfficiencyMah = battery_usedmah;
-                _lastEfficiencyWh = battery_usedwh;
-                _lastEfficiencyDist = distTraveled;
-                return;
-            }
-
-            var elapsed = (now - _lastEfficiencyUpdate).TotalSeconds;
-            if (elapsed < 1.0) return; // Update at most once per second
-
-            var deltaMah = battery_usedmah - _lastEfficiencyMah;
-            var deltaWh = battery_usedwh - _lastEfficiencyWh;
-            var deltaDist = (distTraveled - _lastEfficiencyDist) / multiplierdist; // Convert back to meters
-
-            if (deltaDist > 0.1) // At least 0.1m traveled
-            {
-                var deltaKm = deltaDist / 1000.0;
-                _instantMahperkm = deltaMah / deltaKm;
-                _instantWhperkm = deltaWh / deltaKm;
-            }
-
-            _lastEfficiencyUpdate = now;
-            _lastEfficiencyMah = battery_usedmah;
-            _lastEfficiencyWh = battery_usedwh;
-            _lastEfficiencyDist = distTraveled;
+            if (_groundspeed <= 1) return 0;
+            return perHour / (_groundspeed * 3.6);
         }
 
         [GroupText("Battery")]
         [DisplayFieldName("battery_kmleft.Field")]
         [DisplayText("Bat km left EST (km)")]
-        public double battery_kmleft => (100.0f / (100.0f - battery_remaining) * battery_usedmah - battery_usedmah) /
-                                        battery_mahperkm;
+        public double battery_kmleft => battery_mahperkm > 0
+            ? (100.0f / (100.0f - battery_remaining) * battery_usedmah - battery_usedmah) / battery_mahperkm
+            : 0;
 
         [GroupText("Battery")]
         [DisplayFieldName("battery_usedmah.Field")]

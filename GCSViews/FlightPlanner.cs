@@ -1949,7 +1949,7 @@ namespace MissionPlanner.GCSViews
                     PointLatLng point = new PointLatLng(lat, lng);
                     GMarkerGoogle m = new GMarkerGoogle(point, GMarkerGoogleType.green);
                     m.ToolTipMode = MarkerTooltipMode.Always;
-                    m.ToolTipText = tag + " - " + alt;
+                    m.ToolTipText = tag + " : " + alt;
                     m.Tag = tag;
 
                     GMapMarkerRect mBorders = new GMapMarkerRect(point);
@@ -2018,7 +2018,8 @@ namespace MissionPlanner.GCSViews
             if (mav.cs.mode.ToLower() == "guided" && mav.GuidedMode.x != 0)
             {
                 addpolygonmarker(src, GuidedModeTag, mav.GuidedMode.y / 1e7, mav.GuidedMode.x / 1e7,
-                    (int) mav.GuidedMode.z, Color.Blue, overlay, LoiterRadiusMeters());
+                    (int) Math.Round(mav.GuidedMode.z * CurrentState.multiplieralt), Color.Blue, overlay,
+                    LoiterRadiusMeters());
             }
             else if (src.IsHandleCreated && overlay.Markers.Any(IsGuidedMarker))
             {
