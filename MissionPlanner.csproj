@@ -1231,6 +1231,7 @@
   <ItemGroup>
     <EmbeddedResource Include="Plugins\example23-switch.resx" />
     <EmbeddedResource Include="Resources\DefaultQuickViewSettings.csv" />
+    <EmbeddedResource Include="Resources\LRH.svg" />
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Update="Properties\Resources.resx">

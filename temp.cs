@@ -61,6 +61,7 @@ namespace MissionPlanner
         {
             InitializeComponent();
 
+            but_lrhdashboard.Click += (s, e) => LRHDashboard.ShowWindow();
             BuildLayout();
 
             Tracking.AddPage(
@@ -69,6 +70,9 @@ namespace MissionPlanner
         }
 
         private static temp open;
+
+        // the fork's, not in the designer
+        private readonly MyButton but_lrhdashboard = new MyButton();
 
         /// <summary>
         /// Shows the Tools window, or brings it forward if it is open already.
@@ -135,6 +139,9 @@ namespace MissionPlanner
         {
             return new[]
             {
+                ("Vehicle", but_lrhdashboard, "LRH Dashboard",
+                    KeyboardShortcuts.Label("Power, range and link over 60 s", typeof(MainV2),
+                        nameof(MainV2.ShortcutLRHDashboard))),
                 ("Vehicle", but_reboot, "Reboot Vehicle", "Reboot the autopilot"),
                 ("Vehicle", but_disablearmswitch, "Toggle Safety Switch", "Press the safety switch remotely"),
                 ("Vehicle", BUT_QNH, "Set QNH", "Set the barometer's ground pressure"),

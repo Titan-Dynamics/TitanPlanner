@@ -4490,7 +4490,13 @@ namespace MissionPlanner
             new GMAPCache().ShowUserControl();
         }
 
-        [KeyboardShortcut(Keys.Control | Keys.L, "Open the spectrogram")]
+        [KeyboardShortcut(Keys.Control | Keys.L, "Open the Long Range Hooligans dashboard")]
+        internal void ShortcutLRHDashboard()
+        {
+            LRHDashboard.ShowWindow();
+        }
+
+        [KeyboardShortcut(Keys.Control | Keys.Shift | Keys.L, "Open the spectrogram")]
         private void ShortcutSpectrogram()
         {
             //new DigitalSkyUI().ShowUserControl();

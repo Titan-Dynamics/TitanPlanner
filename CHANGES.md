@@ -228,6 +228,13 @@ Arm/disarm indicator and a clickable GPS status popup with detailed real-time te
 ## Defaults & Persistence
 Sensible default Quick tab options on first run; reset and reset-all per-item; loiter radius increments by 10 instead of 1.
 
+## Long Range Hooligans Dashboard
+A window (`Ctrl+L`, or LRH Dashboard in the Tools window) with the LRH logo in white or black to suit the theme:
+- The last 60 s of battery voltage, current, power, Wh/km, mAh/km, MAVLink packets per second down and up (with the bytes per second and link quality), and the radio's local and remote RSSI, each with its latest reading and the minute's low, mean and high
+- The range left (the charge left, from `BATT_CAPACITY` or the battery's remaining %, over the last minute's efficiency), the distance to home, the margin, the time left, and the range against the distance to home over the minute
+- A banner that turns amber when the range left is under 1.3× the distance to home, and flashes red when it is under the distance to home
+- The spectrogram moves to `Ctrl+Shift+L`
+
 ---
 
 # Mission Planning
