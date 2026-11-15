@@ -57,6 +57,7 @@ namespace MissionPlanner.Controls
         private readonly BingoPanel bingoPanel;
         private readonly PpsDeltaPanel deltaPanel;
         private readonly PpsDelta ppsDelta = new PpsDelta();
+        private readonly PackResistanceEstimator packResistance = new PackResistanceEstimator();
         private PpsPerformance pps;
         private string ppsError;
 
@@ -156,7 +157,8 @@ namespace MissionPlanner.Controls
             live.Controls.Add(summary);
 
             bingoPanel = new BingoPanel();
-            bingoPanel.MarginChanged += (s, e) => UpdateBingo(MainV2.comPort, true);
+            bingoPanel.SettingsChanged += (s, e) =>
+                UpdateBingo(MainV2.comPort, MainV2.comPort?.BaseStream?.IsOpen == true && MainV2.comPort.MAV?.cs != null);
             deltaPanel = new PpsDeltaPanel();
 
             tabs = new ThemedTabStrip {Dock = DockStyle.Fill};
@@ -247,6 +249,7 @@ namespace MissionPlanner.Controls
                 summary.SetEstimate(RangeSummary.Estimate.NotConnected);
 #if !LIB
                 ppsDelta.Clear();
+                packResistance.Clear();
                 UpdatePpsTabs(port, false);
 #endif
                 Redraw();
@@ -279,6 +282,7 @@ namespace MissionPlanner.Controls
             summary.SetEstimate(estimate);
 
 #if !LIB
+            packResistance.Add(now, cs.battery_voltage, cs.current);
             if (pps != null)
                 ppsDelta.Add(new PpsDelta.Reading
                 {
@@ -452,6 +456,53 @@ namespace MissionPlanner.Controls
             if (live)
                 usedWh = cs.battery_usedwh > 0 ? cs.battery_usedwh : cs.battery_usedmah / 1000.0 * cs.battery_voltage;
 
+            // the pack: its cells as set, else from the live voltage against the charge PPS says is left, else 6S
+            var battery = new BatteryModel { Chemistry = bingoPanel.Chemistry };
+            int parallel = bingoPanel.Parallel;
+            double cellOhm = bingoPanel.CellResistanceOhm;
+            string cellsFrom;
+            int detected = live
+                ? BatteryModel.CellsFrom(cs.battery_voltage, (pps.UsableWh - usedWh) / pps.UsableWh * 100, cs.watts,
+                    battery.Chemistry, 6 * cellOhm / parallel)
+                : 0;
+            if (bingoPanel.Cells > 0)
+            {
+                battery.Cells = bingoPanel.Cells;
+                cellsFrom = "";
+            }
+            else if (detected > 0)
+            {
+                battery.Cells = detected;
+                cellsFrom = " (from the live voltage)";
+            }
+            else
+            {
+                battery.Cells = 6;
+                cellsFrom = " (assumed; set the cells or connect)";
+            }
+
+            // its resistance: the cells' in series over the strings in parallel, or the live estimate once it has one
+            double fromCells = battery.Cells * cellOhm / parallel;
+            string resistanceText;
+            if (bingoPanel.LiveResistance && packResistance.Ready)
+            {
+                battery.ResistanceOhm = packResistance.Ohm;
+                resistanceText = (battery.ResistanceOhm * 1000).ToString("0") + " mΩ pack (live, " +
+                                 packResistance.Steps.Count + " throttle steps)";
+            }
+            else
+            {
+                battery.ResistanceOhm = fromCells;
+                resistanceText = (fromCells * 1000).ToString("0") + " mΩ pack (" + (cellOhm * 1000).ToString("0.#") + " mΩ/cell)" +
+                                 (bingoPanel.LiveResistance
+                                     ? "; live: " + packResistance.Steps.Count + " of " +
+                                       PackResistanceEstimator.StepsNeeded + " throttle steps"
+                                     : "");
+            }
+
+            string chemistryName = battery.Chemistry == BatteryChemistry.LiIon ? "Li-ion" : battery.Chemistry.ToString();
+            string batteryText = battery.Cells + "S" + parallel + "P " + chemistryName + cellsFrom + ", " + resistanceText;
+
             var result = BingoPlan.Compute(new BingoInput
             {
                 Profile = missionProfile,
@@ -469,21 +520,23 @@ namespace MissionPlanner.Controls
                 NextItem = live && vehicleMission && cs.wpno >= 1 ? (int) cs.wpno - 1 : -1,
                 Lat = live ? cs.lat : 0,
                 Lng = live ? cs.lng : 0,
-                AltitudeAmsl = live ? cs.altasl / CurrentState.multiplieralt : 0
+                AltitudeAmsl = live ? cs.altasl / CurrentState.multiplieralt : 0,
+                Battery = battery,
+                MeasuredVolts = live && cs.battery_voltage > 1 ? cs.battery_voltage : double.NaN
             });
 
-            // the autopilot's battery against the energy PPS flies on
+            // the autopilot's battery against the energy PPS flies on, at the chemistry's mean voltage
             double capacity = Param("BATT_CAPACITY");
             if (live && capacity > 0 && cs.battery_voltage > 1)
             {
-                int cells = (int) Math.Ceiling(cs.battery_voltage / 4.25);
-                double wh = capacity / 1000.0 * cells * 3.7;
+                double meanCell = Enumerable.Range(0, 101).Average(p => BatteryModel.CellVoltage(battery.Chemistry, p));
+                double wh = capacity / 1000.0 * battery.Cells * meanCell;
                 if (Math.Abs(wh - pps.UsableWh) > pps.UsableWh * 0.1)
                     result.Notes.Insert(0, "BATT_CAPACITY (about " + wh.ToString("0") + " Wh) differs from PPS's " +
                                            pps.UsableWh.ToString("0") + " Wh.");
             }
 
-            bingoPanel.Show(result, source, cruise, windSpeed, windFrom);
+            bingoPanel.Show(result, source, cruise, windSpeed, windFrom, batteryText);
         }
 
         /// <summary>The mission downloaded from the vehicle, home first; null when there is none.</summary>

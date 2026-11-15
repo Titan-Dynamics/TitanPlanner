@@ -235,6 +235,7 @@ A window (`Ctrl+L`, or LRH Dashboard in the Tools window) with the LRH logo in w
 - A banner that turns amber when the range left is under 1.3× the distance to home, and flashes red when it is under the distance to home
 - Live, Bingo and PPS tabs; **Load PPS…** reads a Performance Prediction Software export (the airspeed sweep and the airframe summary) and remembers it
 - **Bingo**: for each waypoint of the vehicle's mission (else the PLAN screen's), its distance from home, the battery predicted on arrival and the bingo level (the battery to RTL straight home from there plus a margin you set), from the PPS power at the cruise airspeed, the climbs, `DO_CHANGE_SPEED`, loiters and the live wind; the first waypoint below bingo is the point of no return, and in flight it starts from the vehicle's position and the energy used
+- Bingo shows the estimated pack voltage under cruise load beside each battery % (on arrival and at bingo), from the chemistry (Li-ion, LiPo or LiHV), the cells in series (from the live voltage, or set) and in parallel, and the internal resistance per cell, or the pack's resistance estimated live from the voltage's answer to throttle steps
 - A margin of 0% is Mo mode
 - **PPS**: in steady, level, straight flight, the power, current, throttle, Wh/km, pitch and prop RPM against the PPS prediction at the airspeed flown, and the PPS power curve with the session's steady readings over it
 - The spectrogram moves to `Ctrl+Shift+L`

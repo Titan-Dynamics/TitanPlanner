@@ -14,25 +14,55 @@ namespace MissionPlanner.Controls.PPS
     public class BingoPanel : UserControl
     {
         public const string MarginSetting = "lrh_bingo_margin";
+        public const string ChemistrySetting = "lrh_batt_chemistry";
+        public const string CellsSetting = "lrh_batt_cells";
+        public const string ParallelSetting = "lrh_batt_parallel";
+        public const string CellResistanceSetting = "lrh_batt_cell_mohm";
+        public const string LiveResistanceSetting = "lrh_batt_live_r";
         private const double DefaultMargin = 20;
+        private const double DefaultCellMilliohm = 8;
+
+        private static readonly (string Text, BatteryChemistry Chemistry)[] Chemistries =
+        {
+            ("Li-ion", BatteryChemistry.LiIon), ("LiPo", BatteryChemistry.LiPo), ("LiHV", BatteryChemistry.LiHV)
+        };
 
         private readonly NumericUpDown margin;
+        private readonly ComboBox chemistry;
+        private readonly ComboBox cells;
+        private readonly ComboBox parallel;
+        private readonly NumericUpDown resistance;
+        private readonly CheckBox liveResistance;
         private readonly Label marginLabel;
         private readonly Label details;
         private readonly BingoSummary summary;
         private readonly DataGridView grid;
         private Font bold;
 
-        /// <summary>The margin was changed.</summary>
-        public event EventHandler MarginChanged;
+        /// <summary>The margin or the battery was changed.</summary>
+        public event EventHandler SettingsChanged;
 
         public double MarginPercent => (double) margin.Value;
+
+        public BatteryChemistry Chemistry => Chemistries[Math.Max(0, chemistry.SelectedIndex)].Chemistry;
+
+        /// <summary>Cells in series as set; 0 to work them out from the live voltage.</summary>
+        public int Cells => cells.SelectedIndex <= 0 ? 0 : cells.SelectedIndex + 1;
+
+        /// <summary>Cells in parallel.</summary>
+        public int Parallel => Math.Max(0, parallel.SelectedIndex) + 1;
+
+        /// <summary>One cell's internal resistance, ohms.</summary>
+        public double CellResistanceOhm => (double) resistance.Value / 1000.0;
+
+        /// <summary>Estimate the pack's resistance from the live voltage and current, in place of the cells'.</summary>
+        public bool LiveResistance => liveResistance.Checked;
 
         public BingoPanel()
         {
             Padding = new Padding(8, 4, 8, 8);
 
-            var strip = new Panel { Dock = DockStyle.Top, Height = 34 };
+            var strip = new Panel { Dock = DockStyle.Top, Height = 58 };
             marginLabel = new Label
             {
                 Text = "Margin", AutoSize = true, Location = new Point(2, 8), Font = new Font("Segoe UI", 9F)
@@ -43,17 +73,81 @@ namespace MissionPlanner.Controls.PPS
                 Value = (decimal) Math.Max(0, Math.Min(50, Settings.Instance.GetDouble(MarginSetting, DefaultMargin)))
             };
             var percent = new Label { Text = "% battery", AutoSize = true, Location = new Point(120, 8) };
+
+            var chemistryLabel = new Label { Text = "Battery", AutoSize = true, Location = new Point(204, 8) };
+            chemistry = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Width = 72, Location = new Point(256, 4) };
+            chemistry.Items.AddRange(Chemistries.Select(c => (object) c.Text).ToArray());
+            var savedChemistry = Settings.Instance[ChemistrySetting];
+            int chemistryIndex = Array.FindIndex(Chemistries, c => c.Chemistry.ToString() == savedChemistry);
+            chemistry.SelectedIndex = Math.Max(0, chemistryIndex);
+
+            cells = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Width = 64, Location = new Point(334, 4) };
+            cells.Items.Add("Auto");
+            for (int n = 2; n <= 24; n++)
+                cells.Items.Add(n + "S");
+            int savedCells = (int) Settings.Instance.GetDouble(CellsSetting, 0);
+            cells.SelectedIndex = savedCells >= 2 && savedCells <= 24 ? savedCells - 1 : 0;
+
+            parallel = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Width = 52, Location = new Point(402, 4) };
+            for (int n = 1; n <= 12; n++)
+                parallel.Items.Add(n + "P");
+            int savedParallel = (int) Settings.Instance.GetDouble(ParallelSetting, 1);
+            parallel.SelectedIndex = savedParallel >= 1 && savedParallel <= 12 ? savedParallel - 1 : 0;
+
+            var resistanceLabel = new Label { Text = "IR", AutoSize = true, Location = new Point(466, 8) };
+            resistance = new NumericUpDown
+            {
+                Minimum = 0, Maximum = 200, DecimalPlaces = 1, Increment = 0.5M, Width = 56, Location = new Point(488, 5),
+                Value = (decimal) Math.Max(0, Math.Min(200, Settings.Instance.GetDouble(CellResistanceSetting, DefaultCellMilliohm)))
+            };
+            var milliohm = new Label { Text = "mΩ/cell", AutoSize = true, Location = new Point(548, 8) };
+            liveResistance = new CheckBox
+            {
+                Text = "Live pack resistance", AutoSize = true, Location = new Point(614, 6),
+                Checked = Settings.Instance[LiveResistanceSetting] == "True"
+            };
+
             details = new Label
             {
-                AutoSize = false, Location = new Point(200, 8), Height = 18,
+                AutoSize = false, Location = new Point(2, 34), Height = 18,
                 Anchor = AnchorStyles.Left | AnchorStyles.Right | AnchorStyles.Top, AutoEllipsis = true
             };
             strip.Resize += (s, e) => details.Width = Math.Max(10, strip.Width - details.Left - 4);
-            strip.Controls.AddRange(new Control[] { marginLabel, margin, percent, details });
+            strip.Controls.AddRange(new Control[]
+            {
+                marginLabel, margin, percent, chemistryLabel, chemistry, cells, parallel, resistanceLabel, resistance,
+                milliohm, liveResistance, details
+            });
+            var invariant = System.Globalization.CultureInfo.InvariantCulture;
             margin.ValueChanged += (s, e) =>
             {
-                Settings.Instance[MarginSetting] = margin.Value.ToString(System.Globalization.CultureInfo.InvariantCulture);
-                MarginChanged?.Invoke(this, EventArgs.Empty);
+                Settings.Instance[MarginSetting] = margin.Value.ToString(invariant);
+                SettingsChanged?.Invoke(this, EventArgs.Empty);
+            };
+            chemistry.SelectedIndexChanged += (s, e) =>
+            {
+                Settings.Instance[ChemistrySetting] = Chemistry.ToString();
+                SettingsChanged?.Invoke(this, EventArgs.Empty);
+            };
+            cells.SelectedIndexChanged += (s, e) =>
+            {
+                Settings.Instance[CellsSetting] = Cells.ToString(invariant);
+                SettingsChanged?.Invoke(this, EventArgs.Empty);
+            };
+            parallel.SelectedIndexChanged += (s, e) =>
+            {
+                Settings.Instance[ParallelSetting] = Parallel.ToString(invariant);
+                SettingsChanged?.Invoke(this, EventArgs.Empty);
+            };
+            resistance.ValueChanged += (s, e) =>
+            {
+                Settings.Instance[CellResistanceSetting] = resistance.Value.ToString(invariant);
+                SettingsChanged?.Invoke(this, EventArgs.Empty);
+            };
+            liveResistance.CheckedChanged += (s, e) =>
+            {
+                Settings.Instance[LiveResistanceSetting] = liveResistance.Checked.ToString();
+                SettingsChanged?.Invoke(this, EventArgs.Empty);
             };
 
             summary = new BingoSummary { Dock = DockStyle.Top, Height = 118 };
@@ -74,7 +168,8 @@ namespace MissionPlanner.Controls.PPS
             foreach (var (name, header) in new[]
                      {
                          ("wp", "Waypoint"), ("along", "Along route"), ("home", "From home"),
-                         ("arrival", "Arrival"), ("bingo", "Bingo"), ("slack", "Slack"), ("status", "")
+                         ("arrival", "Arrival"), ("arrivalV", "Arrival V"), ("bingo", "Bingo"), ("bingoV", "Bingo V"),
+                         ("slack", "Slack"), ("status", "")
                      })
             {
                 var column = grid.Columns[grid.Columns.Add(name, header)];
@@ -101,10 +196,12 @@ namespace MissionPlanner.Controls.PPS
             UpdateMarginLabel();
         }
 
-        public void Show(BingoResult result, string source, double cruise, double windSpeed, double windFrom)
+        /// <param name="battery">The pack the voltages are for, e.g. "6S Li-ion (from the live voltage), 50 mΩ".</param>
+        public void Show(BingoResult result, string source, double cruise, double windSpeed, double windFrom,
+            string battery)
         {
             UpdateMarginLabel();
-            details.Text = source + "   ·   cruise " + cruise.ToString("0.0") + " m/s" +
+            details.Text = source + "   ·   " + battery + "   ·   cruise " + cruise.ToString("0.0") + " m/s" +
                            (windSpeed > 0.5
                                ? "   ·   wind " + windSpeed.ToString("0.0") + " m/s from " + windFrom.ToString("000") + "°"
                                : "   ·   no wind") +
@@ -129,7 +226,9 @@ namespace MissionPlanner.Controls.PPS
                 cells["along"].Value = r.DistanceAlongKm.ToString("0.0") + " km";
                 cells["home"].Value = r.DistanceHomeKm.ToString("0.0") + " km";
                 cells["arrival"].Value = Percent(r.ArrivalPercent, r.Status == BingoStatus.Passed);
+                cells["arrivalV"].Value = r.Status == BingoStatus.Passed ? "" : Volts(r.ArrivalVolts);
                 cells["bingo"].Value = Percent(r.BingoPercent, false);
+                cells["bingoV"].Value = Volts(r.BingoVolts);
                 cells["slack"].Value = r.Status == BingoStatus.Passed || double.IsNaN(r.Slack)
                     ? "–"
                     : r.Slack.ToString("+0;-0") + "%";
@@ -170,6 +269,8 @@ namespace MissionPlanner.Controls.PPS
             marginLabel.Text = MarginPercent <= 0 ? "MO MODE" : "Margin";
             marginLabel.ForeColor = MarginPercent <= 0 ? BingoSummary.MoColor : ForeColor;
         }
+
+        internal static string Volts(double value) => double.IsNaN(value) ? "–" : value.ToString("0.0") + " V";
 
         private static string Percent(double value, bool passed)
         {
@@ -267,10 +368,11 @@ namespace MissionPlanner.Controls.PPS
                 }
 
                 string Pct(double v) => double.IsNaN(v) ? "–" : v.ToString("0") + "%";
+                string PctVolts(double p, double v) => double.IsNaN(v) ? Pct(p) : Pct(p) + " · " + v.ToString("0.0") + " V";
                 var stats = new[]
                 {
-                    ("Battery now", now == null ? "–" : Pct(now.ArrivalPercent), fore),
-                    ("Bingo from here", now == null ? "–" : Pct(now.BingoPercent), fore),
+                    ("Battery now", now == null ? "–" : PctVolts(now.ArrivalPercent, now.ArrivalVolts), fore),
+                    ("Bingo from here", now == null ? "–" : PctVolts(now.BingoPercent, now.BingoVolts), fore),
                     ("Slack", now == null || double.IsNaN(now.Slack) ? "–" : now.Slack.ToString("+0;-0") + "%",
                         now == null ? fore : StatusOr(now.Status, fore)),
                     ("Range home (still air)", r == null || double.IsNaN(r.RangeHomeKm) ? "–" : r.RangeHomeKm.ToString("0.0") + " km", fore),

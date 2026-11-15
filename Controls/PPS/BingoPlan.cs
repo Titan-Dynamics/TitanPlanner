@@ -42,6 +42,17 @@ namespace MissionPlanner.Controls.PPS
 
         public double Slack => ArrivalPercent - BingoPercent;
         public BingoStatus Status;
+
+        /// <summary>The airspeed flown into the point, m/s.</summary>
+        public double Airspeed = double.NaN;
+
+        /// <summary>
+        /// The pack's voltage under cruise load on arrival (for the Now row, the voltage read), and at the bingo level
+        /// turning for home; NaN without a battery model or below 0 %.
+        /// </summary>
+        public double ArrivalVolts = double.NaN;
+
+        public double BingoVolts = double.NaN;
     }
 
     public sealed class BingoInput
@@ -77,6 +88,12 @@ namespace MissionPlanner.Controls.PPS
         public int NextItem = -1;
 
         public double Lat, Lng, AltitudeAmsl;
+
+        /// <summary>For the voltages; null for none.</summary>
+        public BatteryModel Battery;
+
+        /// <summary>The pack's voltage now, in flight; NaN for none.</summary>
+        public double MeasuredVolts = double.NaN;
     }
 
     public sealed class BingoResult
@@ -197,6 +214,7 @@ namespace MissionPlanner.Controls.PPS
                 {
                     Label = to.Label,
                     Item = to.Item,
+                    Airspeed = speed,
                     DistanceAlongKm = to.Distance / 1000.0,
                     DistanceHomeKm = Distance(to.Lat, to.Lng, home.Lat, home.Lng) / 1000.0
                 };
@@ -249,6 +267,27 @@ namespace MissionPlanner.Controls.PPS
                 };
                 now.Status = unreachable ? BingoStatus.Unreachable : Status(now.Slack);
                 result.Now = now;
+            }
+
+            // the voltages: on arrival at the speed flown in, and at bingo turning for home at cruise
+            var battery = input.Battery;
+            if (battery != null)
+            {
+                double homePower = pps.PowerAt(cruise);
+                foreach (var row in result.Rows)
+                {
+                    if (row.Status != BingoStatus.Passed)
+                        row.ArrivalVolts = battery.LoadedVoltage(row.ArrivalPercent, pps.PowerAt(row.Airspeed));
+                    row.BingoVolts = battery.LoadedVoltage(row.BingoPercent, homePower);
+                }
+
+                if (result.Now != null)
+                {
+                    result.Now.ArrivalVolts = input.MeasuredVolts > 0
+                        ? input.MeasuredVolts
+                        : battery.LoadedVoltage(result.Now.ArrivalPercent, homePower);
+                    result.Now.BingoVolts = battery.LoadedVoltage(result.Now.BingoPercent, homePower);
+                }
             }
 
             // still air, level, at cruise

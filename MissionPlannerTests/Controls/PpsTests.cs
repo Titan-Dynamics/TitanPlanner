@@ -223,6 +223,87 @@ namespace MissionPlanner.Controls.PPS.Tests
             Assert.AreEqual(100 - LegPercent, result.Rows[1].ArrivalPercent, 0.01);
         }
 
+        [TestMethod]
+        public void CellVoltageFollowsTheChemistrysCurve()
+        {
+            Assert.AreEqual(4.20, BatteryModel.CellVoltage(BatteryChemistry.LiIon, 100), 1e-9);
+            Assert.AreEqual(3.57, BatteryModel.CellVoltage(BatteryChemistry.LiIon, 30), 1e-9);
+            Assert.AreEqual((3.57 + 3.65) / 2, BatteryModel.CellVoltage(BatteryChemistry.LiIon, 35), 1e-9);
+            Assert.AreEqual(3.77, BatteryModel.CellVoltage(BatteryChemistry.LiPo, 30), 1e-9);
+            Assert.AreEqual(4.35, BatteryModel.CellVoltage(BatteryChemistry.LiHV, 120), 1e-9);
+        }
+
+        [TestMethod]
+        public void LoadedVoltageSagsByTheCurrentThroughTheResistance()
+        {
+            var pack = new BatteryModel { Chemistry = BatteryChemistry.LiIon, Cells = 6, ResistanceOhm = 0.1 };
+            double v = pack.LoadedVoltage(100, 100);
+
+            // V = Voc - (P/V)·R
+            Assert.AreEqual(25.2 - 100 / v * 0.1, v, 1e-9);
+            Assert.AreEqual(25.2, pack.LoadedVoltage(100, 0), 1e-9);
+            Assert.IsTrue(double.IsNaN(pack.LoadedVoltage(-5, 100)));
+        }
+
+        [TestMethod]
+        public void CellsComeFromTheVoltageAtTheChargeLeft()
+        {
+            Assert.AreEqual(6, BatteryModel.CellsFrom(25.1, 100, 50, BatteryChemistry.LiIon, 0.05));
+            // a 6S Li-ion pack near empty reads under what 5S reads full
+            Assert.AreEqual(6, BatteryModel.CellsFrom(20.6, 15, 90, BatteryChemistry.LiIon, 0.05));
+            Assert.AreEqual(3, BatteryModel.CellsFrom(12.5, 100, 20, BatteryChemistry.LiPo, 0.05));
+            Assert.AreEqual(0, BatteryModel.CellsFrom(0, 100, 0, BatteryChemistry.LiIon, 0.05));
+        }
+
+        [TestMethod]
+        public void RowsCarryTheVoltageOnArrivalAndAtBingo()
+        {
+            var pack = new BatteryModel { Chemistry = BatteryChemistry.LiIon, Cells = 6, ResistanceOhm = 0.05 };
+            var result = Bingo(OutAndBack(), more: input => input.Battery = pack);
+            var wp = result.Rows[0];
+
+            Assert.AreEqual(pack.LoadedVoltage(wp.ArrivalPercent, 100), wp.ArrivalVolts, 1e-9);
+            Assert.AreEqual(pack.LoadedVoltage(wp.BingoPercent, 100), wp.BingoVolts, 1e-9);
+            Assert.IsTrue(wp.ArrivalVolts > wp.BingoVolts);
+            Assert.IsTrue(double.IsNaN(Bingo(OutAndBack()).Rows[0].BingoVolts));
+        }
+
+        // a 24 V pack of 40 mΩ: the voltage sags by the current through it, and arrives smoothed as the HUD has it
+        static PackResistanceEstimator Fly(Func<double, double> amps, double seconds, double ohm = 0.04,
+            double drainPerSecond = 0)
+        {
+            var estimator = new PackResistanceEstimator();
+            double smoothed = 0;
+            for (double t = 0; t <= seconds; t += 0.25)
+            {
+                double a = amps(t);
+                double v = 24 - drainPerSecond * t - a * ohm;
+                smoothed = smoothed == 0 ? v : v * 0.4 + smoothed * 0.6;
+                estimator.Add(t, smoothed, a);
+            }
+
+            return estimator;
+        }
+
+        [TestMethod]
+        public void PackResistanceComesFromThrottleSteps()
+        {
+            // 4 A cruise and 12 A climbs, alternating every 8 s
+            var estimator = Fly(t => (int) (t / 8) % 2 == 0 ? 4 : 12, 120);
+
+            Assert.IsTrue(estimator.Ready);
+            Assert.AreEqual(0.04, estimator.Ohm, 0.004);
+        }
+
+        [TestMethod]
+        public void PackResistanceIgnoresSteadyFlightAndRamps()
+        {
+            // steady cruise as the pack drains, then a slow ramp in current: no steps to measure
+            Assert.AreEqual(0, Fly(t => 4, 120, drainPerSecond: 0.01).Steps.Count);
+            Assert.AreEqual(0, Fly(t => 4 + t * 0.1, 60).Steps.Count);
+            Assert.IsTrue(double.IsNaN(Fly(t => 4, 10).Ohm));
+        }
+
         static PpsDelta.Reading Steady(double t) => new PpsDelta.Reading
         {
             T = t, Armed = true, Airspeed = 20, Watts = 110, Volts = 22, Throttle = 40, Roll = 2, Pitch = 3
