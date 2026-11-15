@@ -228,7 +228,7 @@
     <value>3</value>
   </data>
   <data name="linkLabel1.Text" xml:space="preserve">
-    <value>Link Stats</value>
+    <value>Stats</value>
   </data>
   <data name="linkLabel1.Visible" type="System.Boolean, mscorlib">
     <value>False</value>

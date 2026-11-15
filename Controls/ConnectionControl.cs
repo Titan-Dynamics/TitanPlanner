@@ -15,6 +15,177 @@ namespace MissionPlanner.Controls
             {
                 ShowLinkStats?.Invoke(this, EventArgs.Empty);
             };
+            Restyle();
+        }
+
+        // the designer's width, which the menu bar was made for, and two rows of boxes in its height
+        private const int DesignWidth = 238;
+        private const int RowHeight = 22;
+        private const int RowGap = 3;
+        private bool arranging;
+
+        // MainV2 scales its controls to its font (AutoScaleMode.Font), this one's designer widths with them, to about
+        // three quarters: the boxes keep to the widths that gives
+        private float scaleX = 1;
+
+        // the links with no baud rate: those MainV2 turns the baud box off for, and the web socket
+        private static readonly string[] NoBaud = {"UDP", "UDPCl", "TCP", "WS", "AUTO"};
+        private bool baudShown = true;
+
+        // the boxes, each in its flat frame
+        private FlatComboFrame portFrame, baudFrame, sysidFrame;
+
+        /// <summary>
+        /// The corner's look, nothing of what it does: the boxes in flat frames in the theme (FlatComboFrame) in Segoe
+        /// UI, their lists' rows taller and picked out in the accent, and two even rows (Arrange).
+        /// </summary>
+        private void Restyle()
+        {
+            var font = new Font("Segoe UI", 8.25F);
+            SuspendLayout();
+
+            foreach (var combo in new[] {cmb_Connection, cmb_Baud, cmb_sysid})
+            {
+                combo.Font = font;
+                if (combo.DrawMode == DrawMode.Normal)
+                {
+                    // the port's list draws its own rows, with the ports' names
+                    combo.DrawMode = DrawMode.OwnerDrawFixed;
+                    combo.DrawItem += DrawListItem;
+                }
+
+                // the field as well as the list rows: two rows have to fit the menu bar
+                combo.ItemHeight = 16;
+            }
+
+            portFrame = new FlatComboFrame(cmb_Connection);
+            baudFrame = new FlatComboFrame(cmb_Baud);
+            sysidFrame = new FlatComboFrame(cmb_sysid);
+            Controls.Add(portFrame);
+            Controls.Add(baudFrame);
+            Controls.Add(sysidFrame);
+
+            linkLabel1.Font = font;
+            linkLabel1.LinkBehavior = LinkBehavior.HoverUnderline;
+            linkLabel1.SizeChanged += (s, e) => Arrange();
+
+            // the baud box only for a link that has a baud rate
+            cmb_Connection.TextChanged += (s, e) => ShowBaudForPort();
+            cmb_Connection.SelectedIndexChanged += (s, e) => ShowBaudForPort();
+            ShowBaudForPort();
+
+            MinimumSize = Size.Empty;
+            Arrange();
+            ResumeLayout(false);
+
+            // the theme's colours are set by the time it shows
+            Load += (s, e) => linkLabel1.LinkColor = linkLabel1.ActiveLinkColor = ThemeManager.ButBG;
+        }
+
+        protected override void ScaleControl(SizeF factor, BoundsSpecified specified)
+        {
+            if ((specified & BoundsSpecified.Width) != 0)
+                scaleX *= factor.Width;
+            base.ScaleControl(factor, specified);
+        }
+
+        // after a scale too: the boxes are scaled after this control, and lay out once they have been
+        protected override void OnLayout(LayoutEventArgs e)
+        {
+            base.OnLayout(e);
+            Arrange();
+        }
+
+        // the boxes half as wide again as the designer's, for the names in them
+        private const float Widen = 1.5f;
+
+        private int Scaled(int designed)
+        {
+            return (int) Math.Round(designed * Widen * scaleX);
+        }
+
+        /// <summary>
+        /// The port and baud over Stats and the vehicle, at the designer's widths as MainV2 scales them, right edges
+        /// aligned; Stats centred on the vehicle's box, which takes the rest of its row.
+        /// </summary>
+        private void Arrange()
+        {
+            if (arranging)
+                return;
+            arranging = true;
+            try
+            {
+                if (portFrame == null)
+                    return;
+
+                int width = Scaled(DesignWidth);
+                if (baudShown)
+                {
+                    portFrame.SetBounds(0, 0, Scaled(121), RowHeight);
+                    baudFrame.SetBounds(Scaled(127), 0, width - Scaled(127), RowHeight);
+                }
+                else
+                {
+                    // the port across the row
+                    portFrame.SetBounds(0, 0, width, RowHeight);
+                }
+
+                int second = RowHeight + RowGap;
+                linkLabel1.Location = new Point(2, second + (RowHeight - linkLabel1.Height) / 2);
+                int left = Math.Min(linkLabel1.Right + 4, width / 2);
+                sysidFrame.SetBounds(left, second, width - left, RowHeight);
+
+                Size = new Size(width, second + RowHeight);
+            }
+            finally
+            {
+                arranging = false;
+            }
+        }
+
+        /// <summary>
+        /// Shows the baud box only for a link with a baud rate: not UDP, TCP, the web socket or AUTO. Only whether it
+        /// shows: what it holds, and whether MainV2 has it enabled, stay as they are.
+        /// </summary>
+        private void ShowBaudForPort()
+        {
+            var port = cmb_Connection.Text;
+            bool baud = !Array.Exists(NoBaud, name => string.Equals(name, port, StringComparison.OrdinalIgnoreCase));
+            if (baud == baudShown)
+                return;
+            baudShown = baud;
+            if (baudFrame != null)
+                baudFrame.Visible = baud;
+            Arrange();
+        }
+
+        /// <summary>A list's row: the box's colours, the one under the pointer picked out in the accent.</summary>
+        private static void DrawRow(ComboBox combo, DrawItemEventArgs e, string text)
+        {
+            bool selected = (e.State & DrawItemState.Selected) == DrawItemState.Selected &&
+                            (e.State & DrawItemState.ComboBoxEdit) != DrawItemState.ComboBoxEdit;
+            var back = combo.BackColor;
+            var accent = ThemeManager.ButBG;
+            var fill = selected
+                ? Color.FromArgb(back.R + (accent.R - back.R) * 45 / 100, back.G + (accent.G - back.G) * 45 / 100,
+                    back.B + (accent.B - back.B) * 45 / 100)
+                : back;
+            using (var brush = new SolidBrush(fill))
+                e.Graphics.FillRectangle(brush, e.Bounds);
+
+            var bounds = new Rectangle(e.Bounds.X + 6, e.Bounds.Y, e.Bounds.Width - 8, e.Bounds.Height);
+            TextRenderer.DrawText(e.Graphics, text, e.Font, bounds, combo.ForeColor,
+                TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis |
+                TextFormatFlags.NoPrefix);
+        }
+
+        private void DrawListItem(object sender, DrawItemEventArgs e)
+        {
+            if (e.Index < 0)
+                return;
+            var combo = (ComboBox) sender;
+            // as the box shows it (the vehicles' through their Format)
+            DrawRow(combo, e, combo.GetItemText(combo.Items[e.Index]));
         }
 
         public event EventHandler ShowLinkStats;
@@ -55,12 +226,6 @@ namespace MissionPlanner.Controls
                 return;
 
             ComboBox combo = sender as ComboBox;
-            if ((e.State & DrawItemState.Selected) == DrawItemState.Selected)
-                e.Graphics.FillRectangle(new SolidBrush(SystemColors.Highlight),
-                    e.Bounds);
-            else
-                e.Graphics.FillRectangle(new SolidBrush(combo.BackColor),
-                    e.Bounds);
 
             string text = combo.Items[e.Index].ToString();
             if (!MainV2.MONO)
@@ -68,11 +233,7 @@ namespace MissionPlanner.Controls
                 text = text + " " + SerialPort.GetNiceName(text);
             }
 
-            e.Graphics.DrawString(text, e.Font,
-                new SolidBrush(combo.ForeColor),
-                new Point(e.Bounds.X, e.Bounds.Y));
-
-            e.DrawFocusRectangle();
+            DrawRow(combo, e, text);
         }
 
         public void UpdateSysIDS()

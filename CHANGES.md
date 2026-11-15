@@ -13,7 +13,7 @@ A new bundled theme (`titandynamics.mpsystheme`) is set as the default for new i
 Native Windows title bars now follow the application theme rather than always being light, and scroll bars (pages, lists, grids, text boxes, dropdown lists) take Windows' dark style wherever they sit on a dark background, switching with the theme.
 
 ## New Application Icon, Splash, and Tab Icons
-A new app icon (Titan Dynamics branding), redesigned splash screen, and a fresh icon set for the main top-level tabs in both dark and light variants.
+A new app icon (Titan Dynamics branding), redesigned splash screen, and a fresh icon set for the main top-level tabs in both dark and light variants. The Connect and Disconnect plugs are redrawn in a cleaner, flat style. The port, baud and vehicle boxes beside them are flat in the theme: a thin border, in the accent while focused, a chevron for the drop-down button, a dark field even while disabled, and list rows picked out in the accent; the baud box shows only for a link with a baud rate (not UDP, TCP, the web socket or AUTO), and Link Stats is "Stats", leaving the vehicle box the rest of its row.
 
 ## Plane & Copter Default Icons
 Tornado and Proton aircraft are the default rendered icons for plane and copter vehicle classes. Users can also drop in a custom aircraft icon image to override per-vehicle defaults entirely.
