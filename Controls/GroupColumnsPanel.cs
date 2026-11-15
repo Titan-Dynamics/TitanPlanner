@@ -17,8 +17,17 @@ namespace MissionPlanner.Controls
         /// <summary>The narrowest a column may be: fewer columns are used before any is narrower.</summary>
         public int MinColumnWidth { get; set; } = 400;
 
+        /// <summary>The widest a column may be, the groups keeping to the left beyond it; 0 for no limit.</summary>
+        public int MaxColumnWidth { get; set; }
+
+        /// <summary>The most columns, however wide the panel; 0 for as many as fit.</summary>
+        public int MaxColumns { get; set; }
+
         /// <summary>The space between the columns, and between the groups in a column.</summary>
         public int Gap { get; set; } = 10;
+
+        /// <summary>The size the groups take, with the padding, as of the last layout.</summary>
+        public Size ContentSize { get; private set; }
 
         /// <summary>The width of a column, as of the last layout.</summary>
         public int ColumnWidth { get; private set; }
@@ -37,12 +46,17 @@ namespace MissionPlanner.Controls
             int width = ClientSize.Width - Padding.Horizontal;
             if (visible.Count == 0 || width <= 0)
             {
+                ContentSize = new Size(Padding.Horizontal, Padding.Vertical);
                 base.OnLayout(levent);
                 return;
             }
 
             int columns = Math.Max(1, Math.Min(groups.Count, (width + Gap) / (MinColumnWidth + Gap)));
+            if (MaxColumns > 0)
+                columns = Math.Min(columns, MaxColumns);
             int columnWidth = Math.Max(MinColumnWidth, (width - (columns - 1) * Gap) / columns);
+            if (MaxColumnWidth > 0)
+                columnWidth = Math.Min(columnWidth, Math.Max(MinColumnWidth, MaxColumnWidth));
             int fullWidth = columns * columnWidth + (columns - 1) * Gap;
 
             if (columnWidth != ColumnWidth)
@@ -80,6 +94,8 @@ namespace MissionPlanner.Controls
                 bottom += group.Height + Gap;
             }
             ResumeLayout(false);
+
+            ContentSize = new Size(Padding.Horizontal + fullWidth, Padding.Vertical + Math.Max(0, bottom - Gap));
 
             // the scroll range follows the groups' new places
             AdjustFormScrollbars(AutoScroll);

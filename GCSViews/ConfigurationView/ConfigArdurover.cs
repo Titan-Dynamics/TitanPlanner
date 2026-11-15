@@ -18,10 +18,16 @@ namespace MissionPlanner.GCSViews.ConfigurationView
         private static readonly Hashtable tooltips = new Hashtable();
         private readonly Hashtable changes = new Hashtable();
         internal bool startup = true;
+        private readonly TuningLayout tuning;
 
         public ConfigArdurover()
         {
             InitializeComponent();
+            TuningLayout.StyleWrite(BUT_writePIDS);
+            BUT_refreshpart.Text = "Refresh";
+            tuning = TuningLayout.Apply(this, new Control[] {BUT_writePIDS, BUT_refreshpart, BUT_rerequestparams}, null,
+                new TuningLayout.Extra("RC Options", ("RC7", CH7_OPTION), ("RC8", CH8_OPTION), ("RC9", CH9_OPTION),
+                    ("RC10", CH10_OPTION)));
         }
 
         public void Activate()
@@ -91,22 +97,23 @@ namespace MissionPlanner.GCSViews.ConfigurationView
 
             startup = false;
 
+            // only the parameters this vehicle has
+            tuning.ShowPresent(MainV2.comPort.MAV.param);
+
             // Add tooltips asynchronously to prevent UI freeze
             var firmwareStr = MainV2.comPort.MAV.cs.firmware.ToString();
             var controlsToProcess = new System.Collections.Generic.List<(Control control, string paramName)>();
 
-            foreach (Control control1 in Controls)
+            // the inputs sit in tables in the groups (TuningLayout)
+            foreach (var control2 in TuningLayout.Descendants(this))
             {
-                foreach (Control control2 in control1.Controls)
+                if (control2 is MavlinkNumericUpDown nud)
                 {
-                    if (control2 is MavlinkNumericUpDown nud)
-                    {
-                        controlsToProcess.Add((control2, nud.ParamName));
-                    }
-                    else if (control2 is MavlinkComboBox cmb)
-                    {
-                        controlsToProcess.Add((control2, cmb.ParamName));
-                    }
+                    controlsToProcess.Add((control2, nud.ParamName));
+                }
+                else if (control2 is MavlinkComboBox cmb)
+                {
+                    controlsToProcess.Add((control2, cmb.ParamName));
                 }
             }
 

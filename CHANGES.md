@@ -100,11 +100,11 @@ GPU acceleration is enabled application-wide, with a registry-level Windows GPU-
 # Tab & Layout Restructuring
 
 ## New Themed Tab Strip
-Replaced the dated FlightData tab bar with a modern themed strip and refreshed icons.
+Replaced the dated FlightData tab bar with a modern themed strip and refreshed icons. A tab's page fills the area under the strip, with only its own padding.
 
 ## New / Re-purposed Tabs
 - **Params tab** in FlightData and a Params panel co-located on the map
-- **Tuning tab** in FlightData (vehicle-aware: plane/copter/rover)
+- **Tuning tab** in FlightData (vehicle-aware: plane/copter/rover). It and the Config tuning pages keep a red **Write Params** (as on the parameter list) and **Refresh** at the left of a slim bar right under the groups, which stays at the bottom of the page while they scroll; the groups pack into up to three columns of at most 320 px, as many as fit, each a list of names and values; the RC options and transmitter tuning have groups of their own; and only the parameters the vehicle has are shown
 - **Video tab** in place of the HUD's right-click Video menu: one source at a time (capture device, RTSP stream, MJPEG stream or GStreamer pipeline) with one Start/Stop button and a status indicator across the top (stopped, connecting, playing and its size, no video), remembered between launches, an RTSP URL that plays as entered with a HereLink preset, and boxes for the HUD overlay (Alt-H flips it) and OSD color, and for recording the HUD (with an Open Folder button)
 - **Inspector tab** (MAVLink Inspector exposed without `Ctrl+F`), in the theme's colours with field values in the accent colour
 - **Swarm tab** in FlightData for commands sent to several aircraft at once (see Multiple Aircraft)
@@ -365,7 +365,7 @@ Settings, logs, map tiles, offline maps, elevation data and caches live in `Prog
 - **Reboot Vehicle** button in the Actions tab; global **`Ctrl+R`** shortcut to reboot autopilot
 - "Don't show again" option on the param-missing dialog, info dialogs, the failsafe-mode-change warning, and the ground-station-log dialog
 - Param write toast notifications
-- The mouse wheel scrolls the page past a dropdown instead of changing it; an open dropdown's list still scrolls
+- The mouse wheel scrolls the page past a dropdown or a parameter's spin box instead of changing it; an open dropdown's list still scrolls
 - Actions tab laid out as a flow layout with the payload controls alongside, an **Aux Functions** box (four rows that each run a chosen aux function Low / Mid / High) and **Servos** and **Relays** boxes side by side below them, in place of upstream's Aux Function and Servo/Relay tabs
 - Revamped Telemetry Log tab
 - Logs tab combining Dataflash + Telemetry views

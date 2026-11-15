@@ -64,7 +64,8 @@ namespace MissionPlanner.Controls
             _contentPanel.Name = "themedTabStrip_contentPanel";
             _contentPanel.Visible = true;
             _contentPanel.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
-            _contentPanel.Padding = new Padding(8);
+            // the tabs fill the area; a page keeps its own padding (AddTab)
+            _contentPanel.Padding = new Padding(0);
 
             // Add ToolStrip first
             this.Controls.Add(_toolStrip);

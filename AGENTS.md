@@ -215,4 +215,10 @@ the git log has those. `ChangeLog.txt` is upstream's and is not maintained here.
   (`VehicleParamLoader.Enabled`) is. `Utilities/StackedOrbit` is the stacked orbit's pure logic (slots, the separation,
   ground clearance and home-height checks, the send order, the retry check), tested in
   `MissionPlannerTests/Utilities/StackedOrbitTests.cs`; `Controls/SwarmControl`, the FLY screen's Swarm tab, sends it.
+- **Tuning pages.** `ConfigArduplane`, `ConfigArducopter` and `ConfigArdurover` (the FLY screen's Tuning tab and the Config
+  tuning pages) are still built in the designer as group boxes at fixed places; `TuningLayout.Apply`, called after
+  `InitializeComponent`, puts their actions in a bar under the groups (at the bottom while they scroll) and rebuilds each group as name and value rows, paired by where
+  the designer put them, in `GroupColumnsPanel` columns. Add a parameter in the designer (a label and its input on one
+  line in a group) and it is laid out with the rest; controls outside the groups go in `TuningLayout.Extra` groups or
+  under Other. `ShowPresent` at the end of `Activate` hides the parameters the vehicle doesn't have.
 - **Commits.** Messages carry no AI attribution trailers. Do not commit or push unless asked.
