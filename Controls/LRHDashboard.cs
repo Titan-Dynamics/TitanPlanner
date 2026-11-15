@@ -1,3 +1,8 @@
+#if !LIB
+using MissionPlanner.Controls.PPS;
+using MissionPlanner.Controls.TerrainProfile;
+using MissionPlanner.GCSViews;
+#endif
 using MissionPlanner.Utilities;
 using System;
 using System.Collections.Generic;
@@ -43,6 +48,23 @@ namespace MissionPlanner.Controls
 
         // the last minute's current and ground speed, for the efficiency the range is worked out from
         private readonly List<(double T, double Amps, double Speed)> flight = new List<(double, double, double)>();
+
+#if !LIB
+        // the PPS export, and the Bingo and PPS tabs that use it
+        private const string PpsSetting = "lrh_pps_file";
+        private readonly ThemedTabStrip tabs;
+        private readonly Label ppsLabel;
+        private readonly BingoPanel bingoPanel;
+        private readonly PpsDeltaPanel deltaPanel;
+        private readonly PpsDelta ppsDelta = new PpsDelta();
+        private PpsPerformance pps;
+        private string ppsError;
+
+        // the mission the bingo levels were last worked out for, rebuilt when it changes
+        private string missionSignature;
+        private MissionProfile missionProfile;
+        private List<Locationwp> missionItems;
+#endif
 
         /// <summary>Shows the dashboard, or brings it forward if it is open already.</summary>
         public static void ShowWindow()
@@ -125,8 +147,40 @@ namespace MissionPlanner.Controls
             }
 
             // fill first so the panels docked to the top are laid out before it
+#if LIB
             Controls.Add(grid);
             Controls.Add(summary);
+#else
+            var live = new Panel();
+            live.Controls.Add(grid);
+            live.Controls.Add(summary);
+
+            bingoPanel = new BingoPanel();
+            bingoPanel.MarginChanged += (s, e) => UpdateBingo(MainV2.comPort, true);
+            deltaPanel = new PpsDeltaPanel();
+
+            tabs = new ThemedTabStrip {Dock = DockStyle.Fill};
+            tabs.AddTab("Live", live);
+            tabs.AddTab("Bingo", bingoPanel);
+            tabs.AddTab("PPS", deltaPanel);
+
+            // the PPS export the Bingo and PPS tabs work from
+            var ppsStrip = new Panel {Dock = DockStyle.Top, Height = 34, Padding = new Padding(12, 6, 12, 2)};
+            var loadButton = new MyButton {Text = "Load PPS…", Dock = DockStyle.Right, Width = 100};
+            loadButton.Click += (s, e) => ChoosePps();
+            ppsLabel = new Label {Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleLeft, AutoEllipsis = true};
+            ppsStrip.Controls.Add(ppsLabel);
+            ppsStrip.Controls.Add(loadButton);
+
+            Controls.Add(tabs);
+            Controls.Add(ppsStrip);
+
+            var saved = Settings.Instance[PpsSetting];
+            if (!string.IsNullOrEmpty(saved))
+                LoadPps(saved, false);
+            else
+                ShowPpsState();
+#endif
 
             timer.Tick += (s, e) => Sample();
             Shown += (s, e) =>
@@ -191,6 +245,10 @@ namespace MissionPlanner.Controls
                     chart.PushNothing(now);
                 flight.Clear();
                 summary.SetEstimate(RangeSummary.Estimate.NotConnected);
+#if !LIB
+                ppsDelta.Clear();
+                UpdatePpsTabs(port, false);
+#endif
                 Redraw();
                 return;
             }
@@ -219,8 +277,236 @@ namespace MissionPlanner.Controls
             var estimate = Estimate(port, cs);
             range.Push(now, estimate.RangeKm, estimate.HomeKm);
             summary.SetEstimate(estimate);
+
+#if !LIB
+            if (pps != null)
+                ppsDelta.Add(new PpsDelta.Reading
+                {
+                    T = now,
+                    Armed = cs.armed,
+                    Airspeed = cs.airspeed / CurrentState.multiplierspeed,
+                    ClimbRate = cs.climbrate / CurrentState.multiplierspeed,
+                    Roll = cs.roll,
+                    Pitch = cs.pitch,
+                    Watts = cs.watts,
+                    Volts = cs.battery_voltage,
+                    Throttle = cs.ch3percent,
+                    GroundWhPerKm = cs.battery_whperkm,
+                    Rpm = cs.esc1_rpm > 0 ? cs.esc1_rpm : cs.rpm1
+                }, pps);
+            UpdatePpsTabs(port, true);
+#endif
             Redraw();
         }
+
+#if !LIB
+        private void ChoosePps()
+        {
+            using (var dialog = new OpenFileDialog
+                   {
+                       Title = "Load a PPS export",
+                       Filter = "PPS export (*.csv)|*.csv|All files (*.*)|*.*"
+                   })
+            {
+                var current = Settings.Instance[PpsSetting];
+                if (!string.IsNullOrEmpty(current))
+                {
+                    try
+                    {
+                        dialog.InitialDirectory = System.IO.Path.GetDirectoryName(current);
+                    }
+                    catch (ArgumentException)
+                    {
+                    }
+                }
+
+                if (dialog.ShowDialog(this) == DialogResult.OK)
+                    LoadPps(dialog.FileName, true);
+            }
+        }
+
+        private void LoadPps(string path, bool chosen)
+        {
+            try
+            {
+                pps = PpsPerformance.Load(path);
+                ppsError = null;
+                Settings.Instance[PpsSetting] = path;
+            }
+            catch (Exception ex) when (ex is System.IO.IOException || ex is FormatException ||
+                                       ex is UnauthorizedAccessException || ex is ArgumentException)
+            {
+                pps = null;
+                ppsError = "Could not load " + System.IO.Path.GetFileName(path) + ": " + ex.Message;
+                if (chosen)
+                    CustomMessageBox.Show(ppsError, "PPS export");
+            }
+
+            ppsDelta.Clear();
+            ppsDelta.Points.Clear();
+            missionSignature = null;
+            ShowPpsState();
+            UpdatePpsTabs(MainV2.comPort, MainV2.comPort?.BaseStream?.IsOpen == true && MainV2.comPort.MAV?.cs != null);
+        }
+
+        private void ShowPpsState()
+        {
+            if (pps == null)
+            {
+                ppsLabel.Text = ppsError ?? "No PPS export loaded: load one for the Bingo and PPS tabs";
+                return;
+            }
+
+            ppsLabel.Text = "PPS: " + System.IO.Path.GetFileName(pps.Path) + "   ·   " +
+                            (double.IsNaN(pps.UsableWh) ? "battery energy not given" : pps.UsableWh.ToString("0") + " Wh") +
+                            "   ·   " + pps.MinAirspeed.ToString("0.0") + " to " + pps.MaxAirspeed.ToString("0.0") + " m/s";
+        }
+
+        private void UpdatePpsTabs(MAVLinkInterface port, bool connected)
+        {
+            UpdateBingo(port, connected);
+            if (pps == null)
+                deltaPanel.ShowMessage("Load a PPS export to compare the aircraft with its prediction.");
+            else
+                deltaPanel.Show(pps, ppsDelta, connected);
+        }
+
+        /// <summary>
+        /// The bingo levels: the vehicle's mission while connected (from the waypoint it is flying to), else the plan
+        /// on the PLAN screen from a full battery.
+        /// </summary>
+        private void UpdateBingo(MAVLinkInterface port, bool connected)
+        {
+            if (pps == null)
+            {
+                bingoPanel.ShowMessage("Load a PPS export to see the bingo battery level at each waypoint.");
+                return;
+            }
+
+            var mav = port?.MAV;
+            var cs = mav?.cs;
+            string source;
+            ProfileInput input;
+            bool vehicleMission = false;
+            try
+            {
+                input = connected ? VehicleMission(mav) : null;
+                if (input != null)
+                {
+                    source = "Vehicle mission";
+                    vehicleMission = true;
+                }
+                else
+                {
+                    input = FlightPlanner.instance?.GetPlanForBingo();
+                    source = "PLAN screen";
+                }
+            }
+            catch (Exception ex)
+            {
+                // a cell of the plan that isn't a number, or the parameters held by a download
+                Debug.WriteLine("LRH bingo: " + ex.Message);
+                return;
+            }
+
+            if (input == null)
+            {
+                bingoPanel.ShowMessage("No mission: plan one on the PLAN screen, or connect to a vehicle with one.");
+                return;
+            }
+
+            input.VehicleClass = VehicleClass.Plane;
+            var signature = input.Signature();
+            if (signature != missionSignature)
+            {
+                missionSignature = signature;
+                missionItems = input.Mission;
+                missionProfile = MissionProfile.Build(input, (lat, lng) => double.NaN);
+            }
+
+            double Param(string name)
+            {
+                var value = mav?.param[name];
+                return value != null ? value.Value : double.NaN;
+            }
+
+            double cruise = Param("AIRSPEED_CRUISE");
+            if (!(cruise > 0) && Param("TRIM_ARSPD_CM") > 0)
+                cruise = Param("TRIM_ARSPD_CM") / 100.0;
+            if (!(cruise > 0))
+                cruise = pps.CruiseSpeed;
+
+            double homeAlt = missionProfile != null && missionProfile.Waypoints.Count > 0
+                ? missionProfile.Waypoints[0].Altitude
+                : double.NaN;
+            double rtl = double.NaN;
+            if (Param("RTL_ALTITUDE") > 0)
+                rtl = homeAlt + Param("RTL_ALTITUDE");
+            else if (Param("ALT_HOLD_RTL") > 0)
+                rtl = homeAlt + Param("ALT_HOLD_RTL") / 100.0;
+
+            bool live = connected && cs != null && (cs.lat != 0 || cs.lng != 0);
+            double windSpeed = live ? cs.wind_vel / CurrentState.multiplierspeed : 0;
+            double windFrom = live ? cs.wind_dir : 0;
+            double usedWh = 0;
+            if (live)
+                usedWh = cs.battery_usedwh > 0 ? cs.battery_usedwh : cs.battery_usedmah / 1000.0 * cs.battery_voltage;
+
+            var result = BingoPlan.Compute(new BingoInput
+            {
+                Profile = missionProfile,
+                Mission = missionItems,
+                Pps = pps,
+                CruiseAirspeed = cruise,
+                RtlAltitude = rtl,
+                WindSpeed = windSpeed,
+                WindFrom = windFrom,
+                MarginPercent = bingoPanel.MarginPercent,
+                LoiterRadius = Param("WP_LOITER_RAD") is double r && Math.Abs(r) > 1 ? Math.Abs(r) : 60,
+                Live = live,
+                UsedWh = usedWh,
+                // the vehicle's mission starts with home, which the list leaves out
+                NextItem = live && vehicleMission && cs.wpno >= 1 ? (int) cs.wpno - 1 : -1,
+                Lat = live ? cs.lat : 0,
+                Lng = live ? cs.lng : 0,
+                AltitudeAmsl = live ? cs.altasl / CurrentState.multiplieralt : 0
+            });
+
+            // the autopilot's battery against the energy PPS flies on
+            double capacity = Param("BATT_CAPACITY");
+            if (live && capacity > 0 && cs.battery_voltage > 1)
+            {
+                int cells = (int) Math.Ceiling(cs.battery_voltage / 4.25);
+                double wh = capacity / 1000.0 * cells * 3.7;
+                if (Math.Abs(wh - pps.UsableWh) > pps.UsableWh * 0.1)
+                    result.Notes.Insert(0, "BATT_CAPACITY (about " + wh.ToString("0") + " Wh) differs from PPS's " +
+                                           pps.UsableWh.ToString("0") + " Wh.");
+            }
+
+            bingoPanel.Show(result, source, cruise, windSpeed, windFrom);
+        }
+
+        /// <summary>The mission downloaded from the vehicle, home first; null when there is none.</summary>
+        private static ProfileInput VehicleMission(MAVState mav)
+        {
+            if (mav == null || mav.wps.Count < 2)
+                return null;
+
+            var items = mav.wps.OrderBy(a => a.Key).Select(a => (Locationwp) a.Value).ToList();
+            bool ardupilot = mav.apname == MAVLink.MAV_AUTOPILOT.ARDUPILOTMEGA;
+            PointLatLngAlt home = null;
+            if (ardupilot && (items[0].lat != 0 || items[0].lng != 0))
+                home = new PointLatLngAlt(items[0].lat, items[0].lng, items[0].alt);
+            else if (mav.cs.HomeLocation != null && (mav.cs.HomeLocation.Lat != 0 || mav.cs.HomeLocation.Lng != 0))
+                home = new PointLatLngAlt(mav.cs.HomeLocation);
+
+            return new ProfileInput
+            {
+                Home = home,
+                Mission = ardupilot ? items.Skip(1).ToList() : items
+            };
+        }
+#endif
 
         private void Redraw()
         {
