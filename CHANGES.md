@@ -318,6 +318,7 @@ Behaviour that differs from upstream because the fork fixed it:
 - Connecting or loading params doesn't crash when the progress dialog closes before it finishes
 - HUD text always draws the right characters; upstream's OpenGL HUD can show "FAILSAFE" as "FAI AFE" or an altitude as "SS"
 - SITL starts with home at the ground height of the chosen point, so terrain readings match ([#28](https://github.com/Titan-Dynamics/TitanPlanner/issues/28))
+- The SIMULATION screen keeps its boxes apart at any window size: Options holds its width beside Advanced instead of shrinking to nothing or running into it
 - The Messages tab keeps updating on long flights, keeps your place when scrolled up, and has a right-click **Clear Messages** ([#23](https://github.com/Titan-Dynamics/TitanPlanner/issues/23))
 - Battery monitor calibration handles DroneCAN and other digital monitors: voltage Calc explains they are calibrated on the device, and current Calc scales `BATTx_CURR_MULT` ([#27](https://github.com/Titan-Dynamics/TitanPlanner/issues/27))
 - The EKF status window keeps working on long sessions instead of failing with a GDI+ error ([#31](https://github.com/Titan-Dynamics/TitanPlanner/issues/31))

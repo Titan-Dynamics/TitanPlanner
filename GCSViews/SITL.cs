@@ -115,6 +115,7 @@ namespace MissionPlanner.GCSViews
         {
             InitializeComponent();
             AddPlaneSwarmChainButton();
+            LayOutBoxes();
 
             if (!Directory.Exists(sitldirectory))
                 Directory.CreateDirectory(sitldirectory);
@@ -140,6 +141,49 @@ namespace MissionPlanner.GCSViews
         /// <summary>
         /// Loads saved locations from Settings
         /// </summary>
+        /// <summary>
+        /// The boxes in a table: the map takes the height, Options keeps its width beside Advanced, and the firmware runs
+        /// along the bottom, each with a gap around it. Anchored to both sides as the designer has them, Options and
+        /// Advanced each lost all of what the screen was narrower than the designer's, so Options could shrink to
+        /// nothing, and on a wider screen grew into Advanced.
+        /// </summary>
+        private void LayOutBoxes()
+        {
+            const int gap = 6;
+            SuspendLayout();
+
+            var table = new TableLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                ColumnCount = 2,
+                RowCount = 3,
+                Padding = new Padding(gap),
+                Margin = new Padding(0)
+            };
+            table.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, groupBox3.Width + gap * 2));
+            table.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+            table.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
+            table.RowStyles.Add(new RowStyle(SizeType.Absolute, Math.Max(groupBox3.Height, groupBox4.Height) + gap * 2));
+            table.RowStyles.Add(new RowStyle(SizeType.Absolute, groupBox2.Height + gap * 2));
+
+            foreach (var box in new[] {groupBox1, groupBox2, groupBox3, groupBox4})
+            {
+                Controls.Remove(box);
+                box.Dock = DockStyle.Fill;
+                box.Margin = new Padding(gap);
+            }
+
+            table.Controls.Add(groupBox1, 0, 0);
+            table.SetColumnSpan(groupBox1, 2);
+            table.Controls.Add(groupBox3, 0, 1);
+            table.Controls.Add(groupBox4, 1, 1);
+            table.Controls.Add(groupBox2, 0, 2);
+            table.SetColumnSpan(groupBox2, 2);
+            Controls.Add(table);
+
+            ResumeLayout(true);
+        }
+
         private void LoadSavedLocations()
         {
             _savedLocations.Clear();
