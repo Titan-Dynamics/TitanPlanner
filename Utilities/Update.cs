@@ -270,6 +270,7 @@ namespace MissionPlanner.Utilities
             log.Info("Checking for update at: " + requestUriString);
 
             bool updateFound = false;
+            Version offered = null;
 
             // Get the response.
             using (var response = client.GetAsync(requestUriString).GetAwaiter().GetResult())
@@ -310,6 +311,7 @@ namespace MissionPlanner.Utilities
                         }
                     }
 
+                    offered = WebVersion;
                     log.Info("New file Check: local " + LocalVersion + " vs Remote " + WebVersion);
 
                     if (LocalVersion < WebVersion)
@@ -327,35 +329,49 @@ namespace MissionPlanner.Utilities
 
             if (updateFound)
             {
-                // do the update in the main thread
-                MainV2.instance.Invoke((Action)delegate
-               {
-                   string extra = "";
+                // the latest changes, read here rather than on the UI thread
+                var changeLogUrl = baseurl.Replace("version.txt", "ChangeLog.txt");
+                var changes = new List<string>();
+                try
+                {
+                    changes = UpdateNotice.ParseChangeLog(client.GetStringAsync(changeLogUrl).GetAwaiter().GetResult(), 5);
+                }
+                catch (Exception ex)
+                {
+                    log.Warn("Getting the change log", ex);
+                }
 
-                   if (devChannel)
-                       extra = "DEV ";
+                var current = GetLocalVersion();
+                var allChanges = ReleasePage(devChannel) ?? changeLogUrl;
 
-                   var dr = CustomMessageBox.Show(
-                       extra + Strings.UpdateFound + " [link;" + baseurl.Replace("version.txt", "ChangeLog.txt") + ";ChangeLog]",
-                       Strings.UpdateNow, MessageBoxButtons.YesNo);
-
-                   if (dr == (int)DialogResult.Yes)
-                   {
-                       // DoUpdate downloads from the development channel when dobeta is set
-                       if (devChannel)
-                           dobeta = true;
-                       DoUpdate();
-                   }
-                   else
-                   {
-                       return;
-                   }
-               });
+                // a notice over the main window rather than a dialog, so a launch's parameter download and the rest
+                // carry on
+                MainV2.instance.BeginInvoke((Action) (() => UpdateNotice.ShowFor(devChannel, current, offered, changes,
+                    allChanges, () =>
+                    {
+                        // DoUpdate downloads from the development channel when dobeta is set
+                        if (devChannel)
+                            dobeta = true;
+                        DoUpdate();
+                    })));
             }
             else if (NotifyNoUpdate)
             {
                 CustomMessageBox.Show(Strings.UpdateNotFound);
             }
+        }
+
+        /// <summary>
+        /// The GitHub page of the release on offer, with all its changes; null when the update location isn't on
+        /// GitHub.
+        /// </summary>
+        private static string ReleasePage(bool dev)
+        {
+            var match = Regex.Match(ConfigurationManager.AppSettings["UpdateLocation"] ?? "",
+                @"(https://github\.com/[^/]+/[^/]+)/releases", RegexOptions.IgnoreCase);
+            if (!match.Success)
+                return null;
+            return match.Groups[1].Value + (dev ? "/releases/tag/development-build" : "/releases/latest");
         }
 
         public static void DoUpdate()
