@@ -349,6 +349,8 @@ namespace MissionPlanner.GCSViews
             {
                 var adv = AddBackstageViewPage(typeof(ConfigAdvanced), "Advanced");
 
+                AddBackstageViewPage(typeof(ConfigLRSBackpack), "LRS Backpack", true, adv);
+
                 if (MainV2.DisplayConfiguration.displayTerminal)
                 {
                     AddBackstageViewPage(typeof(ConfigTerminal), "Terminal", true, adv);
