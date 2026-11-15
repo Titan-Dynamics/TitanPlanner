@@ -1735,6 +1735,9 @@ namespace MissionPlanner.GCSViews
             }
         }
 
+        /// <summary>The plan open on this screen, as the terrain profile has it, for the LRH dashboard's bingo levels.</summary>
+        internal ProfileInput GetPlanForBingo() => GetTerrainProfileInput();
+
         private ProfileInput GetTerrainProfileInput()
         {
             var type = cmb_missiontype.SelectedValue is MAVLink.MAV_MISSION_TYPE selected
