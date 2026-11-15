@@ -247,6 +247,9 @@ The WPOverlay2 rendering pipeline with its MissionStyleEditor, `MissionSegmentiz
 - The terrain profile shows the rally points in purple, at the route's nearest point or, without a mission, along a line through them, and follows spline legs along the map's curve
 - While connected, the terrain profile shows the vehicle's fence: the ceiling and floor (red when it will hold to them, grey when off or not in `FENCE_TYPE`) and where the route crosses the fence circle, which the PLAN map draws too; points outside the fence are ringed in red and named in its header (after upstream PR [#3813](https://github.com/ArduPilot/MissionPlanner/pull/3813))
 - The terrain profile zooms with a dragged box or the mouse wheel and pans with Ctrl+drag, keeping the zoom while the plan is edited; it resizes from its top edge, and a double-click on its header makes it tall
+- **Fixed wing autoland sequence** (right-click → Auto WP → Fixed Wing Autoland): drops a whole landing circuit with LAND at the click, lined up with the takeoff: `DO_LAND_START`, a loiter to the hold altitude and a timed loiter past the far end of a green 25 m × 175 m landing box, a right-hand downwind leg starting where the loiter touches it, a flat base leg, and a final approach that crosses the box's near end and lands in its middle
+- The autoland sequence is sized from the hold altitude, the pre-approach angle (base leg to the landing zone) and the final approach angle (inside the box), with a third of the descent flown on downwind; a panel over the map edits these, the loiter time, heading, downwind offset and box size, and the map's handles move it, turn it, resize the box and move the downwind leg
+- An autoland sequence is recognised again from its rows after loading a file, reading from the vehicle or undoing, so it stays editable; one edited by hand becomes plain waypoints
 - **Center to Vehicle** button
 - **Clear all** in PLAN tab; clear-path from FlightData
 - 2D ↔ 3D map waypoint sync

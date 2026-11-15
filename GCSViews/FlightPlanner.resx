@@ -2257,6 +2257,12 @@
   <data name="surveyGridToolStripMenuItem.Text" xml:space="preserve">
     <value>Survey (Grid)</value>
   </data>
+  <data name="fixedWingAutolandToolStripMenuItem.Size" type="System.Drawing.Size, System.Drawing">
+    <value>223, 26</value>
+  </data>
+  <data name="fixedWingAutolandToolStripMenuItem.Text" xml:space="preserve">
+    <value>Fixed Wing Autoland</value>
+  </data>
   <data name="autoWPToolStripMenuItem.Size" type="System.Drawing.Size, System.Drawing">
     <value>167, 24</value>
   </data>
@@ -2930,6 +2936,12 @@
     <value>surveyGridToolStripMenuItem</value>
   </data>
   <data name="&gt;&gt;surveyGridToolStripMenuItem.Type" xml:space="preserve">
+    <value>System.Windows.Forms.ToolStripMenuItem, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </data>
+  <data name="&gt;&gt;fixedWingAutolandToolStripMenuItem.Name" xml:space="preserve">
+    <value>fixedWingAutolandToolStripMenuItem</value>
+  </data>
+  <data name="&gt;&gt;fixedWingAutolandToolStripMenuItem.Type" xml:space="preserve">
     <value>System.Windows.Forms.ToolStripMenuItem, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </data>
   <data name="&gt;&gt;mapToolToolStripMenuItem.Name" xml:space="preserve">

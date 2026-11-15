@@ -179,6 +179,9 @@ namespace MissionPlanner.GCSViews
             // the connected vehicle's fence circle, drawn by timer1 while the vehicle will hold to it
             fenceCircleOverlay = new GMapOverlay("fencecircle");
             MainMap.Overlays.Add(fenceCircleOverlay);
+
+            // the fixed wing autoland sequences' landing boxes, handles and panel
+            InitAutoland();
 #endif
 
             MainMap.MapScaleInfoEnabled = false;
@@ -841,6 +844,11 @@ namespace MissionPlanner.GCSViews
             {
                 return;
             }
+#if !LIB
+            // an autoland sequence's waypoints move only with the sequence
+            if (AutolandOwnsRow(selectedrow))
+                return;
+#endif
             updateUndoBuffer(true);
             setfromMap(lat, lng, alt);
         }
@@ -1698,6 +1706,7 @@ namespace MissionPlanner.GCSViews
 
 #if !LIB
                 UpdateTerrainProfile();
+                RefreshAutolands();
 #endif
             }
             catch (FormatException ex)
@@ -2703,6 +2712,9 @@ namespace MissionPlanner.GCSViews
             try
             {
                 selectedrow = e.RowIndex;
+#if !LIB
+                AutolandRowEntered(e.RowIndex);
+#endif
                 string option = Commands[Command.Index, selectedrow].EditedFormattedValue.ToString();
                 string cmd;
                 try
@@ -7769,6 +7781,11 @@ Column 1: Field type (RALLY is the only one at the moment -- may have RALLY_LAND
             MouseDownStart = MainMap.FromLocalToLatLng(e.X, e.Y);
             MouseDownStartLocal = e.Location;
 
+#if !LIB
+            if (AutolandMouseDown(e))
+                return;
+#endif
+
             //   Console.WriteLine("MainMap MD");
 
             if (e.Button == MouseButtons.Left && (groupmarkers.Count > 0 || Control.ModifierKeys == Keys.Control))
@@ -7819,6 +7836,10 @@ Column 1: Field type (RALLY is the only one at the moment -- may have RALLY_LAND
             if (e.Button == MouseButtons.Left && isMouseDown)
             {
                 isMouseDraging = true;
+#if !LIB
+                if (AutolandMouseMove(point))
+                    return;
+#endif
                 if (CurrentRallyPt != null)
                 {
                     PointLatLng pnew = MainMap.FromLocalToLatLng(e.X, e.Y);
@@ -8021,6 +8042,10 @@ Column 1: Field type (RALLY is the only one at the moment -- may have RALLY_LAND
 
             if (isMouseDown) // mouse down on some other object and dragged to here.
             {
+#if !LIB
+                if (AutolandMouseUp())
+                    return;
+#endif
                 // drag finished, update poi db
                 if (CurrentPOIMarker != null)
                 {
@@ -8125,6 +8150,12 @@ Column 1: Field type (RALLY is the only one at the moment -- may have RALLY_LAND
                     {
                         // cant add WP in existing rect
                     }
+#if !LIB
+                    else if (AutolandClick(currentMarker.Position))
+                    {
+                        // selected an autoland sequence by its landing box, or closed the selected one's panel
+                    }
+#endif
                     else
                     {
                         AddWPToMap(currentMarker.Position.Lat, currentMarker.Position.Lng, 0);
@@ -8456,6 +8487,9 @@ Column 1: Field type (RALLY is the only one at the moment -- may have RALLY_LAND
         {
             if (!isMouseDown)
             {
+#if !LIB
+                AutolandMarkerEnter(item);
+#endif
                 if (item is GMapMarkerRect)
                 {
                     GMapMarkerRect rc = item as GMapMarkerRect;
@@ -8519,6 +8553,9 @@ Column 1: Field type (RALLY is the only one at the moment -- may have RALLY_LAND
         {
             if (!isMouseDown)
             {
+#if !LIB
+                AutolandMarkerLeave(item);
+#endif
                 if (item is GMapMarkerRect)
                 {
                     CurentRectMarker = null;
