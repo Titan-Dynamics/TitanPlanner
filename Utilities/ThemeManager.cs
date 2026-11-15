@@ -329,6 +329,117 @@ namespace MissionPlanner.Utilities
 
         #endregion
 
+        #region Scroll bars
+
+        [DllImport("uxtheme.dll", CharSet = CharSet.Unicode)]
+        private static extern int SetWindowTheme(IntPtr hWnd, string pszSubAppName, string pszSubIdList);
+
+        [DllImport("user32.dll")]
+        private static extern bool GetComboBoxInfo(IntPtr hWnd, ref COMBOBOXINFO pcbi);
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct RECT
+        {
+            public int Left, Top, Right, Bottom;
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct COMBOBOXINFO
+        {
+            public int cbSize;
+            public RECT rcItem;
+            public RECT rcButton;
+            public int stateButton;
+            public IntPtr hwndCombo;
+            public IntPtr hwndItem;
+            public IntPtr hwndList;
+        }
+
+        // the windows given the dark style, to give back the standard one when the theme turns light
+        private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<Control, object> darkScrollBars =
+            new System.Runtime.CompilerServices.ConditionalWeakTable<Control, object>();
+
+        /// <summary>
+        /// Gives the scroll bars of a control, and of everything in it, Windows' dark style where they sit on a dark
+        /// background (the control's own, which is the theme's unless it sets one) and the standard style elsewhere.
+        /// Native scroll bars can't take other colours; the dark style is Windows 10 1809 and later's, and older Windows
+        /// keeps the standard one. Applied again each time a control's window is created, and on each theme change.
+        /// </summary>
+        public static void ApplyScrollBarTheme(Control control)
+        {
+            if (Environment.OSVersion.Platform != PlatformID.Win32NT || Program.MONO)
+                return;
+
+            ThemeScrollBars(control);
+        }
+
+        private static void ThemeScrollBars(Control control)
+        {
+            if (control is ScrollableControl || control is TextBoxBase || control is ListBox || control is ListView ||
+                control is TreeView || control is ScrollBar || control is ComboBox)
+            {
+                // once per control, however often the theme is applied
+                control.HandleCreated -= ScrollBarControl_HandleCreated;
+                control.HandleCreated += ScrollBarControl_HandleCreated;
+                if (control.IsHandleCreated)
+                    SetScrollBarStyle(control);
+            }
+
+            // a grid's scroll bars are controls in it
+            foreach (Control child in control.Controls)
+                ThemeScrollBars(child);
+        }
+
+        private static void ScrollBarControl_HandleCreated(object sender, EventArgs e)
+        {
+            SetScrollBarStyle((Control) sender);
+        }
+
+        private static bool IsDark(Color back)
+        {
+            // a see-through control shows what is behind it: the theme's background
+            if (back.A < 255)
+                back = BGColor;
+            return 0.299 * back.R + 0.587 * back.G + 0.114 * back.B < 128;
+        }
+
+        private static void SetScrollBarStyle(Control control)
+        {
+            try
+            {
+                bool dark = IsDark(control.BackColor);
+                bool wasDark = darkScrollBars.TryGetValue(control, out _);
+                if (!dark && !wasDark)
+                    return; // leave the standard style, or a control's own (a list's "explorer"), alone
+
+                // back from dark: lists and trees to Explorer's style, the rest to the standard one
+                string style = dark ? "DarkMode_Explorer" : control is ListView || control is TreeView ? "explorer" : null;
+
+                // a dropdown's are on its list, a window of its own
+                var handle = control.Handle;
+                if (control is ComboBox)
+                {
+                    var info = new COMBOBOXINFO {cbSize = Marshal.SizeOf(typeof(COMBOBOXINFO))};
+                    if (!GetComboBoxInfo(handle, ref info) || info.hwndList == IntPtr.Zero)
+                        return;
+                    handle = info.hwndList;
+                }
+
+                SetWindowTheme(handle, style, null);
+
+                if (dark && !wasDark)
+                    darkScrollBars.Add(control, new object());
+                else if (!dark)
+                    darkScrollBars.Remove(control);
+            }
+            catch (Exception ex)
+            {
+                log.Debug("Failed to theme scroll bars: " + ex.Message);
+            }
+        }
+
+        #endregion
+
 
         public static void GetThemesList()
         {
@@ -525,6 +636,7 @@ namespace MissionPlanner.Utilities
                 return;
 
             ApplyTheme(control, 0);
+            ApplyScrollBarTheme(control);
 
             // Apply Windows dark mode and icon to title bar if this is a form
             if (control is Form form)
