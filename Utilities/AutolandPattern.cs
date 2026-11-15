@@ -4,7 +4,7 @@ using System.Collections.Generic;
 namespace MissionPlanner.Utilities
 {
     /// <summary>
-    /// The inputs of a fixed wing autoland sequence. Distances and altitudes are in metres, angles in degrees.
+    /// The inputs of a fixed wing autoland sequence. Distances and altitudes are in meters, angles in degrees.
     /// </summary>
     public class AutolandParams
     {
@@ -64,7 +64,7 @@ namespace MissionPlanner.Utilities
         /// <summary>LAND: moves the whole sequence.</summary>
         Move,
 
-        /// <summary>The end of the base leg on the extended centreline: turns the sequence about LAND.</summary>
+        /// <summary>The end of the base leg on the extended centerline: turns the sequence about LAND.</summary>
         Rotate,
 
         /// <summary>A corner of the landing box: sets its length and width.</summary>
@@ -85,7 +85,7 @@ namespace MissionPlanner.Utilities
         public PointLatLngAlt Land;
 
         /// <summary>DO_LAND_START, LOITER_TO_ALT, LOITER_TIME, four WAYPOINTs (downwind start, downwind end, base end,
-        /// landing zone start) and LAND, in metres.</summary>
+        /// landing zone start) and LAND, in meters.</summary>
         public List<Locationwp> Rows = new List<Locationwp>();
 
         /// <summary>The altitude at the landing zone start (the box's near short end).</summary>
@@ -94,10 +94,13 @@ namespace MissionPlanner.Utilities
         /// <summary>The altitude of the flat base leg.</summary>
         public double BaseAltM;
 
-        /// <summary>How far before LAND the base leg crosses the extended centreline.</summary>
+        /// <summary>How far before LAND the base leg crosses the extended centerline.</summary>
         public double BaseDistanceM;
 
-        public PointLatLngAlt LoiterCentre;
+        /// <summary>The obstacle height the base leg clears by <see cref="AutolandPattern.ObstacleMarginM"/>.</summary>
+        public double ObstacleHeightM => BaseAltM - AutolandPattern.ObstacleMarginM;
+
+        public PointLatLngAlt LoiterCenter;
         public PointLatLngAlt DownwindStart;
         public PointLatLngAlt DownwindEnd;
         public PointLatLngAlt BaseEnd;
@@ -110,8 +113,8 @@ namespace MissionPlanner.Utilities
         /// <summary>Why an input was changed to make the sequence, for the panel.</summary>
         public List<string> Warnings = new List<string>();
 
-        /// <summary>A point's place in the sequence's frame: metres along the landing heading from LAND (positive past
-        /// touchdown) and metres to the right of it.</summary>
+        /// <summary>A point's place in the sequence's frame: meters along the landing heading from LAND (positive past
+        /// touchdown) and meters to the right of it.</summary>
         public void ToLocal(PointLatLngAlt point, out double along, out double right)
         {
             AutolandPattern.ToLocal(Land, Params.HeadingDeg, point, out along, out right);
@@ -149,7 +152,7 @@ namespace MissionPlanner.Utilities
     /// from the end of the base leg at the pre-approach angle, which sets how far out the base leg is. The final
     /// approach angle sets the landing zone start's height above LAND.
     ///
-    /// The sequence is plain mission rows: <see cref="FindAll"/> recognises it again in a mission, from its commands
+    /// The sequence is plain mission rows: <see cref="FindAll"/> recognizes it again in a mission, from its commands
     /// and its geometry, so it survives saving, loading, undo and a round trip through the vehicle.
     /// </summary>
     public static class AutolandPattern
@@ -157,7 +160,11 @@ namespace MissionPlanner.Utilities
         public const double DefaultHoldAltM = 50;
         public const double DefaultPreApproachDeg = 6;
         public const double DefaultFinalApproachDeg = 3;
-        public const double DefaultLoiterTimeS = 30;
+        public const double DefaultLoiterTimeS = 60;
+        public const double DefaultObstacleHeightM = 25;
+
+        /// <summary>How far above the obstacle height the base leg is flown.</summary>
+        public const double ObstacleMarginM = 10;
         public const double DefaultDownwindOffsetM = 170;
         public const double DefaultBoxLengthM = 175;
         public const double DefaultBoxWidthM = 25;
@@ -174,7 +181,7 @@ namespace MissionPlanner.Utilities
         /// <summary>The least height of the hold above the landing zone start.</summary>
         public const double MinDescentM = 1;
 
-        /// <summary>How far a row may sit from where the sequence puts it and still be recognised.</summary>
+        /// <summary>How far a row may sit from where the sequence puts it and still be recognized.</summary>
         public const double MatchDistanceM = 1.5;
 
         public const double MatchAltM = 0.5;
@@ -232,6 +239,25 @@ namespace MissionPlanner.Utilities
         {
             deg %= 360;
             return deg < 0 ? deg + 360 : deg;
+        }
+
+        /// <summary>The landing zone start's altitude for these inputs.</summary>
+        public static double ZoneAlt(AutolandParams p)
+        {
+            double length = Math.Max(MinBoxLengthM, p.BoxLengthM);
+            double angle = Math.Min(MaxAngleDeg, Math.Max(MinAngleDeg, p.FinalApproachDeg));
+            return p.LandAltM + length / 2 * Math.Tan(angle * MathHelper.deg2rad);
+        }
+
+        /// <summary>
+        /// The hold altitude that puts the base leg <see cref="ObstacleMarginM"/> above obstacles of this height, with
+        /// a third of the descent flown on downwind as always.
+        /// </summary>
+        public static double HoldForObstacle(AutolandParams p, double obstacleM)
+        {
+            double baseAlt = Math.Max(0, obstacleM) + ObstacleMarginM;
+            double zone = ZoneAlt(p);
+            return (baseAlt - zone * DownwindShare) / (1 - DownwindShare);
         }
 
         /// <summary>
@@ -294,7 +320,7 @@ namespace MissionPlanner.Utilities
             layout.ZoneAltM = zoneAlt;
             layout.BaseAltM = baseAlt;
             layout.BaseDistanceM = baseDistance;
-            layout.LoiterCentre = At(half, d - r, p.HoldAltM);
+            layout.LoiterCenter = At(half, d - r, p.HoldAltM);
             layout.DownwindStart = At(half, d, p.HoldAltM);
             layout.DownwindEnd = At(-baseDistance, d, baseAlt);
             layout.BaseEnd = At(-baseDistance, 0, baseAlt);
@@ -309,9 +335,9 @@ namespace MissionPlanner.Utilities
 
             float radius = p.WriteClockwiseRadius ? (float) r : 0;
 
-            layout.Rows.Add(Row(MAVLink.MAV_CMD.DO_LAND_START, 0, 0, 0, 0, layout.LoiterCentre, p.Frame));
-            layout.Rows.Add(Row(MAVLink.MAV_CMD.LOITER_TO_ALT, 1, radius, 0, 0, layout.LoiterCentre, p.Frame));
-            layout.Rows.Add(Row(MAVLink.MAV_CMD.LOITER_TIME, (float) p.LoiterTimeS, 1, radius, 0, layout.LoiterCentre,
+            layout.Rows.Add(Row(MAVLink.MAV_CMD.DO_LAND_START, 0, 0, 0, 0, layout.LoiterCenter, p.Frame));
+            layout.Rows.Add(Row(MAVLink.MAV_CMD.LOITER_TO_ALT, 1, radius, 0, 0, layout.LoiterCenter, p.Frame));
+            layout.Rows.Add(Row(MAVLink.MAV_CMD.LOITER_TIME, (float) p.LoiterTimeS, 1, radius, 0, layout.LoiterCenter,
                 p.Frame));
             layout.Rows.Add(Row(MAVLink.MAV_CMD.WAYPOINT, 0, 0, 0, 0, layout.DownwindStart, p.Frame));
             layout.Rows.Add(Row(MAVLink.MAV_CMD.WAYPOINT, 0, 0, 0, 0, layout.DownwindEnd, p.Frame));
@@ -496,7 +522,7 @@ namespace MissionPlanner.Utilities
                     land = new PointLatLngAlt(to.Lat, to.Lng, layout.Land.Alt);
                     break;
                 case AutolandHandle.Rotate:
-                    // the handle stays on the extended centreline, before LAND
+                    // the handle stays on the extended centerline, before LAND
                     ToLocal(layout.Land, 0, to, out var north, out var east);
                     if (north * north + east * east > 1)
                         p.HeadingDeg = Wrap360(Math.Atan2(-east, -north) * MathHelper.rad2deg);

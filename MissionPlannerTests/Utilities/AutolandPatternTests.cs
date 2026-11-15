@@ -72,7 +72,7 @@ namespace MissionPlanner.Utilities.Tests
             Assert.AreEqual(0f, toAlt.p4);
 
             var time = rows[AutolandPattern.RowLoiterTime];
-            Assert.AreEqual(30f, time.p1);
+            Assert.AreEqual(60f, time.p1);
             Assert.AreEqual(1f, time.p2);
             Assert.AreEqual(0f, time.p3);
             Assert.AreEqual(0f, time.p4);
@@ -148,12 +148,12 @@ namespace MissionPlanner.Utilities.Tests
             Assert.AreEqual(170, endRight, 0.01);
             Assert.AreEqual(87.5, startAlong, 0.01);
 
-            // the loiter centre is a radius in from the downwind start, so the clockwise loiter leaves along downwind
+            // the loiter center is a radius in from the downwind start, so the clockwise loiter leaves along downwind
             Assert.AreEqual(87.5, loiterAlong, 0.01);
             Assert.AreEqual(110, loiterRight, 0.01);
             Assert.AreEqual(-layout.BaseDistanceM, endAlong, 0.01);
 
-            // every loiter row is at the loiter centre
+            // every loiter row is at the loiter center
             for (int i = AutolandPattern.RowLandStart; i <= AutolandPattern.RowLoiterTime; i++)
             {
                 Assert.AreEqual(rows[AutolandPattern.RowLoiterToAlt].lat, rows[i].lat);
@@ -162,7 +162,7 @@ namespace MissionPlanner.Utilities.Tests
         }
 
         [TestMethod]
-        public void ASequenceIsRecognisedWithItsInputs()
+        public void ASequenceIsRecognizedWithItsInputs()
         {
             var p = Inputs();
             p.HoldAltM = 80;
@@ -318,6 +318,26 @@ namespace MissionPlanner.Utilities.Tests
             var tooClose = AutolandPattern.Drag(layout, AutolandHandle.Offset,
                 AutolandPattern.FromLocal(Land, Heading, -200, -50, 0), out land);
             Assert.AreEqual(60, tooClose.DownwindOffsetM, 0.01);
+        }
+
+        [TestMethod]
+        public void TheBaseLegClearsTheObstacleHeightByTheMargin()
+        {
+            foreach (var obstacle in new[] {0.0, 25, 60})
+            {
+                var p = Inputs();
+                p.HoldAltM = AutolandPattern.HoldForObstacle(p, obstacle);
+                var layout = AutolandPattern.Generate(Land, p);
+
+                Assert.AreEqual(obstacle + AutolandPattern.ObstacleMarginM, layout.BaseAltM, 1e-9);
+                Assert.AreEqual(obstacle, layout.ObstacleHeightM, 1e-9);
+                Assert.AreEqual(0, layout.Warnings.Count);
+            }
+
+            // the default obstacles give about the example's heights: base 35 m, hold 50 m
+            var defaults = Inputs();
+            double hold = AutolandPattern.HoldForObstacle(defaults, AutolandPattern.DefaultObstacleHeightM);
+            Assert.AreEqual(50.2, hold, 0.1);
         }
 
         [TestMethod]

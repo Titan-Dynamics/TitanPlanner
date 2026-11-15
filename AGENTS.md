@@ -113,6 +113,9 @@ The solution has ~93 projects; treat `ExtLibs/` as the bulk of the real function
   provides cross-platform shims (e.g. `MissionPlanner.Drawing`) for the `LIB` build. When adding
   code that touches drawing, WinForms, P/Invoke, or other desktop-only APIs, guard it with
   `#if !LIB` or it will break the Android/Mac build.
+- **American spelling.** Write American English everywhere in the repo, never British: UI text, identifiers,
+  comments, tests, commit messages and docs (center, centerline, meter, color, gray, behavior, recognize,
+  initialize, canceled, modeling). Use the American form when touching text that has the British one.
 - **Localization.** Each Form has an English `Name.resx` (the source of truth) plus per-culture
   siblings like `FlightData.ko-KR.resx`, `MainV2.zh-Hans.resx`. App strings go through `Strings.resx`
   / the `L10N` class (`Strings.Culture` is set from the `language` setting). Translations are
@@ -203,7 +206,7 @@ the git log has those. `ChangeLog.txt` is upstream's and is not maintained here.
   parameters); an unchanged signature rebuilds nothing. It rebuilds on a worker thread, taking the ground from a
   loaded GeoTIFF elevation model first (as `srtm.getAltitude` does), else `srtm.GetCell`, and retries while tiles
   download. It replaces upstream's `ElevationProfile` dialog.
-- **Fixed wing autoland.** `Utilities/AutolandPattern` is the pure logic (the eight rows from the inputs, recognising
+- **Fixed wing autoland.** `Utilities/AutolandPattern` is the pure logic (the eight rows from the inputs, recognizing
   them in a mission, handle drags), tested in `MissionPlannerTests/Utilities/AutolandPatternTests.cs`. The grid stays
   the mission: `GCSViews/FlightPlanner.Autoland.cs` writes the rows, finds the sequences again at the end of every
   `writeKML`, and draws the box and handles (`Controls/Autoland/`, excluded from the LIB build) with the editing panel.

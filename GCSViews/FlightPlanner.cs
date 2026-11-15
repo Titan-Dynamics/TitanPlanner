@@ -3008,6 +3008,14 @@ namespace MissionPlanner.GCSViews
 
         public void contextMenuStrip1_Opening(object sender, CancelEventArgs e)
         {
+#if !LIB
+            // a right click on the autoland button opens its own menu
+            if (autolandIcon.Rectangle.Contains(MainMap.PointToClient(Control.MousePosition)))
+            {
+                e.Cancel = true;
+                return;
+            }
+#endif
             if (CurentRectMarker == null && CurrentRallyPt == null && groupmarkers.Count == 0)
             {
                 deleteWPToolStripMenuItem.Enabled = false;
@@ -5240,6 +5248,10 @@ namespace MissionPlanner.GCSViews
             zoomicon.Paint(e.Graphics);
 
             e.Graphics.ResetTransform();
+
+#if !LIB
+            PaintAutolandIcon(e.Graphics, zoomicon);
+#endif
         }
 
         private void MainMap_Resize(object sender, EventArgs e)
@@ -8030,6 +8042,11 @@ Column 1: Field type (RALLY is the only one at the moment -- may have RALLY_LAND
                 contextMenuStripZoom.Show(MainMap, e.Location);
                 return;
             }
+
+#if !LIB
+            if (AutolandIconClick(e.Location))
+                return;
+#endif
 
             MouseDownEnd = MainMap.FromLocalToLatLng(e.X, e.Y);
 

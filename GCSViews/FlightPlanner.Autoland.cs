@@ -32,6 +32,10 @@ namespace MissionPlanner.GCSViews
         private GMapOverlay autolandOverlay;
         private AutolandPanel autolandPanel;
 
+        // the button under the polygon and zoom buttons, and the menu it opens
+        private readonly AutolandIcon autolandIcon = new AutolandIcon();
+        private ContextMenuStrip autolandMenu;
+
         // the sequences in the grid, by the index of their DO_LAND_START row
         private List<KeyValuePair<int, AutolandLayout>> autolands = new List<KeyValuePair<int, AutolandLayout>>();
 
@@ -73,6 +77,70 @@ namespace MissionPlanner.GCSViews
             autolandPanel.CloseClicked += () => SelectAutoland(-1);
             MainMap.Controls.Add(autolandPanel);
             MainMap.Resize += (s, e) => PlaceAutolandPanel();
+            // Advanced mode changes the panel's size: keep it in the corner
+            autolandPanel.SizeChanged += (s, e) => PlaceAutolandPanel();
+        }
+
+        /// <summary>Paints the autoland button under <paramref name="above"/> (the zoom button).</summary>
+        private void PaintAutolandIcon(Graphics g, MissionPlanner.Controls.Icon.Icon above)
+        {
+            autolandIcon.Location = new Point(above.Location.X, above.Location.Y + above.Height + 5);
+            autolandIcon.IsSelected = autolandSelected >= 0;
+            autolandIcon.Paint(g);
+            g.ResetTransform();
+        }
+
+        /// <summary>
+        /// A click on the autoland button: a menu to edit each sequence in the mission, or add one at the map's center.
+        /// True when the click was on the button.
+        /// </summary>
+        private bool AutolandIconClick(Point at)
+        {
+            if (!autolandIcon.Rectangle.Contains(at))
+                return false;
+
+            isMouseDown = false;
+            isMouseDraging = false;
+
+            if (autolandMenu == null)
+                autolandMenu = new ContextMenuStrip();
+            autolandMenu.Items.Clear();
+
+            foreach (var a in autolands)
+            {
+                int start = a.Key;
+                var text = string.Format(CultureInfo.CurrentCulture,
+                    "Edit autoland: rows {0} to {1}, landing heading {2:000}", start + 1,
+                    start + AutolandPattern.RowCount, Math.Round(a.Value.Params.HeadingDeg) % 360);
+                var item = new ToolStripMenuItem(text) {Checked = start == autolandSelected};
+                item.Click += (s, e) => EditAutoland(start);
+                autolandMenu.Items.Add(item);
+            }
+
+            if (autolands.Count > 0)
+                autolandMenu.Items.Add(new ToolStripSeparator());
+
+            var add = new ToolStripMenuItem(autolands.Count > 0
+                ? "Add another autoland at the map center"
+                : "Add autoland at the map center");
+            add.Click += (s, e) => InsertAutoland(new PointLatLngAlt(MainMap.Position.Lat, MainMap.Position.Lng, 0));
+            autolandMenu.Items.Add(add);
+
+            autolandMenu.Show(MainMap, new Point(autolandIcon.Rectangle.Right + 4, autolandIcon.Rectangle.Top));
+            return true;
+        }
+
+        /// <summary>Selects a sequence for editing, bringing its landing into view if it is off the map.</summary>
+        private void EditAutoland(int start)
+        {
+            var layout = AutolandAt(start);
+            if (layout == null)
+                return;
+
+            if (!MainMap.ViewArea.Contains(layout.Land.Lat, layout.Land.Lng))
+                MainMap.Position = layout.Land;
+
+            SelectAutoland(start);
         }
 
         private void PlaceAutolandPanel()
@@ -132,9 +200,21 @@ namespace MissionPlanner.GCSViews
             return AutolandPattern.DefaultLoiterRadiusM;
         }
 
+        /// <summary>
+        /// A new sequence's inputs. In the panel's simple mode these are the factory defaults with the last obstacle
+        /// height; in Advanced mode, the last inputs set.
+        /// </summary>
         private static AutolandParams AutolandDefaults()
         {
             var s = Settings.Instance;
+            if (!AutolandPanel.Advanced)
+            {
+                var factory = new AutolandParams();
+                factory.HoldAltM = AutolandPattern.HoldForObstacle(factory,
+                    s.GetDouble("autoland_obstacle_height", AutolandPattern.DefaultObstacleHeightM));
+                return factory;
+            }
+
             return new AutolandParams
             {
                 HoldAltM = s.GetDouble("autoland_hold_alt", AutolandPattern.DefaultHoldAltM),
@@ -147,9 +227,18 @@ namespace MissionPlanner.GCSViews
             };
         }
 
-        private static void SaveAutolandDefaults(AutolandParams p)
+        /// <summary>
+        /// Keeps a sequence's inputs for the next one: the obstacle height always, the rest only in Advanced mode, so
+        /// simple mode leaves the advanced defaults alone.
+        /// </summary>
+        private static void SaveAutolandDefaults(AutolandLayout layout)
         {
             var s = Settings.Instance;
+            s["autoland_obstacle_height"] = layout.ObstacleHeightM.ToString(CultureInfo.InvariantCulture);
+            if (!AutolandPanel.Advanced)
+                return;
+
+            var p = layout.Params;
             s["autoland_hold_alt"] = p.HoldAltM.ToString(CultureInfo.InvariantCulture);
             s["autoland_pre_angle"] = p.PreApproachDeg.ToString(CultureInfo.InvariantCulture);
             s["autoland_final_angle"] = p.FinalApproachDeg.ToString(CultureInfo.InvariantCulture);
@@ -207,7 +296,7 @@ namespace MissionPlanner.GCSViews
             updateUndoBuffer(true);
             WriteAutolandRows(start, layout, false);
             if (saveDefaults)
-                SaveAutolandDefaults(layout.Params);
+                SaveAutolandDefaults(layout);
             SelectAutoland(start);
         }
 
