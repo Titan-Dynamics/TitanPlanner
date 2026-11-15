@@ -7,7 +7,7 @@ What this fork adds on top of upstream [ArduPilot/MissionPlanner](https://github
 # Branding & Theming
 
 ## Titan Dynamics System Theme
-A new bundled theme (`titandynamics.mpsystheme`) is set as the default for new installs. Theming also covers controls upstream leaves unthemed — `ListBox`, `PropertyGrid`, `MessagesList`, status tab, menu-bar icons, the Splash form, and toast notifications.
+A new bundled theme (`titandynamics.mpsystheme`) is set as the default for new installs. Theming also covers controls upstream leaves unthemed — `ListBox`, `PropertyGrid`, `MessagesList`, status tab, menu-bar icons, the Splash form, and toast notifications. The main menu's buttons (FLY, PLAN, SETUP, CONFIG, SITL and the rest) light up under the pointer in the theme's accent at half strength, not Windows' blue.
 
 ## Dark Windows Title Bars and Scroll Bars
 Native Windows title bars now follow the application theme rather than always being light, and scroll bars (pages, lists, grids, text boxes, dropdown lists) take Windows' dark style wherever they sit on a dark background, switching with the theme.

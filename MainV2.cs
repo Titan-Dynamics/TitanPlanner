@@ -1163,6 +1163,9 @@ namespace MissionPlanner
                 : Properties.Resources.TD_MP_light;
             MenuArduPilot.Image = new Bitmap(logoImage, (int)(200), 31);
             MenuArduPilot.Width = MenuArduPilot.Image.Width;
+            // as tall as the bar, as the screens' buttons are, so its highlight fills it top to bottom
+            MenuArduPilot.Height = MainMenu.DisplayRectangle.Height;
+            MainMenu.SizeChanged += (s, e) => MenuArduPilot.Height = MainMenu.DisplayRectangle.Height;
 
             Application.DoEvents();
 
