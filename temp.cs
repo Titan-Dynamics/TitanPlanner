@@ -61,10 +61,420 @@ namespace MissionPlanner
         {
             InitializeComponent();
 
+            BuildLayout();
+
             Tracking.AddPage(
                 MethodBase.GetCurrentMethod().DeclaringType.ToString(),
                 MethodBase.GetCurrentMethod().Name);
         }
+
+        private static temp open;
+
+        /// <summary>
+        /// Shows the Tools window, or brings it forward if it is open already.
+        /// </summary>
+        public static void ShowWindow()
+        {
+            if (open != null && !open.IsDisposed)
+            {
+                if (open.WindowState == FormWindowState.Minimized)
+                    open.WindowState = FormWindowState.Normal;
+                open.Activate();
+                return;
+            }
+
+            var form = new temp();
+            form.FormClosed += (s, e) =>
+            {
+                if (open == form)
+                    open = null;
+            };
+            open = form;
+            ThemeManager.ApplyThemeTo(form);
+            form.Show();
+        }
+
+        #region Layout
+
+        private const int ButtonWidth = 160;
+        private const int ButtonHeight = 24;
+        private const int ButtonGap = 10;
+        private const int SectionPadding = 8;
+
+        private class ToolRow
+        {
+            public MyButton Button;
+            public Label Description;
+            public string SearchText;
+        }
+
+        private class ToolSection
+        {
+            public GroupBox Box;
+            public TableLayoutPanel Table;
+            public readonly List<ToolRow> Rows = new List<ToolRow>();
+        }
+
+        private readonly List<ToolSection> sections = new List<ToolSection>();
+        private readonly List<Label> dimLabels = new List<Label>();
+        private Panel header;
+        private GroupColumnsPanel columns;
+        private PlaceholderTextBox search;
+        private Label count;
+        private Label noMatch;
+        private Panel sensorPane;
+        private Panel sensorLine;
+        private int toolCount;
+
+        /// <summary>
+        /// Every tool: the section it is listed in, the name on its button and what it does, in the order shown. A
+        /// button the designer has and this doesn't (one added upstream) is listed under Other, with its own text and
+        /// the description beside it.
+        /// </summary>
+        private (string Section, MyButton Button, string Title, string Description)[] Catalog()
+        {
+            return new[]
+            {
+                ("Vehicle", but_reboot, "Reboot Vehicle", "Reboot the autopilot"),
+                ("Vehicle", but_disablearmswitch, "Toggle Safety Switch", "Press the safety switch remotely"),
+                ("Vehicle", BUT_QNH, "Set QNH", "Set the barometer's ground pressure"),
+                ("Vehicle", but_acbarohight, "Adjust Baro Height", "Shift the baro altitude reference"),
+                ("Vehicle", but_messageinterval, "Message Intervals", "Set the rate of each MAVLink message"),
+                ("Vehicle", but_signkey, "MAVLink Signing", "Set up MAVLink 2 signing keys"),
+                ("Vehicle", but_paramrestore, "Param Restore", "Restore params, enabling features first"),
+                ("Vehicle", BUT_forcecal_accel, "Force Accel Cal", "Mark accels calibrated after a restore"),
+                ("Vehicle", BUT_forcecal_mag, "Force Compass Cal", "Mark compasses calibrated after a restore"),
+                ("Vehicle", but_proximity, "Proximity", "Show what the proximity sensors see"),
+                ("Vehicle", but_optflowcalib, "Optical Flow Image", "Show a PX4Flow sensor's camera image"),
+
+                ("Firmware & Hardware", but_blupdate, "Bootloader Upgrade", "Update the bootloader (can brick it)"),
+                ("Firmware & Hardware", but_dfumode, "DFU Mode", "Reboot into DFU mode for USB flashing"),
+                ("Firmware & Hardware", but_apjtool, "APJ Tool", "Embed default params in an .apj file"),
+                ("Firmware & Hardware", but_getfw, "Download All Firmware", "Save all current firmware to History"),
+                ("Firmware & Hardware", but_hwids, "Decode Device IDs", "Decode sensor IDs like COMPASS_DEV_ID"),
+                ("Firmware & Hardware", but_driverclean, "Clean Drivers", "Remove the installed autopilot drivers"),
+
+                ("Logs", butlogindex, "Log Index", "Browse a folder of telemetry logs"),
+                ("Logs", BUT_sorttlogs, "Sort TLogs", "Sort tlogs by vehicle type and sysid"),
+                ("Logs", but_sortlogs, "Re-sort All Logs", "Re-sort every log in the log folder"),
+                ("Logs", but_maplogs, "Map Logs", "Save a map image of each log"),
+                ("Logs", myButton1, "Split DataFlash Log", "Split a DataFlash log into pieces"),
+                ("Logs", but_anonlog, "Anonymise Log", "Copy a log with positions moved (beta)"),
+                ("Logs", but_logdlscp, "Download Logs over SSH", "Download logs from APSync by SCP"),
+                ("Logs", but_remotedflogger, "Remote DataFlash Log", "Stream the DataFlash log to this PC"),
+                ("Logs", BUT_magfit2, "Mag Offsets from Log", "Work out compass offsets from a log"),
+                ("Logs", but_gpsinj, "Extract RTCM", "Extract RTCM corrections from a tlog"),
+                ("Logs", but_dashware, "DashWare Export", "Make a DashWare file from a .bin log"),
+                ("Logs", BUT_georefimage, "Geotag Images", "Geotag photos from a flight log"),
+
+                ("Maps & Terrain", but_GDAL, "Custom GDAL Imagery", "Load GeoTIFFs as imagery and elevation"),
+                ("Maps & Terrain", BUT_geinjection, "Import Map Tiles", "Import Z/Y/X tile images as imagery"),
+                ("Maps & Terrain", BUT_clearcustommaps, "Clear Custom Imagery", "Delete custom imagery from the cache"),
+                ("Maps & Terrain", but_agemapdata, "Age Map Data", "Delete tiles older than 30 days"),
+                ("Maps & Terrain", but_dem, "Loaded DEMs", "List the elevation models loaded"),
+                ("Maps & Terrain", BUT_shptopoly, "Shapefile to Polygon", "Convert a .shp file to a polygon file"),
+                ("Maps & Terrain", but_3dmap, "3D Map Window", "Open the 3D map in a window of its own"),
+
+                ("Outputs & Links", BUT_outputMavlink, "MAVLink Mirror", "Forward MAVLink to another port"),
+                ("Outputs & Links", BUT_outputnmea, "NMEA Output", "Send the vehicle's position as NMEA"),
+                ("Outputs & Links", BUT_outputMD, "MicroDrone Output", "Send the position in MicroDrone format"),
+                ("Outputs & Links", BUT_CoT, "Cursor on Target", "Send the position as Cursor-on-Target"),
+                ("Outputs & Links", but_mavserialport, "GPS Serial Passthrough", "Pass TCP port 500 to the GPS port"),
+                ("Outputs & Links", but_sitl_comb, "SITL Stream Combiner", "Merge SITL vehicles onto one link"),
+                ("Outputs & Links", BUT_follow_me, "Follow Me", "Have the vehicle follow an NMEA GPS"),
+                ("Outputs & Links", BUT_movingbase, "Moving Base", "Show your NMEA GPS position on the map"),
+
+                ("Swarm", BUT_swarm, "Formation", "Fly several vehicles in formation"),
+                ("Swarm", BUT_followleader, "Follow the Leader", "Vehicles follow a leader's path"),
+                ("Swarm", but_followswarm, "Follow Swarm", "Swarm control with a waypoint leader"),
+                ("Swarm", but_trimble, "Sequence Swarm", "Edit a swarm sequence layout"),
+
+                ("Video", but_osdvideo, "OSD Video", "Overlay the HUD on a recorded video"),
+                ("Video", myButton_vlc, "VLC Stream", "Play a stream in VLC (prefer GStreamer)"),
+
+                ("Planner", button3, "Warning Manager", "Set up custom spoken warnings"),
+                ("Planner", but_ManageCMDList, "Mission Command List", "Choose the PLAN screen's commands"),
+                ("Planner", BUT_paramgen, "Update Param Info", "Download the latest param descriptions"),
+                ("Planner", BUT_lang_edit, "Translation Editor", "Edit the planner's translations"),
+
+                ("Developer", but_mavinspector, "MAVLink Inspector", "Inspect every MAVLink message"),
+                ("Developer", but_hexmavlink, "Decode Hex Packet", "Decode a packet from a hex string"),
+                ("Developer", but_packetbytes, "Decode Packet Bytes", "Decode a packet from a list of bytes"),
+                ("Developer", BUT_fft, "FFT", "Analyse vibration frequencies in a log"),
+                ("Developer", but_td, "Fetch threads.txt", "Download @SYS/threads.txt by MAVFTP"),
+                ("Developer", but_structtest, "Struct Speed Test", "Time the MAVLink struct conversions"),
+                ("Developer", but_gimbaltest, "Gimbal Point Test", "Run the gimbal pointing calculation"),
+                ("Developer", but_armandtakeoff, "Arm and Takeoff", "Copter: arm, Guided, take off to 10 m"),
+                ("Developer", but_lockup, "Lockup Autopilot", "Hang the autopilot (crashes in flight)"),
+            };
+        }
+
+        /// <summary>
+        /// Lays the designer's buttons, with their handlers, out in sections that pack into columns, each with what
+        /// it does beside it, under a search box; the vehicle's sensors down the right.
+        /// </summary>
+        private void BuildLayout()
+        {
+            SuspendLayout();
+
+            var designed = tableLayoutPanel1;
+            var tools = Catalog().ToList();
+            var listed = new HashSet<MyButton>(tools.Select(t => t.Button));
+            foreach (var button in designed.Controls.OfType<MyButton>().Where(b => !listed.Contains(b))
+                         .OrderBy(b => b.Text).ToList())
+            {
+                var at = designed.GetPositionFromControl(button);
+                var beside = designed.GetControlFromPosition(at.Column + 1, at.Row) as Label;
+                tools.Add(("Other", button, button.Text, beside?.Text ?? ""));
+            }
+
+            Controls.Clear();
+            AutoScroll = false;
+            Font = new Font("Segoe UI", 9.5F);
+            Text = "Tools";
+            var area = Screen.FromPoint(Cursor.Position).WorkingArea;
+            Size = new Size(Math.Min(1280, area.Width - 40), Math.Min(820, area.Height - 40));
+            MinimumSize = new Size(820, 520);
+            StartPosition = FormStartPosition.CenterScreen;
+            KeyPreview = true;
+            KeyDown += Tools_KeyDown;
+
+            columns = new GroupColumnsPanel
+            {
+                Dock = DockStyle.Fill,
+                AutoScroll = true,
+                Padding = new Padding(12, 6, 12, 12),
+                MinColumnWidth = 420,
+                Gap = 8
+            };
+            columns.ColumnWidthChanged += (s, e) => FitDescriptions();
+            var sectionFont = new Font(Font, FontStyle.Bold);
+            foreach (var group in tools.GroupBy(t => t.Section))
+            {
+                var section = new ToolSection
+                {
+                    Box = new GroupBox
+                    {
+                        // a single & would underline the next letter
+                        Text = group.Key.Replace("&", "&&"),
+                        Font = sectionFont,
+                        AutoSize = true,
+                        AutoSizeMode = AutoSizeMode.GrowAndShrink,
+                        Padding = new Padding(SectionPadding, 2, SectionPadding, 4),
+                        Margin = new Padding(0)
+                    }
+                };
+                var table = new TableLayoutPanel
+                {
+                    Dock = DockStyle.Fill,
+                    AutoSize = true,
+                    AutoSizeMode = AutoSizeMode.GrowAndShrink,
+                    ColumnCount = 2,
+                    Font = Font
+                };
+                table.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+                table.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+
+                int row = 0;
+                foreach (var tool in group)
+                {
+                    var button = tool.Button;
+                    button.Text = tool.Title;
+                    button.Dock = DockStyle.None;
+                    button.AutoSize = false;
+                    button.Size = new Size(ButtonWidth, ButtonHeight);
+                    button.Margin = new Padding(0, 2, ButtonGap, 2);
+                    button.Anchor = AnchorStyles.Left;
+                    var description = new Label
+                    {
+                        Text = tool.Description,
+                        AutoSize = true,
+                        Anchor = AnchorStyles.Left | AnchorStyles.Right,
+                        Margin = new Padding(0, 2, 0, 2)
+                    };
+                    dimLabels.Add(description);
+                    table.Controls.Add(button, 0, row);
+                    table.Controls.Add(description, 1, row);
+                    row++;
+
+                    section.Rows.Add(new ToolRow
+                    {
+                        Button = button,
+                        Description = description,
+                        SearchText = group.Key + " " + tool.Title + " " + tool.Description
+                    });
+                }
+
+                section.Table = table;
+                section.Box.Controls.Add(table);
+                columns.Controls.Add(section.Box);
+                sections.Add(section);
+            }
+
+            // the designer's table holds only its old description labels now
+            designed.Dispose();
+
+            toolCount = tools.Count;
+            noMatch = new Label { AutoSize = true, Visible = false, Margin = new Padding(0, 8, 0, 0) };
+            dimLabels.Add(noMatch);
+            columns.Controls.Add(noMatch);
+
+            sensorPane = new Panel { Dock = DockStyle.Right, Width = 340, Padding = new Padding(12, 6, 8, 12) };
+            var sensorTitle = new Label
+            {
+                Text = "Sensors",
+                Dock = DockStyle.Top,
+                Height = 26,
+                Font = sectionFont,
+                TextAlign = ContentAlignment.MiddleLeft
+            };
+            controlSensorsStatus1.AutoSize = false;
+            controlSensorsStatus1.Dock = DockStyle.Fill;
+            controlSensorsStatus1.Margin = new Padding(0);
+            // fill first so the title is docked before it
+            sensorPane.Controls.Add(controlSensorsStatus1);
+            sensorPane.Controls.Add(sensorTitle);
+            sensorLine = new Panel { Dock = DockStyle.Right, Width = 1 };
+
+            // the search bar across the window, the count at its end
+            var headerTable = new TableLayoutPanel
+            {
+                Dock = DockStyle.Top,
+                AutoSize = true,
+                AutoSizeMode = AutoSizeMode.GrowAndShrink,
+                ColumnCount = 2,
+                RowCount = 1,
+                Padding = new Padding(12, 8, 12, 8)
+            };
+            headerTable.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+            headerTable.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+            header = headerTable;
+            // the parameter pages' search box
+            search = new PlaceholderTextBox
+            {
+                Height = 28,
+                Font = new Font("Segoe UI", 9.75F),
+                PlaceholderText = "Search tools",
+                Anchor = AnchorStyles.Left | AnchorStyles.Right,
+                Margin = new Padding(0)
+            };
+            search.DisableAutoComplete();
+            search.TextChanged += (s, e) => Filter();
+            count = new Label { AutoSize = true, Anchor = AnchorStyles.Right, Margin = new Padding(10, 0, 0, 0) };
+            dimLabels.Add(count);
+            headerTable.Controls.Add(search, 0, 0);
+            headerTable.Controls.Add(count, 1, 0);
+
+            // fill first so the panels docked to the edges are laid out before it
+            Controls.Add(columns);
+            Controls.Add(sensorLine);
+            Controls.Add(sensorPane);
+            Controls.Add(header);
+            // typing goes straight to the search
+            Shown += (s, e) => search.Focus();
+
+            Filter();
+            ResumeLayout(true);
+        }
+
+        protected override void OnLoad(EventArgs e)
+        {
+            base.OnLoad(e);
+
+            // the theme has been applied by now: the secondary colours come from it
+            var dim = Blend(BackColor, ForeColor, 0.55);
+            foreach (var label in dimLabels)
+                label.ForeColor = dim;
+            sensorLine.BackColor = Blend(BackColor, ForeColor, 0.18);
+            header.BackColor = Blend(BackColor, ForeColor, 0.04);
+            sensorPane.BackColor = Blend(BackColor, ForeColor, 0.025);
+            controlSensorsStatus1.BackColor = sensorPane.BackColor;
+            controlSensorsStatus1.ForeColor = ForeColor;
+            // as the parameter pages have it
+            search.BackColor = ThemeManager.BGColorTextBox;
+            search.ForeColor = ThemeManager.TextColor;
+            search.PlaceholderColor = Color.Gray;
+        }
+
+        private static Color Blend(Color from, Color to, double amount)
+        {
+            return Color.FromArgb(
+                (int) (from.R + (to.R - from.R) * amount),
+                (int) (from.G + (to.G - from.G) * amount),
+                (int) (from.B + (to.B - from.B) * amount));
+        }
+
+        /// <summary>
+        /// Wraps the descriptions to what a column leaves beside the buttons (the section's padding, the button and
+        /// the gap after it), so each section is measured at its wrapped height.
+        /// </summary>
+        private void FitDescriptions()
+        {
+            int width = Math.Max(120, columns.ColumnWidth - 2 * SectionPadding - ButtonWidth - ButtonGap - 4);
+            foreach (var section in sections)
+            {
+                section.Table.SuspendLayout();
+                foreach (var row in section.Rows)
+                    row.Description.MaximumSize = new Size(width, 0);
+                section.Table.ResumeLayout(false);
+            }
+        }
+
+        /// <summary>
+        /// Shows the tools whose section, name or description hold every word searched for, and the sections with
+        /// any.
+        /// </summary>
+        private void Filter()
+        {
+            var words = search.Text.Split(new[] {' '}, StringSplitOptions.RemoveEmptyEntries);
+            int shown = 0;
+
+            columns.SuspendLayout();
+            foreach (var section in sections)
+            {
+                bool any = false;
+                foreach (var row in section.Rows)
+                {
+                    bool match = words.All(w => row.SearchText.IndexOf(w, StringComparison.OrdinalIgnoreCase) >= 0);
+                    row.Button.Visible = match;
+                    row.Description.Visible = match;
+                    any |= match;
+                    if (match)
+                        shown++;
+                }
+
+                section.Box.Visible = any;
+            }
+
+            noMatch.Text = "No tools match \"" + search.Text.Trim() + "\".";
+            noMatch.Visible = shown == 0;
+            columns.ResumeLayout(true);
+            columns.AutoScrollPosition = Point.Empty;
+
+            count.Text = words.Length == 0 ? toolCount + " tools" : shown + " of " + toolCount + " tools";
+        }
+
+        private void Tools_KeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.KeyCode == Keys.Escape)
+            {
+                // the first clears the search, the next closes the window
+                if (search.Text.Length > 0)
+                    search.Text = "";
+                else
+                    Close();
+                e.Handled = e.SuppressKeyPress = true;
+            }
+            else if (e.KeyData == (Keys.Control | Keys.F))
+            {
+                search.Focus();
+                search.SelectionStart = 0;
+                search.SelectionLength = search.Text.Length;
+                e.Handled = e.SuppressKeyPress = true;
+            }
+        }
+
+        #endregion
 
         //private static Factory factory; 
         //private static VideoPlayer player; 

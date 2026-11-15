@@ -253,6 +253,7 @@ The WPOverlay2 rendering pipeline with its MissionStyleEditor, `MissionSegmentiz
 
 - **Double-click "Fly to Here"** for one-click GUIDED-mode entry, with a persistent enable toggle
 - **Tools button** on map for the former "temp" / `Ctrl+F` window
+- The Tools window (`Ctrl+F`) lists its tools by section (Vehicle, Firmware & Hardware, Logs, Maps & Terrain, Outputs & Links, Swarm, Video, Planner, Developer), each with what it does, under a search box, beside a readable list of the vehicle's sensors (enabled, present, healthy); `Ctrl+F` or the Tools button brings an open window forward instead of opening another
 - **Propagation Settings** accessible from the map (`Ctrl+W`)
 - **Find Location** added to the PLAN tab
 - **Offline Maps** button on the PLAN tab (see [Offline Maps](#offline-maps) below)

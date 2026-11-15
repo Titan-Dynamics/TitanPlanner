@@ -770,12 +770,7 @@ namespace MissionPlanner.GCSViews
                 Size = new Size(50, 23),
                 Anchor = AnchorStyles.Top | AnchorStyles.Right
             };
-            btnTools.Click += (s, e) =>
-            {
-                Form frm = new temp();
-                ThemeManager.ApplyThemeTo(frm);
-                frm.Show();
-            };
+            btnTools.Click += (s, e) => temp.ShowWindow();
             MapContentPanel.Controls.Add(btnTools);
             btnTools.BringToFront();
             // Position it at top-left

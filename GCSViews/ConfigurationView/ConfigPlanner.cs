@@ -101,69 +101,6 @@ namespace MissionPlanner.GCSViews.ConfigurationView
             ResumeLayout(true);
         }
 
-        /// <summary>
-        /// Lays the setting groups out in equal-width columns, putting each in turn under the shortest column, so
-        /// boxes of different heights pack without gaps. Groups tagged <see cref="FullWidth"/> go under all the
-        /// columns, as wide as they are together.
-        /// </summary>
-        private class GroupColumnsPanel : Panel
-        {
-            private const int MinColumnWidth = 400;
-            private const int Gap = 10;
-
-            public static readonly object FullWidth = new object();
-
-            protected override void OnLayout(LayoutEventArgs levent)
-            {
-                var visible = Controls.Cast<Control>().Where(c => c.Visible).ToList();
-                var groups = visible.Where(c => c.Tag != FullWidth).ToList();
-                var wide = visible.Where(c => c.Tag == FullWidth).ToList();
-                int width = ClientSize.Width - Padding.Horizontal;
-                if (visible.Count == 0 || width <= 0)
-                {
-                    base.OnLayout(levent);
-                    return;
-                }
-
-                int columns = Math.Max(1, Math.Min(groups.Count, (width + Gap) / (MinColumnWidth + Gap)));
-                int columnWidth = Math.Max(MinColumnWidth, (width - (columns - 1) * Gap) / columns);
-                int fullWidth = columns * columnWidth + (columns - 1) * Gap;
-
-                // the groups size their height to their content; pin their width to the column's (or all of them)
-                SuspendLayout();
-                foreach (var group in visible)
-                {
-                    int groupWidth = wide.Contains(group) ? fullWidth : columnWidth;
-                    group.MinimumSize = new Size(groupWidth, 0);
-                    group.MaximumSize = new Size(groupWidth, 0);
-                }
-                ResumeLayout(false);
-
-                base.OnLayout(levent);
-
-                var bottoms = new int[columns];
-                var origin = DisplayRectangle.Location;
-                SuspendLayout();
-                foreach (var group in groups)
-                {
-                    int column = Array.IndexOf(bottoms, bottoms.Min());
-                    group.Location = new Point(origin.X + column * (columnWidth + Gap), origin.Y + bottoms[column]);
-                    bottoms[column] += group.Height + Gap;
-                }
-
-                int bottom = bottoms.Max();
-                foreach (var group in wide)
-                {
-                    group.Location = new Point(origin.X, origin.Y + bottom);
-                    bottom += group.Height + Gap;
-                }
-                ResumeLayout(false);
-
-                // the scroll range follows the groups' new places
-                AdjustFormScrollbars(AutoScroll);
-            }
-        }
-
         private GroupBox CreateGroupBox(string title)
         {
             return new GroupBox

@@ -4467,9 +4467,7 @@ namespace MissionPlanner
         [KeyboardShortcut(Keys.Control | Keys.F, "Open the Tools window")]
         private void ShortcutTools()
         {
-            Form frm = new temp();
-            ThemeManager.ApplyThemeTo(frm);
-            frm.Show();
+            temp.ShowWindow();
         }
 
         [KeyboardShortcut(Keys.Control | Keys.P, "Open the plugin manager")]
