@@ -323,6 +323,7 @@ namespace MissionPlanner.GCSViews
             {
                 AddBackstageViewPage(typeof(ConfigAM32), "AM32", true, opt);
             }
+            AddBackstageViewPage(typeof(ConfigTitanLRS), "TitanLRS Flasher", true, opt);
             if (MainV2.DisplayConfiguration.displayBluetooth)
             {
                 AddBackstageViewPage(typeof(ConfigHWBT), rm.GetString("backstageViewPagehwbt.Text"), true, opt);
