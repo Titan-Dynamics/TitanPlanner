@@ -157,6 +157,7 @@ namespace MissionPlanner.GCSViews
             this.textToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.createCircleSurveyToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.surveyGridToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.fixedWingAutolandToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.mapToolToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.ContextMeasure = new System.Windows.Forms.ToolStripMenuItem();
             this.rotateMapToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
@@ -1039,7 +1040,8 @@ namespace MissionPlanner.GCSViews
             this.areaToolStripMenuItem1,
             this.textToolStripMenuItem,
             this.createCircleSurveyToolStripMenuItem,
-            this.surveyGridToolStripMenuItem});
+            this.surveyGridToolStripMenuItem,
+            this.fixedWingAutolandToolStripMenuItem});
             this.autoWPToolStripMenuItem.Name = "autoWPToolStripMenuItem";
             resources.ApplyResources(this.autoWPToolStripMenuItem, "autoWPToolStripMenuItem");
             // 
@@ -1078,7 +1080,13 @@ namespace MissionPlanner.GCSViews
             this.surveyGridToolStripMenuItem.Name = "surveyGridToolStripMenuItem";
             resources.ApplyResources(this.surveyGridToolStripMenuItem, "surveyGridToolStripMenuItem");
             this.surveyGridToolStripMenuItem.Click += new System.EventHandler(this.surveyGridToolStripMenuItem_Click);
-            // 
+            //
+            // fixedWingAutolandToolStripMenuItem
+            //
+            this.fixedWingAutolandToolStripMenuItem.Name = "fixedWingAutolandToolStripMenuItem";
+            resources.ApplyResources(this.fixedWingAutolandToolStripMenuItem, "fixedWingAutolandToolStripMenuItem");
+            this.fixedWingAutolandToolStripMenuItem.Click += new System.EventHandler(this.fixedWingAutolandToolStripMenuItem_Click);
+            //
             // mapToolToolStripMenuItem
             // 
             this.mapToolToolStripMenuItem.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
@@ -1744,6 +1752,7 @@ namespace MissionPlanner.GCSViews
         public ToolStripMenuItem textToolStripMenuItem;
         public ToolStripMenuItem createCircleSurveyToolStripMenuItem;
         public ToolStripMenuItem surveyGridToolStripMenuItem;
+        public ToolStripMenuItem fixedWingAutolandToolStripMenuItem;
         public ToolStripMenuItem geoFenceToolStripMenuItem;
         public ToolStripMenuItem GeoFenceuploadToolStripMenuItem;
         public ToolStripMenuItem GeoFencedownloadToolStripMenuItem;
