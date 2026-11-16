@@ -46,6 +46,12 @@ namespace MissionPlanner.GCSViews
         // the box widths, which no row carries, by LAND
         private readonly Dictionary<string, double> autolandBoxWidths = new Dictionary<string, double>();
 
+        // the sequences turned into plain waypoints, by AutolandPattern.Fingerprint, oldest first; kept in the
+        // settings so they stay plain when the mission is loaded again on this PC
+        private const string AutolandConvertedSetting = "autoland_converted";
+        private const int AutolandConvertedKept = 200;
+        private List<string> autolandConverted;
+
         // the handle under the mouse, and the one being dragged
         private GMapMarkerAutolandHandle autolandHover;
         private AutolandDrag autolandDrag;
@@ -76,6 +82,10 @@ namespace MissionPlanner.GCSViews
                     UpdateAutoland(autolandSelected, p, autolandSelectedLand, true);
             };
             autolandPanel.RemoveClicked += RemoveSelectedAutoland;
+            autolandPanel.ConvertClicked += ConvertSelectedAutoland;
+
+            autolandConverted = (Settings.Instance[AutolandConvertedSetting] ?? "")
+                .Split(new[] {';'}, StringSplitOptions.RemoveEmptyEntries).ToList();
             autolandPanel.CloseClicked += () => SelectAutoland(-1);
             MainMap.Controls.Add(autolandPanel);
             MainMap.Resize += (s, e) => PlaceAutolandPanel();
@@ -310,6 +320,14 @@ namespace MissionPlanner.GCSViews
         {
             autolandBoxWidths[AutolandKey(layout.Land)] = layout.Params.BoxWidthM;
 
+            // a sequence laid out where a converted one was is an autoland again
+            if (autolandConverted != null)
+            {
+                var fingerprint = AutolandPattern.Fingerprint(layout.Rows, 0);
+                if (autolandConverted.RemoveAll(f => AutolandPattern.SameFingerprint(f, fingerprint)) > 0)
+                    SaveAutolandConverted();
+            }
+
             quickadd = true;
             try
             {
@@ -366,6 +384,51 @@ namespace MissionPlanner.GCSViews
             cells[TagData.Index].Value = null;
         }
 
+        /// <summary>
+        /// Convert to waypoints: leaves the selected sequence's rows exactly as they are, but no longer as an autoland
+        /// sequence, so each waypoint can be edited and dragged on its own. Its fingerprint is kept in the settings,
+        /// so it stays plain when the mission is loaded again on this PC.
+        /// </summary>
+        private void ConvertSelectedAutoland()
+        {
+            int start = autolandSelected;
+            if (start < 0 || AutolandAt(start) == null)
+                return;
+
+            if (CustomMessageBox.Show(
+                    "Convert this autoland sequence to plain waypoints?\n\n" +
+                    "The waypoints stay as they are and can then be edited one by one, but the sequence can no " +
+                    "longer be edited as an autoland. This can't be undone.",
+                    "Convert to waypoints", MessageBoxButtons.YesNo) != (int) DialogResult.Yes)
+                return;
+
+            string fingerprint;
+            try
+            {
+                fingerprint = AutolandPattern.Fingerprint(GetCommandList(), start);
+            }
+            catch (FormatException)
+            {
+                return;
+            }
+
+            SelectAutoland(-1);
+
+            autolandConverted.RemoveAll(f => AutolandPattern.SameFingerprint(f, fingerprint));
+            autolandConverted.Add(fingerprint);
+            if (autolandConverted.Count > AutolandConvertedKept)
+                autolandConverted.RemoveRange(0, autolandConverted.Count - AutolandConvertedKept);
+            SaveAutolandConverted();
+
+            writeKML();
+        }
+
+        private void SaveAutolandConverted()
+        {
+            Settings.Instance[AutolandConvertedSetting] = string.Join(";", autolandConverted);
+            Settings.Instance.Save();
+        }
+
         private void RemoveSelectedAutoland()
         {
             int start = autolandSelected;
@@ -402,7 +465,7 @@ namespace MissionPlanner.GCSViews
             try
             {
                 if ((MAVLink.MAV_MISSION_TYPE) cmb_missiontype.SelectedValue == MAVLink.MAV_MISSION_TYPE.MISSION)
-                    found = AutolandPattern.FindAll(GetCommandList(), AutolandBoxWidth);
+                    found = AutolandPattern.FindAll(GetCommandList(), AutolandBoxWidth, autolandConverted);
             }
             catch (FormatException)
             {

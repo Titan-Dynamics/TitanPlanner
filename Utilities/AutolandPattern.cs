@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 
 namespace MissionPlanner.Utilities
 {
@@ -534,12 +535,60 @@ namespace MissionPlanner.Utilities
             return Math.Sqrt(north * north + east * east) <= MatchDistanceM;
         }
 
+        /// <summary>How far apart, in degrees, two fingerprints' coordinates may be and still match (about 20 cm):
+        /// more than a .waypoints file's or the vehicle's rounding, less than any real move.</summary>
+        public const double FingerprintToleranceDeg = 2e-6;
+
+        /// <summary>
+        /// What identifies the sequence starting at <paramref name="start"/> once it has been turned into plain
+        /// waypoints: where its DO_LAND_START and its LAND are. Compare them with <see cref="SameFingerprint"/>, which
+        /// allows for the rounding of a file or the vehicle. A sequence laid out anywhere else, or moved, has another.
+        /// </summary>
+        public static string Fingerprint(IList<Locationwp> cmds, int start)
+        {
+            if (cmds == null || start < 0 || start + RowCount > cmds.Count)
+                return "";
+
+            string At(Locationwp wp) => wp.lat.ToString("F8", CultureInfo.InvariantCulture) + "," +
+                                        wp.lng.ToString("F8", CultureInfo.InvariantCulture);
+
+            return At(cmds[start + RowLandStart]) + "|" + At(cmds[start + RowLand]);
+        }
+
+        /// <summary>Whether two <see cref="Fingerprint"/>s are the same sequence, to
+        /// <see cref="FingerprintToleranceDeg"/>.</summary>
+        public static bool SameFingerprint(string a, string b)
+        {
+            double[] Parse(string s)
+            {
+                var parts = (s ?? "").Split(',', '|');
+                if (parts.Length != 4)
+                    return null;
+                var values = new double[4];
+                for (int i = 0; i < 4; i++)
+                    if (!double.TryParse(parts[i], NumberStyles.Float, CultureInfo.InvariantCulture, out values[i]))
+                        return null;
+                return values;
+            }
+
+            var x = Parse(a);
+            var y = Parse(b);
+            if (x == null || y == null)
+                return false;
+            for (int i = 0; i < 4; i++)
+                if (Math.Abs(x[i] - y[i]) > FingerprintToleranceDeg)
+                    return false;
+            return true;
+        }
+
         /// <summary>
         /// Every autoland sequence in a mission, by the index of its DO_LAND_START. boxWidth gives the width to draw a
-        /// sequence's box with, from its LAND point (null for the default).
+        /// sequence's box with, from its LAND point (null for the default). Sequences whose
+        /// <see cref="Fingerprint"/> <paramref name="converted"/> holds were turned into plain waypoints and are left
+        /// as such.
         /// </summary>
         public static List<KeyValuePair<int, AutolandLayout>> FindAll(IList<Locationwp> cmds,
-            Func<PointLatLngAlt, double?> boxWidth = null)
+            Func<PointLatLngAlt, double?> boxWidth = null, ICollection<string> converted = null)
         {
             var found = new List<KeyValuePair<int, AutolandLayout>>();
             if (cmds == null)
@@ -549,6 +598,16 @@ namespace MissionPlanner.Utilities
             {
                 if (cmds[i].id != Commands[0] || cmds[i + RowLand].id != Commands[RowLand])
                     continue;
+
+                if (converted != null && converted.Count > 0)
+                {
+                    var fingerprint = Fingerprint(cmds, i);
+                    bool isConverted = false;
+                    foreach (var f in converted)
+                        isConverted |= SameFingerprint(f, fingerprint);
+                    if (isConverted)
+                        continue;
+                }
 
                 var land = cmds[i + RowLand];
                 double width = boxWidth?.Invoke(new PointLatLngAlt(land.lat, land.lng, land.alt)) ??

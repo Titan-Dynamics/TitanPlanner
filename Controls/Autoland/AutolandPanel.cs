@@ -22,6 +22,9 @@ namespace MissionPlanner.Controls.Autoland
         public event Action RemoveClicked;
         public event Action CloseClicked;
 
+        /// <summary>Convert to waypoints: the sequence's rows are to become plain waypoints.</summary>
+        public event Action ConvertClicked;
+
         const string AdvancedSetting = "autoland_advanced";
 
         /// <summary>Whether the panel shows every input, kept across restarts. Off, new sequences take the factory
@@ -132,6 +135,14 @@ namespace MissionPlanner.Controls.Autoland
             warnings = new Label {AutoSize = true, ForeColor = Color.Orange, Margin = new Padding(3, 4, 3, 0)};
             layout.Controls.Add(warnings, 0, layout.RowCount++);
             layout.SetColumnSpan(warnings, 3);
+
+            // Advanced mode only: leave the rows as plain waypoints, no longer an autoland sequence
+            var convert = new MyButton {Text = "Convert to waypoints", Width = 196, Height = 24,
+                Margin = new Padding(3, 6, 3, 0)};
+            convert.Click += (s, e) => ConvertClicked?.Invoke();
+            layout.Controls.Add(convert, 0, layout.RowCount++);
+            layout.SetColumnSpan(convert, 3);
+            advancedControls.Add(convert);
 
             var buttons = new FlowLayoutPanel
             {

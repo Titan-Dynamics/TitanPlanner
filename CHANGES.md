@@ -252,6 +252,7 @@ The WPOverlay2 rendering pipeline with its MissionStyleEditor, `MissionSegmentiz
 - The autoland panel over the map asks only for the obstacle height (the base leg flies 10 m above it, which sets the hold altitude), new sequences taking the factory defaults for the rest (4.5° pre-approach, 3° final, 60 s loiter); ticking Advanced mode, which is remembered, shows every input: heading, hold altitude, both angles, loiter time, downwind offset and box size
 - An autoland button under the PLAN map's polygon and zoom buttons opens any autoland sequence in the mission for editing, or adds another at the map center; it is green while a sequence is selected
 - On the PLAN map an autoland sequence shows the obstacle height at the middle of its base leg and the altitudes at three evenly spaced points down its pre-approach; a pre-approach steeper than 6° turns those amber and a final approach steeper than 3° turns the landing box amber, and the panel warns about both
+- Convert to waypoints (Advanced mode) leaves an autoland sequence's rows as they are but as plain, individually editable waypoints; this PC remembers it, so it stays plain when the mission is loaded again
 - An autoland sequence is recognized again from its rows after loading a file, reading from the vehicle or undoing, so it stays editable; one edited by hand becomes plain waypoints
 - **Center to Vehicle** button
 - **Clear all** in PLAN tab; clear-path from FlightData

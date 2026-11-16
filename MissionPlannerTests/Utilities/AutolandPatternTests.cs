@@ -414,6 +414,47 @@ namespace MissionPlanner.Utilities.Tests
         }
 
         [TestMethod]
+        public void AConvertedSequenceIsLeftAsPlainWaypoints()
+        {
+            var first = AutolandPattern.Generate(Land, Inputs());
+            var other = Inputs();
+            other.HeadingDeg = 144;
+            var second = AutolandPattern.Generate(Land.newpos(0, 2000), other);
+            var mission = first.Rows.Concat(second.Rows).ToList();
+
+            var converted = new List<string> {AutolandPattern.Fingerprint(mission, 0)};
+            var found = AutolandPattern.FindAll(mission, null, converted);
+
+            // only the other sequence is still an autoland; the converted one's rows are untouched
+            CollectionAssert.AreEqual(new[] {8}, found.Select(f => f.Key).ToArray());
+            Assert.AreEqual(16, mission.Count);
+        }
+
+        [TestMethod]
+        public void AConvertedSequenceStaysConvertedThroughAFileOrTheVehicle()
+        {
+            var layout = AutolandPattern.Generate(Land, Inputs());
+            var converted = new List<string> {AutolandPattern.Fingerprint(layout.Rows, 0)};
+
+            // a .waypoints file keeps 8 decimals; the vehicle keeps 1e-7 degrees
+            foreach (var scale in new[] {1e8, 1e7})
+            {
+                var rounded = layout.Rows.Select(r =>
+                {
+                    r.lat = Math.Round(r.lat * scale) / scale;
+                    r.lng = Math.Round(r.lng * scale) / scale;
+                    return r;
+                }).ToList();
+                Assert.AreEqual(0, AutolandPattern.FindAll(rounded, null, converted).Count);
+            }
+
+            // moved a meter, it's another sequence
+            var moved = AutolandPattern.Generate(Land.newpos(90, 1), Inputs());
+            Assert.AreEqual(1, AutolandPattern.FindAll(moved.Rows, null, converted).Count);
+            Assert.IsFalse(AutolandPattern.SameFingerprint(converted[0], "not a fingerprint"));
+        }
+
+        [TestMethod]
         public void ANewSequenceLandsAlongTheTakeoff()
         {
             var home = new PointLatLngAlt(34.17, -118.48, 0);
