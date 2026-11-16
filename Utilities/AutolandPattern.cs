@@ -107,6 +107,41 @@ namespace MissionPlanner.Utilities
         public PointLatLngAlt ZoneStart;
         public PointLatLngAlt DownwindMiddle;
 
+        /// <summary>The middle of the base leg, where the map shows the obstacle height it clears.</summary>
+        public PointLatLngAlt BaseMiddle;
+
+        /// <summary>
+        /// Evenly spaced points from the base leg's end to the landing zone start, each at the altitude the descent
+        /// passes it. Only drawn on the PLAN map: they are not mission rows.
+        /// </summary>
+        public List<PointLatLngAlt> ApproachPoints = new List<PointLatLngAlt>();
+
+        /// <summary>The pre-approach angle is above <see cref="AutolandPattern.SteepPreApproachDeg"/>, to the 0.1 deg
+        /// the panel shows (an angle read back from the rows carries a little rounding).</summary>
+        public bool PreApproachSteep =>
+            Math.Round(Params.PreApproachDeg, 1) > AutolandPattern.SteepPreApproachDeg;
+
+        /// <summary>The final approach angle is above <see cref="AutolandPattern.SteepFinalApproachDeg"/>, to 0.1 deg.
+        /// </summary>
+        public bool FinalApproachSteep =>
+            Math.Round(Params.FinalApproachDeg, 1) > AutolandPattern.SteepFinalApproachDeg;
+
+        /// <summary>
+        /// A point beside <paramref name="point"/>, <paramref name="meters"/> outside the circuit: to the left of the
+        /// final approach line, or before the base leg. The map puts a point's tag on that side.
+        /// </summary>
+        public PointLatLngAlt Outside(PointLatLngAlt point, bool beforeBase, double meters = 50)
+        {
+            ToLocal(point, out var along, out var right);
+            return beforeBase
+                ? AutolandPattern.FromLocal(Land, Params.HeadingDeg, along - meters, right, point.Alt)
+                : AutolandPattern.FromLocal(Land, Params.HeadingDeg, along, right - meters, point.Alt);
+        }
+
+        /// <summary>Inputs that make the sequence but are worth a second look (steep angles), for the panel. Unlike
+        /// <see cref="Warnings"/> nothing was changed for them.</summary>
+        public List<string> Advisories = new List<string>();
+
         /// <summary>The landing box: near left, near right, far right, far left (near is the approach end).</summary>
         public PointLatLngAlt[] BoxCorners = new PointLatLngAlt[4];
 
@@ -158,7 +193,16 @@ namespace MissionPlanner.Utilities
     public static class AutolandPattern
     {
         public const double DefaultHoldAltM = 50;
-        public const double DefaultPreApproachDeg = 6;
+        public const double DefaultPreApproachDeg = 4.5;
+
+        /// <summary>A pre-approach angle above this is warned about as steep.</summary>
+        public const double SteepPreApproachDeg = 6;
+
+        /// <summary>A final approach angle above this is warned about as steep.</summary>
+        public const double SteepFinalApproachDeg = 3;
+
+        /// <summary>How many altitude points the map shows between the base leg's end and the landing zone start.</summary>
+        public const int ApproachPointCount = 3;
         public const double DefaultFinalApproachDeg = 3;
         public const double DefaultLoiterTimeS = 60;
         public const double DefaultObstacleHeightM = 25;
@@ -326,6 +370,21 @@ namespace MissionPlanner.Utilities
             layout.BaseEnd = At(-baseDistance, 0, baseAlt);
             layout.ZoneStart = At(-half, 0, zoneAlt);
             layout.DownwindMiddle = At((half - baseDistance) / 2, d, (p.HoldAltM + baseAlt) / 2);
+            layout.BaseMiddle = At(-baseDistance, d / 2, baseAlt);
+
+            for (int i = 1; i <= ApproachPointCount; i++)
+            {
+                double f = (double) i / (ApproachPointCount + 1);
+                layout.ApproachPoints.Add(At(-baseDistance + (baseDistance - half) * f, 0,
+                    baseAlt + (zoneAlt - baseAlt) * f));
+            }
+
+            if (layout.PreApproachSteep)
+                layout.Advisories.Add(
+                    $"Pre-approach angle is steeper than {SteepPreApproachDeg:0.#} deg ({p.PreApproachDeg:0.0} deg)");
+            if (layout.FinalApproachSteep)
+                layout.Advisories.Add(
+                    $"Final approach angle is steeper than {SteepFinalApproachDeg:0.#} deg ({p.FinalApproachDeg:0.0} deg)");
 
             double w = p.BoxWidthM / 2;
             layout.BoxCorners[0] = At(-half, -w, p.LandAltM);

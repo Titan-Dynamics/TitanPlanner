@@ -258,8 +258,11 @@ namespace MissionPlanner.Controls.Autoland
                 shownSource = loiterRadiusSource;
                 ShowReadouts(layout, loiterRadiusSource);
 
-                warnings.Text = string.Join("\n", layout.Warnings);
-                warnings.Visible = layout.Warnings.Count > 0;
+                // what was changed to make the sequence, then what is worth a second look
+                var lines = new List<string>(layout.Warnings);
+                lines.AddRange(layout.Advisories);
+                warnings.Text = string.Join("\n", lines);
+                warnings.Visible = lines.Count > 0;
             }
             finally
             {

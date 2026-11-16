@@ -113,7 +113,8 @@ namespace MissionPlanner.Utilities.Tests
             Local(layout, rows[AutolandPattern.RowBaseEnd], out var baseAlong, out var baseRight);
             Assert.AreEqual(0, baseRight, 0.01);
             double slope = Math.Atan((baseAlt - zone) / (-baseAlong - 87.5)) * MathHelper.rad2deg;
-            Assert.AreEqual(6, slope, 0.01);
+            Assert.AreEqual(AutolandPattern.DefaultPreApproachDeg, slope, 0.01);
+            Assert.AreEqual(4.5, AutolandPattern.DefaultPreApproachDeg);
             Assert.AreEqual(-baseAlong, layout.BaseDistanceM, 0.01);
         }
 
@@ -338,6 +339,78 @@ namespace MissionPlanner.Utilities.Tests
             var defaults = Inputs();
             double hold = AutolandPattern.HoldForObstacle(defaults, AutolandPattern.DefaultObstacleHeightM);
             Assert.AreEqual(50.2, hold, 0.1);
+        }
+
+        [TestMethod]
+        public void TheObstacleHeightIsShownAtTheMiddleOfTheBaseLeg()
+        {
+            var layout = AutolandPattern.Generate(Land, Inputs());
+
+            layout.ToLocal(layout.BaseMiddle, out var along, out var right);
+            Assert.AreEqual(-layout.BaseDistanceM, along, 0.01);
+            Assert.AreEqual(85, right, 0.01);
+            Assert.AreEqual(layout.BaseAltM, layout.BaseMiddle.Alt, 1e-9);
+        }
+
+        [TestMethod]
+        public void ThreeAltitudePointsRunEvenlyDownThePreApproach()
+        {
+            var layout = AutolandPattern.Generate(Land, Inputs());
+
+            Assert.AreEqual(3, layout.ApproachPoints.Count);
+            double half = 87.5;
+            for (int i = 0; i < 3; i++)
+            {
+                double f = (i + 1) / 4.0;
+                var point = layout.ApproachPoints[i];
+                layout.ToLocal(point, out var along, out var right);
+
+                Assert.AreEqual(-layout.BaseDistanceM + (layout.BaseDistanceM - half) * f, along, 0.01);
+                Assert.AreEqual(0, right, 0.01);
+                Assert.AreEqual(layout.BaseAltM + (layout.ZoneAltM - layout.BaseAltM) * f, point.Alt, 1e-9);
+            }
+
+            // they are drawn, not flown: the rows are still the eight
+            Assert.AreEqual(AutolandPattern.RowCount, layout.Rows.Count);
+
+            // their tags go to the left of the final approach line, away from downwind; the obstacle's before base
+            layout.ToLocal(layout.Outside(layout.ApproachPoints[1], false), out var tagAlong, out var tagRight);
+            Assert.AreEqual(-50, tagRight, 0.01);
+            layout.ToLocal(layout.Outside(layout.BaseMiddle, true), out tagAlong, out tagRight);
+            Assert.AreEqual(-layout.BaseDistanceM - 50, tagAlong, 0.01);
+        }
+
+        [TestMethod]
+        public void SteepAnglesAreWarnedAboutButKept()
+        {
+            var gentle = AutolandPattern.Generate(Land, Inputs());
+            Assert.AreEqual(0, gentle.Advisories.Count);
+
+            var p = Inputs();
+            p.PreApproachDeg = 6;
+            p.FinalApproachDeg = 3;
+            Assert.AreEqual(0, AutolandPattern.Generate(Land, p).Advisories.Count);
+
+            // the rounding an angle read back from the rows carries is not steep
+            p.PreApproachDeg = 6.04;
+            p.FinalApproachDeg = 3.04;
+            Assert.AreEqual(0, AutolandPattern.Generate(Land, p).Advisories.Count);
+
+            p.PreApproachDeg = 6.5;
+            p.FinalApproachDeg = 3.5;
+            var steep = AutolandPattern.Generate(Land, p);
+
+            Assert.IsTrue(steep.PreApproachSteep);
+            Assert.IsTrue(steep.FinalApproachSteep);
+            Assert.AreEqual(2, steep.Advisories.Count);
+            Assert.AreEqual(0, steep.Warnings.Count);
+            Assert.AreEqual(6.5, steep.Params.PreApproachDeg);
+
+            // a steep sequence is still a sequence when read back
+            var read = AutolandPattern.FindAll(steep.Rows);
+            Assert.AreEqual(1, read.Count);
+            Assert.AreEqual(6.5, read[0].Value.Params.PreApproachDeg, 0.01);
+            Assert.AreEqual(3.5, read[0].Value.Params.FinalApproachDeg, 0.01);
         }
 
         [TestMethod]

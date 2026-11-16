@@ -61,6 +61,8 @@ namespace MissionPlanner.GCSViews
         private static readonly Brush AutolandBoxFill = new SolidBrush(Color.FromArgb(80, 0, 200, 0));
         private static readonly Pen AutolandBoxPen = new Pen(Color.FromArgb(230, 0, 170, 0), 2);
         private static readonly Pen AutolandBoxSelectedPen = new Pen(Color.FromArgb(255, 60, 230, 60), 3);
+        private static readonly Pen AutolandBoxSteepPen = new Pen(Color.FromArgb(230, 255, 176, 32), 2);
+        private static readonly Pen AutolandBoxSteepSelectedPen = new Pen(Color.FromArgb(255, 255, 176, 32), 3);
 
         private void InitAutoland()
         {
@@ -498,9 +500,25 @@ namespace MissionPlanner.GCSViews
                     "autoland" + a.Key)
                 {
                     Fill = AutolandBoxFill,
-                    Stroke = selected ? AutolandBoxSelectedPen : AutolandBoxPen,
+                    // amber when the final approach is steeper than recommended, so it shows with the panel closed
+                    Stroke = layout.FinalApproachSteep
+                        ? (selected ? AutolandBoxSteepSelectedPen : AutolandBoxSteepPen)
+                        : (selected ? AutolandBoxSelectedPen : AutolandBoxPen),
                     IsHitTestVisible = false
                 });
+
+                // the altitudes down the pre-approach leg, amber when it is steeper than recommended
+                foreach (var point in layout.ApproachPoints)
+                    autolandOverlay.Markers.Add(new GMapMarkerAutolandAltitude(point,
+                        layout.Outside(point, false),
+                        (point.Alt * CurrentState.multiplieralt).ToString("0", CultureInfo.CurrentCulture) + " " +
+                        CurrentState.AltUnit, layout.PreApproachSteep));
+
+                // the obstacle height the base leg clears, at its middle (under the handles)
+                autolandOverlay.Markers.Add(new GMapMarkerAutolandObstacle(layout.BaseMiddle,
+                    layout.Outside(layout.BaseMiddle, true),
+                    (Math.Max(0, layout.ObstacleHeightM) * CurrentState.multiplieralt).ToString("0",
+                        CultureInfo.CurrentCulture) + " " + CurrentState.AltUnit));
 
                 if (!selected)
                     continue;
