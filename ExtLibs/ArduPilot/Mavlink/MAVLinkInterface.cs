@@ -1877,6 +1877,10 @@ Mission Planner waits for 2 valid heartbeat packets before connecting
 
         public async Task<MAVLinkParamList> getParamListMavftpAsync(uint sysid, byte compid)
         {
+            // what the download is doing, for the progress window to show
+            var progress = new ParamLoadProgress(MAVlist[sysid, compid], sysid, compid);
+            (frmProgressReporter as IParamLoadReporter)?.Track(progress);
+
             var sub2 = SubscribeToPacketType(MAVLINK_MSG_ID.STATUSTEXT, buffer =>
             {
                 if (buffer.msgid == (byte) MAVLINK_MSG_ID.STATUSTEXT)
@@ -1927,6 +1931,7 @@ Mission Planner waits for 2 valid heartbeat packets before connecting
                 {
                     if (frmProgressReporter != null)
                         frmProgressReporter.UpdateProgressAndStatus(-1, $"Checking for Param MAVFTP {sysid}-{compid}");
+                    progress.FtpRequested();
                     var cancel = new CancellationTokenSource();
                     var paramfileTask = Task.Run<MemoryStream>(() =>
                     {
@@ -1936,6 +1941,7 @@ Mission Planner waits for 2 valid heartbeat packets before connecting
                             if (frmProgressReporter != null)
                                 frmProgressReporter.UpdateProgressAndStatus(i,
                                     $"Getting Param MAVFTP {sysid}-{compid} : {s}");
+                            progress.FileProgress(i);
                         };
                         return ftp.GetFile(
                             // always try to get defualts, AP will send orginal format if not avalable
@@ -1980,6 +1986,7 @@ Mission Planner waits for 2 valid heartbeat packets before connecting
                                     : gen.GenerateMAVLinkPacket10(MAVLINK_MSG_ID.PARAM_VALUE, value, sysid, compid));
                             });
 
+                            progress.FileReceived(mavlist.Count);
                             UnSubscribeToPacketType(sub2);
                             return MAVlist[sysid, compid].param;
                         }
@@ -1992,7 +1999,7 @@ Mission Planner waits for 2 valid heartbeat packets before connecting
             }
 
             UnSubscribeToPacketType(sub2);
-            return await getParamListAsync(sysid, compid);
+            return await getParamListAsync(sysid, compid, progress);
         }
 
         /// <summary>
@@ -2010,7 +2017,17 @@ Mission Planner waits for 2 valid heartbeat packets before connecting
         /// Get param list from apm
         /// </summary>
         /// <returns></returns>
-        public async Task<MAVLinkParamList> getParamListAsync(uint sysid, byte compid)
+        public Task<MAVLinkParamList> getParamListAsync(uint sysid, byte compid)
+        {
+            var progress = new ParamLoadProgress(MAVlist[sysid, compid], sysid, compid);
+            (frmProgressReporter as IParamLoadReporter)?.Track(progress);
+            return getParamListAsync(sysid, compid, progress);
+        }
+
+        /// <summary>
+        /// Get param list from apm, telling <paramref name="progress"/> how it goes
+        /// </summary>
+        private async Task<MAVLinkParamList> getParamListAsync(uint sysid, byte compid, ParamLoadProgress progress)
         {
             List<int> indexsreceived = new List<int>();
 
@@ -2149,6 +2166,7 @@ Mission Planner waits for 2 valid heartbeat packets before connecting
                     if (frmProgressReporter != null)
                         this.frmProgressReporter.UpdateProgressAndStatus((indexsreceived.Count * 100) / param_total,
                             Strings.Gotparam + paramID);
+                    progress.Got(indexsreceived.Count, param_total);
 
                     // we hit the last param, jump striaght to retry if params missing
                     if (par.param_index == (param_total - 1))
@@ -2160,6 +2178,7 @@ Mission Planner waits for 2 valid heartbeat packets before connecting
 
 
             generatePacket((byte)MAVLINK_MSG_ID.PARAM_REQUEST_LIST, req, sysid, compid);
+            progress.ListRequested();
 
             short tenbytenindex = 0;
             DateTime overallTimeout = DateTime.Now.AddMinutes(5); // 5 minute overall timeout
@@ -2323,6 +2342,7 @@ Mission Planner waits for 2 valid heartbeat packets before connecting
 
             log.InfoFormat("list count {0}, rcvd total {1} indexseen count {2}", newparamlist.Count, param_total,
                 indexsreceived.Count);
+            progress.Finished(newparamlist.Count);
 
             MAVlist[sysid, compid].param.Clear();
             MAVlist[sysid, compid].param.TotalReported = param_total;

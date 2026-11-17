@@ -487,10 +487,11 @@ namespace MissionPlanner
 
             }
 
-            // generic status report screen
+            // the connect's and the parameter download's window: getParamList's title is "Getting Params <sysid>"
             MAVLinkInterface.CreateIProgressReporterDialogue += title =>
             {
-                var ret = new ProgressReporterDialogue() {StartPosition = FormStartPosition.CenterScreen, Text = title};
+                var ret = new ParamLoadDialogue(title != null && title.StartsWith(Strings.GettingParams))
+                    {StartPosition = FormStartPosition.CenterScreen, Text = title};
                 ThemeManager.ApplyThemeTo(ret);
                 return ret;
             };

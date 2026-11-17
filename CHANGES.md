@@ -122,6 +122,9 @@ Split percentages on every divider in the main GUI persist across launches, with
 ## Async Loading
 Parameter documentation and ranges (~6000 entries) load asynchronously, eliminating the multi-second freeze on the Full Parameter List screen.
 
+## Download Window
+The window over a parameter download shows the vehicle's firmware, board and frame, how far it has got, how many parameters are in of how many, whether the list is coming as a MAVFTP file or streamed, the link quality and the time taken. A failed download stays on screen with what went wrong. The connect's window matches it, in the theme.
+
 ## Search & Autocomplete
 Themed search bar with suggest-only autocomplete; search resets when navigating away. No warning dialog or obsolete presets on the param page.
 
