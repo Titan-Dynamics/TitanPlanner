@@ -41,7 +41,7 @@ namespace MissionPlanner.Controls
         private string status = "";
         private ParamLoadProgress load;
         private bool tall;
-        private Thread worker;
+        private volatile Thread worker;
         private Exception workerException;
         private string error;
         private bool finished;
@@ -102,7 +102,21 @@ namespace MissionPlanner.Controls
         public void RunBackgroundOperationAsync()
         {
             ThreadPool.QueueUserWorkItem(RunBackgroundOperation);
-            ShowDialog();
+            ShowDialog(OwnerWindow());
+        }
+
+        /// <summary>
+        /// The main window, which this one is kept above while it holds the input. Without an owner, Windows takes
+        /// whatever window is active, none when another program has the focus (as when the USB auto-connect starts a
+        /// connect), and the main window can then come up over this one, live but taking no input, with what holds it
+        /// out of sight behind.
+        /// </summary>
+        private IWin32Window OwnerWindow()
+        {
+            var main = MainV2.instance;
+            if (main == null || main.IsDisposed || !main.IsHandleCreated || main.InvokeRequired || !main.Visible)
+                return null;
+            return main;
         }
 
         /// <summary>Called from the work's thread.</summary>
@@ -185,6 +199,11 @@ namespace MissionPlanner.Controls
 
                 Post(() => Fail(doWorkArgs.ErrorMessage, e));
                 return;
+            }
+            finally
+            {
+                // the pool has the thread back: Tick's abort is for the work only
+                worker = null;
             }
 
             if (doWorkArgs.CancelRequested && doWorkArgs.CancelAcknowledged)
@@ -310,11 +329,12 @@ namespace MissionPlanner.Controls
                 Expand();
 
             // work that can't stop by itself, told to (as ProgressReporterDialogue does)
-            if (doWorkArgs.CancelRequested && doWorkArgs.ForceExit && worker != null && worker.IsAlive)
+            var thread = worker;
+            if (doWorkArgs.CancelRequested && doWorkArgs.ForceExit && thread != null && thread.IsAlive)
             {
                 try
                 {
-                    worker.Abort();
+                    thread.Abort();
                 }
                 catch
                 {

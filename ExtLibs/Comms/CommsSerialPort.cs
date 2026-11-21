@@ -205,6 +205,9 @@ namespace MissionPlanner.Comms
 
         private static readonly Dictionary<string, string> comportnamecache = new Dictionary<string, string>();
 
+        // the cache on its own, so GetCachedNiceName never waits behind a lookup or an enumeration holding locker
+        private static readonly object comportnamecacheLock = new object();
+
         private const int SystemPortEnumerationTimeoutMs = 2000;
 
         // last enumeration still running (a driver can stall it) and the last list it produced
@@ -356,10 +359,13 @@ namespace MissionPlanner.Comms
                 if (port == "AUTO" || port == "UDP" || port == "UDPCl" || port == "TCP" || port == "WS")
                     return "";
 
-                if (comportnamecache.ContainsKey(port))
+                lock (comportnamecacheLock)
                 {
-                    log.Info("done GetNiceName cache " + port + " " + comportnamecache[port]);
-                    return comportnamecache[port];
+                    if (comportnamecache.TryGetValue(port, out var cached))
+                    {
+                        log.Info("done GetNiceName cache " + port + " " + cached);
+                        return cached;
+                    }
                 }
 
                 log.Info("start GetNiceName " + port);
@@ -371,10 +377,23 @@ namespace MissionPlanner.Comms
 
                 log.Info("done GetNiceName " + port + " = " + portnamenice);
 
-                comportnamecache[port] = portnamenice;
+                lock (comportnamecacheLock)
+                    comportnamecache[port] = portnamenice;
 
                 return portnamenice;
             }
+        }
+
+        /// <summary>
+        /// The name GetNiceName found for <paramref name="port"/>, or "" until it has looked: never waits on a lookup,
+        /// for drawing a list of ports on the UI thread.
+        /// </summary>
+        public static string GetCachedNiceName(string port)
+        {
+            if (port == null)
+                return "";
+            lock (comportnamecacheLock)
+                return comportnamecache.TryGetValue(port, out var name) ? name : "";
         }
 
         public delegate string EventArgsDeviceName(string port);

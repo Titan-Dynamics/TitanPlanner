@@ -783,8 +783,27 @@ namespace MissionPlanner
             _connectionControl = toolStripConnectionControl.ConnectionControl;
             _connectionControl.CMB_baudrate.TextChanged += this.CMB_baudrate_TextChanged;
             _connectionControl.CMB_serialport.SelectedIndexChanged += this.CMB_serialport_SelectedIndexChanged;
-            _connectionControl.CMB_serialport.Click += this.CMB_serialport_Click;
+            _connectionControl.CMB_serialport.DropDownClosed += this.CMB_serialport_DropDownClosed;
             _connectionControl.cmb_sysid.Click += cmb_sysid_Click;
+
+            // a port plugged in or out shows in the list: read within half a second of the device's notifications,
+            // once however many come. Arrival and removal only: COM ports are broadcast, and WndProc registers for USB
+            // devices (WinUSB's among them), where DBT_DEVNODES_CHANGED comes for any device at all
+            _serialportsSettle = new System.Windows.Forms.Timer {Interval = 500};
+            _serialportsSettle.Tick += (settleSender, settleArgs) =>
+            {
+                _serialportsSettle.Stop();
+                RefreshSerialportList();
+            };
+            DeviceChanged += deviceChange =>
+            {
+                if (deviceChange == WM_DEVICECHANGE_enum.DBT_DEVICEARRIVAL ||
+                    deviceChange == WM_DEVICECHANGE_enum.DBT_DEVICEREMOVECOMPLETE)
+                {
+                    if (!_serialportsSettle.Enabled)
+                        _serialportsSettle.Start();
+                }
+            };
 
             _connectionControl.ShowLinkStats += (sender, e) => ShowConnectionStatsForm();
             srtm.datadirectory = $"{Settings.GetDataDirectory()}srtm";
@@ -826,6 +845,9 @@ namespace MissionPlanner
                 _connectionControl.CMB_baudrate.SelectedIndex = 8;
                 _connectionControl.CMB_serialport.SelectedIndex = 0;
             }
+
+            // the ports' names, for the list to draw them with, looked up off this thread
+            RefreshSerialportList();
             // ** Done
 
             splash?.Refresh();
@@ -1377,36 +1399,163 @@ namespace MissionPlanner
             ThemeManager.ApplyThemeTo(this.connectionStatsForm);
         }
 
-        private void CMB_serialport_Click(object sender, EventArgs e)
+        private void CMB_serialport_DropDownClosed(object sender, EventArgs e)
         {
-            string oldport = _connectionControl.CMB_serialport.Text;
-            PopulateSerialportList();
-            if (_connectionControl.CMB_serialport.Items.Contains(oldport))
-                _connectionControl.CMB_serialport.Text = oldport;
+            // once the pick has gone through: what was read while the list was open, and a fresh read for the next
+            // time it opens
+            BeginInvoke((Action) (() =>
+            {
+                ShowPendingSerialports();
+                RefreshSerialportList();
+            }));
         }
 
+        // the serial ports read while the list was open, for when it closes
+        private string[] _pendingSerialports;
+
+        // whether a read of the serial ports is running (1), and whether one was asked for since it began
+        private int _serialportsReading;
+        private volatile bool _serialportsAgain;
+
+        // the read a device's notifications set off
+        private System.Windows.Forms.Timer _serialportsSettle;
+
+        /// <summary>The port list, read on this thread: at startup, before the window shows.</summary>
         private void PopulateSerialportList()
         {
-            _connectionControl.CMB_serialport.Items.Clear();
+            ShowSerialports(ReadSerialports(false));
+        }
 
-            _connectionControl.CMB_serialport.Items.Add("AUTO");
+        /// <summary>
+        /// The serial ports, null if they couldn't be read; with <paramref name="names"/>, their names looked up for
+        /// the list to draw (WMI, up to a second a port the first time). The registry read and the WinUSB and
+        /// Bluetooth enumerations behind GetPortNames are slow enough to keep off the UI thread as well.
+        /// </summary>
+        private static string[] ReadSerialports(bool names)
+        {
+            string[] ports;
             try
             {
-                _connectionControl.CMB_serialport.Items.AddRange(SerialPort.GetPortNames());
+                ports = SerialPort.GetPortNames();
             }
             catch (Exception ex)
             {
                 log.Error("Failed to populate serial port dropdown.", ex);
+                return null;
             }
 
-            _connectionControl.CMB_serialport.Items.Add("TCP");
-            _connectionControl.CMB_serialport.Items.Add("UDP");
-            _connectionControl.CMB_serialport.Items.Add("UDPCl");
-            _connectionControl.CMB_serialport.Items.Add("WS");
-
-            foreach (var item in ExtraConnectionList)
+            if (names && !MONO)
             {
-                _connectionControl.CMB_serialport.Items.Add(item.Label);
+                foreach (var port in ports)
+                    SerialPort.GetNiceName(port);
+            }
+
+            return ports;
+        }
+
+        /// <summary>
+        /// Reads the serial ports on a pool thread and shows them in the list if that changes it. Asked again while a
+        /// read runs, it reads once more when that one is done, so the list ends up with the newest.
+        /// </summary>
+        public void RefreshSerialportList()
+        {
+            _serialportsAgain = true;
+            if (Interlocked.CompareExchange(ref _serialportsReading, 1, 0) != 0)
+                return;
+
+            Task.Run(() =>
+            {
+                try
+                {
+                    while (_serialportsAgain)
+                    {
+                        _serialportsAgain = false;
+                        var ports = ReadSerialports(true);
+                        if (ports != null)
+                            PostSerialports(ports);
+                    }
+                }
+                finally
+                {
+                    Interlocked.Exchange(ref _serialportsReading, 0);
+                }
+
+                // asked for after the last read began, and turned away before the flag was cleared
+                if (_serialportsAgain)
+                    RefreshSerialportList();
+            });
+        }
+
+        private void PostSerialports(string[] ports)
+        {
+            try
+            {
+                if (IsHandleCreated && !IsDisposed)
+                    BeginInvoke((Action) (() => ShowSerialports(ports)));
+            }
+            catch (InvalidOperationException)
+            {
+                // the window is closing
+            }
+        }
+
+        private void ShowPendingSerialports()
+        {
+            var ports = _pendingSerialports;
+            if (ports != null)
+                ShowSerialports(ports);
+        }
+
+        /// <summary>
+        /// The list: AUTO, <paramref name="ports"/>, the network links and the extra connections, changed only if
+        /// that changes it. What is picked stays picked, without counting as a new pick: a port unplugged while
+        /// picked stays in the list until something else is (connecting to it says it is gone). A list that is open
+        /// changes when it closes, not under the pointer.
+        /// </summary>
+        private void ShowSerialports(string[] ports)
+        {
+            var combo = _connectionControl.CMB_serialport;
+            if (IsDisposed || combo.IsDisposed)
+                return;
+
+            if (combo.DroppedDown)
+            {
+                _pendingSerialports = ports ?? new string[0];
+                return;
+            }
+
+            _pendingSerialports = null;
+
+            var items = new List<string> {"AUTO"};
+            if (ports != null)
+                items.AddRange(ports);
+            int afterPorts = items.Count;
+            items.AddRange(new[] {"TCP", "UDP", "UDPCl", "WS"});
+            items.AddRange(ExtraConnectionList.Select(a => a.Label).Where(label => !string.IsNullOrEmpty(label)));
+
+            var picked = combo.SelectedItem?.ToString();
+            if (!string.IsNullOrEmpty(picked) && !items.Contains(picked))
+                items.Insert(afterPorts, picked);
+
+            // the picked port's name may have come in with this read
+            combo.Invalidate();
+
+            if (items.SequenceEqual(combo.Items.Cast<object>().Select(a => a?.ToString())))
+                return;
+
+            combo.BeginUpdate();
+            combo.SelectedIndexChanged -= CMB_serialport_SelectedIndexChanged;
+            try
+            {
+                combo.Items.Clear();
+                combo.Items.AddRange(items.Cast<object>().ToArray());
+                if (!string.IsNullOrEmpty(picked))
+                    combo.SelectedIndex = items.IndexOf(picked);
+            }
+            finally
+            {
+                combo.SelectedIndexChanged += CMB_serialport_SelectedIndexChanged;
+                combo.EndUpdate();
             }
         }
 
@@ -4152,7 +4301,13 @@ namespace MissionPlanner
                 shouldBlock: () => IsOnInstallFirmwareScreen(),
                 deviceChangedSubscribe: handler => DeviceChanged += handler,
                 deviceChangedUnsubscribe: handler => DeviceChanged -= handler,
-                refreshPortList: () => this.BeginInvokeIfRequired(() => PopulateSerialportList()),
+                // read on the auto-connect's thread, and shown before its connect (posted after) looks for the port
+                refreshPortList: () =>
+                {
+                    var ports = ReadSerialports(true);
+                    if (ports != null)
+                        PostSerialports(ports);
+                },
                 showToast: msg => this.BeginInvokeIfRequired(() =>
                 {
                     var toast = new Controls.ParamWriteToast(msg, this);
@@ -4164,6 +4319,11 @@ namespace MissionPlanner
                     {
                         if (comPort.BaseStream.IsOpen || IsOnInstallFirmwareScreen())
                             return;
+
+                        // a list left open holds back the ports read meanwhile: close it, for the port to be in it
+                        if (_connectionControl.CMB_serialport.DroppedDown)
+                            _connectionControl.CMB_serialport.DroppedDown = false;
+                        ShowPendingSerialports();
 
                         var portIndex = _connectionControl.CMB_serialport.Items.IndexOf(port);
                         if (portIndex < 0)

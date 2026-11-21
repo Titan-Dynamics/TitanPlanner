@@ -230,7 +230,9 @@ namespace MissionPlanner.Controls
             string text = combo.Items[e.Index].ToString();
             if (!MainV2.MONO)
             {
-                text = text + " " + SerialPort.GetNiceName(text);
+                // the name MainV2 looked up as it read the ports: a lookup here (WMI, up to a second a port) would
+                // hold the list up as it draws
+                text = text + " " + SerialPort.GetCachedNiceName(text);
             }
 
             DrawRow(combo, e, text);

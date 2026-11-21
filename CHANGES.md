@@ -123,7 +123,7 @@ Split percentages on every divider in the main GUI persist across launches, with
 Parameter documentation and ranges (~6000 entries) load asynchronously, eliminating the multi-second freeze on the Full Parameter List screen.
 
 ## Download Window
-The window over a parameter download shows the vehicle's firmware, board and frame, how far it has got, how many parameters are in of how many, whether the list is coming as a MAVFTP file or streamed, the link quality and the time taken. A failed download stays on screen with what went wrong. The connect's window matches it, in the theme.
+The window over a parameter download shows the vehicle's firmware, board and frame, how far it has got, how many parameters are in of how many, whether the list is coming as a MAVFTP file or streamed, the link quality and the time taken. A failed download stays on screen with what went wrong. The connect's window matches it, in the theme. Both stay above the main window, so neither can be lost behind it while the main window waits on it.
 
 ## Search & Autocomplete
 Themed search bar with suggest-only autocomplete; search resets when navigating away. No warning dialog or obsolete presets on the param page.
@@ -164,6 +164,9 @@ Save and load named configuration profiles for the Mission Planner application i
 
 ## USB Auto-Connect
 A dedicated USB auto-connect path with VID coverage for all common flight controllers (including Cube). Toast notification fires when a device auto-connects. Auto-connect is disabled while flashing firmware to avoid races.
+
+## Port List
+The connect corner's port list follows serial ports as they are plugged in and out, and is read again each time it closes. The ports and their names are read in the background, so the list never holds up the window, and it doesn't change while it is open.
 
 ## ELRS
 ELRS airport support added.
