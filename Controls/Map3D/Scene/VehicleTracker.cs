@@ -28,23 +28,49 @@ namespace MissionPlanner.Controls.Scene3D
         /// <summary>Vehicle position in local scene coordinates (z is AMSL).</summary>
         public double X, Y, Z;
 
+        /// <summary>The attitude as reported, in degrees: for a hovering tailsitter, its hover frame's.</summary>
         public float Roll, Pitch, Yaw;
         public double NavBearing, GpsHeading;
+
+        /// <summary>
+        /// The model's attitude in degrees: the model turned NoseUp nose up about its wings, then by these. It is Roll,
+        /// Pitch and Yaw, but for a tailsitter its airframe's.
+        /// </summary>
+        public float ModelRoll, ModelPitch, ModelYaw, NoseUp;
+
+        // A tailsitter's airframe is smoothed as Euler angles in a frame turned _modelFrame degrees nose up from it, moved
+        // by 90° whenever the airframe's pitch in it passes the limit, so they never near straight up or down, where roll
+        // and yaw can't be told apart. The model is drawn turned back by NoseUp, which eases to _modelFrame: when the
+        // airframe is taken to have turned without the attitude showing it, the model turns there.
+        const double ModelFrameLimit = 60;
+        const double NoseUpEaseSeconds = 0.3;
+        readonly TailsitterFrame _tailsitter = new TailsitterFrame();
+        readonly SimpleKalmanFilter _modelRoll = new SimpleKalmanFilter(0.015, 2.0);
+        readonly SimpleKalmanFilter _modelPitch = new SimpleKalmanFilter(0.015, 2.0);
+        readonly SimpleKalmanFilter _modelYaw = new SimpleKalmanFilter(0.015, 2.5);
+        readonly double[] _rotation = new double[9];
+        bool _modelInitialized, _drawnAsReported;
+        double _modelFrame, _noseUp;
+        DateTime _lastModelUpdate;
 
         /// <summary>Forget filter state so the next update jumps straight to the vehicle.</summary>
         public void Reset()
         {
             _initialized = false;
+            _modelInitialized = false;
+            _drawnAsReported = false;
         }
 
         /// <summary>
         /// Takes this frame's pose. With smooth off it is the telemetry as it last arrived, unfiltered and not carried
         /// along between updates. Disarmed, the position is never eased either, so a first fix or the GPS settling
         /// on the ground puts the vehicle (and the camera following it) straight there instead of gliding across
-        /// the map; armed, a fix more than <see cref="JumpDistance"/> away is jumped to as well.
+        /// the map; armed, a fix more than <see cref="JumpDistance"/> away is jumped to as well. For a tailsitter, tailsitter
+        /// is the frame its state says the attitude is in and hoverAngle the hover frame's angle nose down from the airframe.
         /// </summary>
         public void Update(WorldFrame frame, PointLatLngAlt center, DateTime centerTime, Vector3 velocity,
-            Vector3 attitude, double groundHeight, double rawNavBearing, double rawGpsHeading, bool smooth, bool armed)
+            Vector3 attitude, double groundHeight, double rawNavBearing, double rawGpsHeading, bool smooth, bool armed,
+            TailsitterFrame.Expect? tailsitter = null, double hoverAngle = 90)
         {
             if (!smooth)
             {
@@ -61,6 +87,7 @@ namespace MissionPlanner.Controls.Scene3D
 
                 // smoothing switched back on starts from here, not from where it left off
                 _initialized = false;
+                UpdateModel(attitude, false, tailsitter, hoverAngle);
                 return;
             }
 
@@ -100,6 +127,123 @@ namespace MissionPlanner.Controls.Scene3D
             Yaw = (float)_yaw.UpdateAngle(attitude.Z);
             NavBearing = _navBearing.UpdateAngle(rawNavBearing);
             GpsHeading = _gpsHeading.UpdateAngle(rawGpsHeading);
+            UpdateModel(attitude, true, tailsitter, hoverAngle);
+        }
+
+        void UpdateModel(Vector3 attitude, bool smooth, TailsitterFrame.Expect? tailsitter, double hoverAngle)
+        {
+            if (tailsitter == null)
+            {
+                _tailsitter.Clear();
+                _modelInitialized = false;
+                _drawnAsReported = true;
+                ModelRoll = Roll;
+                ModelPitch = Pitch;
+                ModelYaw = Yaw;
+                NoseUp = 0;
+                return;
+            }
+
+            var now = DateTime.Now;
+            double turned = _tailsitter.Update(tailsitter.Value, hoverAngle, attitude.X, attitude.Y, attitude.Z, now);
+            // the airframe is the report turned this far nose up
+            double reportedFrame = _tailsitter.Hover ? hoverAngle : 0;
+
+            if (!smooth)
+            {
+                ModelRoll = (float)attitude.X;
+                ModelPitch = (float)attitude.Y;
+                ModelYaw = (float)attitude.Z;
+                NoseUp = (float)reportedFrame;
+                _modelInitialized = false;
+                _drawnAsReported = false;
+                return;
+            }
+
+            double roll, pitch, yaw;
+            if (!_modelInitialized)
+            {
+                _modelFrame = reportedFrame;
+                ReadAirframe(attitude, reportedFrame, out roll, out pitch, out yaw);
+                if (Math.Abs(pitch) > ModelFrameLimit)
+                {
+                    _modelFrame += pitch > 0 ? 90 : -90;
+                    ReadAirframe(attitude, reportedFrame, out roll, out pitch, out yaw);
+                }
+
+                _modelRoll.Reset(roll);
+                _modelPitch.Reset(pitch);
+                _modelYaw.Reset(yaw);
+                // drawn as reported until now (before the vehicle was known to be a tailsitter), the model turns from
+                // there to the airframe; otherwise it starts there
+                _noseUp = _drawnAsReported ? _modelFrame - reportedFrame : _modelFrame;
+                _drawnAsReported = false;
+                _modelInitialized = true;
+                _lastModelUpdate = now;
+            }
+            else
+            {
+                // the airframe taken to have turned: it is smoothed on from where it was, and the model turns to it
+                _modelFrame += turned;
+                ReadAirframe(attitude, reportedFrame, out roll, out pitch, out yaw);
+                if (Math.Abs(pitch) > ModelFrameLimit)
+                {
+                    TurnModelFrame(pitch > 0 ? 90 : -90);
+                    ReadAirframe(attitude, reportedFrame, out roll, out pitch, out yaw);
+                }
+            }
+
+            ModelRoll = (float)_modelRoll.UpdateAngle(roll);
+            ModelPitch = (float)_modelPitch.UpdateAngle(pitch);
+            ModelYaw = (float)_modelYaw.UpdateAngle(yaw);
+
+            double dt = Math.Max(0, Math.Min(0.5, (now - _lastModelUpdate).TotalSeconds));
+            _lastModelUpdate = now;
+            _noseUp += (_modelFrame - _noseUp) * (1 - Math.Exp(-dt / NoseUpEaseSeconds));
+
+            // whole turns of the frame (a tailsitter looping) leave the model where it is
+            if (Math.Abs(_modelFrame) >= 360)
+            {
+                double turns = 360 * Math.Truncate(_modelFrame / 360);
+                _modelFrame -= turns;
+                _noseUp -= turns;
+            }
+
+            NoseUp = (float)_noseUp;
+        }
+
+        // the airframe's attitude in the model's frame: the report turned nose up into the airframe, then back by the frame
+        void ReadAirframe(Vector3 attitude, double reportedFrame, out double roll, out double pitch, out double yaw)
+        {
+            EulerRotation.FromEuler(attitude.X, attitude.Y, attitude.Z, _rotation);
+            EulerRotation.PitchedUp(_rotation, reportedFrame - _modelFrame, _rotation);
+            EulerRotation.ToEuler(_rotation, out roll, out pitch, out yaw);
+        }
+
+        // moves the model's frame step degrees nose up and the smoothed angles into it, keeping their rates, so the model
+        // is drawn where it was
+        void TurnModelFrame(double step)
+        {
+            double roll = _modelRoll.Value, pitch = _modelPitch.Value, yaw = _modelYaw.Value;
+            EulerRotation.FromEuler(roll, pitch, yaw, _rotation);
+            EulerRotation.PitchedUp(_rotation, -step, _rotation);
+            double newRoll, newPitch, newYaw;
+            EulerRotation.ToEuler(_rotation, out newRoll, out newPitch, out newYaw);
+            _modelRoll.Shift(Wrap180(newRoll - roll));
+            _modelPitch.Shift(Wrap180(newPitch - pitch));
+            _modelYaw.Shift(Wrap180(newYaw - yaw));
+            _modelFrame += step;
+            _noseUp += step;
+        }
+
+        static double Wrap180(double angle)
+        {
+            angle %= 360;
+            if (angle > 180)
+                angle -= 360;
+            else if (angle <= -180)
+                angle += 360;
+            return angle;
         }
     }
 

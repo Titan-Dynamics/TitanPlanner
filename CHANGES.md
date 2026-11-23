@@ -53,6 +53,8 @@ The connected vehicle renders in 3D with default STL models per MAV type (plane,
 
 With several vehicles connected, every one is drawn with its own model, the ones not selected at half opacity as on the 2D map, each with a locating beacon (rings that grow out to the size of the waypoint markers and fade) and its system ID just above it, so they stand out from far off; selecting another puts the camera straight behind it, with its trail already recorded.
 
+A tailsitter (`Q_TAILSIT_ENABLE` set) is drawn the way it really sits: nose up while it hovers, and steady on its tail on the ground. Through each transition the model turns with the airframe, and when the model's orientation has to be corrected it turns there smoothly rather than snapping.
+
 ## Terrain Streaming Engine
 Terrain streams Google Earth style:
 - **Screen-space level of detail.** A tile quadtree is refined until each imagery texel is about a pixel on screen, up to zoom 24 within 100 m of the ground, 22 up to 500 m and 20 above, so detail follows what the camera actually sees; there is no zoom setting to manage.

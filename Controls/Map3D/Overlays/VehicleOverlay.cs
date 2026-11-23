@@ -295,9 +295,11 @@ namespace MissionPlanner.Controls.Scene3D
         {
             // The STL is in millimetres.
             var model = Matrix4.CreateScale(scale / 1000f);
-            model = Matrix4.Mult(model, Matrix4.CreateRotationY(vehicle.Roll * (float)Math.PI / 180));
-            model = Matrix4.Mult(model, Matrix4.CreateRotationX(vehicle.Pitch * (float)Math.PI / 180));
-            model = Matrix4.Mult(model, Matrix4.CreateRotationZ(-vehicle.Yaw * (float)Math.PI / 180));
+            if (vehicle.NoseUp != 0)
+                model = Matrix4.Mult(model, Matrix4.CreateRotationX(vehicle.NoseUp * (float)Math.PI / 180));
+            model = Matrix4.Mult(model, Matrix4.CreateRotationY(vehicle.ModelRoll * (float)Math.PI / 180));
+            model = Matrix4.Mult(model, Matrix4.CreateRotationX(vehicle.ModelPitch * (float)Math.PI / 180));
+            model = Matrix4.Mult(model, Matrix4.CreateRotationZ(-vehicle.ModelYaw * (float)Math.PI / 180));
             model = Matrix4.Mult(model, Matrix4.CreateTranslation((float)vehicle.X, (float)vehicle.Y, (float)vehicle.Z));
             _model.Draw(ref projection, ref view, model, color, opacity);
         }

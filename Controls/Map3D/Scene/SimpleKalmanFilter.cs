@@ -153,6 +153,12 @@ namespace MissionPlanner.Controls
             return angle;
         }
 
+        /// <summary>Moves the estimate by delta, keeping its velocity and certainty.</summary>
+        public void Shift(double delta)
+        {
+            _x += delta;
+        }
+
         public void Reset(double value)
         {
             _x = value;

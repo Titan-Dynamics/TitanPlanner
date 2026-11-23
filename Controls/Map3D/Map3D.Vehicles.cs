@@ -44,6 +44,15 @@ namespace MissionPlanner.Controls
             public VehicleFeed Feed;
             public double Ground;
 
+            // whether it is a tailsitter and its hover frame's angle, read from its parameters every few seconds
+            public bool Tailsitter;
+            public double HoverAngle = 90;
+            public DateTime TailsitterRead = DateTime.MinValue;
+
+            // the mode of the last heartbeat read
+            public MAVLink.MAVLinkMessage Heartbeat;
+            public uint Mode;
+
             public VehicleView(MAVState vehicle, string stlPath)
             {
                 Vehicle = vehicle;
@@ -132,8 +141,88 @@ namespace MissionPlanner.Controls
                     view.Ground = ground;
 
                 view.Tracker.Update(_frame, feed.Position, feed.Time, feed.Velocity, feed.Attitude, view.Ground,
-                    cs.nav_bearing, cs.groundcourse, _settings.SmoothMovement, cs.armed);
+                    cs.nav_bearing, cs.groundcourse, _settings.SmoothMovement, cs.armed, TailsitterExpect(view),
+                    view.HoverAngle);
                 view.Overlay.RecordTrail(_frame, view.Tracker, _settings.ShowTrail, cs.armed);
+            }
+        }
+
+        // ArduPlane's modes that always hover (QSTABILIZE, QHOVER, QLOITER, QLAND, QAUTOTUNE, QACRO), and those that hover
+        // for some of what they fly (AUTO, RTL, AVOID_ADSB and GUIDED with their VTOL legs, QRTL with its approach on the
+        // wing); the rest fly on the wing
+        private static readonly HashSet<uint> HoverModes = new HashSet<uint> { 17, 18, 19, 20, 22, 23 };
+        private static readonly HashSet<uint> MixedModes = new HashSet<uint> { 10, 11, 14, 15, 21 };
+
+        /// <summary>
+        /// For a tailsitter (Q_TAILSIT_ENABLE set), the frame its state says its attitude is in: its VTOL state while
+        /// it sends one, else its mode. Null for anything else.
+        /// </summary>
+        private static TailsitterFrame.Expect? TailsitterExpect(VehicleView view)
+        {
+            var mav = view.Vehicle;
+            var now = DateTime.Now;
+            if (now - view.TailsitterRead > TimeSpan.FromSeconds(3) || now < view.TailsitterRead)
+            {
+                view.TailsitterRead = now;
+                view.Tailsitter = ReadTailsitter(mav, out view.HoverAngle);
+            }
+
+            if (!view.Tailsitter)
+                return null;
+
+            var heartbeat = mav.getPacketLast((uint)MAVLink.MAVLINK_MSG_ID.HEARTBEAT);
+            if (heartbeat == null)
+                return TailsitterFrame.Expect.Either;
+
+            // EXTENDED_SYS_STATE isn't streamed by default, but when it is, its VTOL state says the frame exactly:
+            // the hover frame from the end of the transition into hover to the end of the one out of it
+            var state = mav.getPacketLast((uint)MAVLink.MAVLINK_MSG_ID.EXTENDED_SYS_STATE);
+            if (state != null && (heartbeat.rxtime - state.rxtime).TotalSeconds < 3)
+            {
+                switch ((MAVLink.MAV_VTOL_STATE)mav.cs.vtol_state)
+                {
+                    case MAVLink.MAV_VTOL_STATE.MC:
+                    case MAVLink.MAV_VTOL_STATE.TRANSITION_TO_FW:
+                        return TailsitterFrame.Expect.Hover;
+                    case MAVLink.MAV_VTOL_STATE.FW:
+                    case MAVLink.MAV_VTOL_STATE.TRANSITION_TO_MC:
+                        return TailsitterFrame.Expect.Wing;
+                }
+            }
+
+            if (!ReferenceEquals(heartbeat, view.Heartbeat))
+            {
+                view.Heartbeat = heartbeat;
+                view.Mode = heartbeat.ToStructure<MAVLink.mavlink_heartbeat_t>().custom_mode;
+            }
+
+            if (HoverModes.Contains(view.Mode))
+                return TailsitterFrame.Expect.Hover;
+            return MixedModes.Contains(view.Mode) ? TailsitterFrame.Expect.Either : TailsitterFrame.Expect.Wing;
+        }
+
+        // a quadplane with Q_TAILSIT_ENABLE set; its attitude's hover frame is 90° plus Q_TRIM_PITCH nose down from it
+        private static bool ReadTailsitter(MAVState mav, out double hoverAngle)
+        {
+            hoverAngle = 90;
+            if (!ArduPilot.Common.IsQuadPlane(mav))
+                return false;
+
+            try
+            {
+                var enable = mav.param["Q_TAILSIT_ENABLE"];
+                if (enable == null || enable.Value <= 0)
+                    return false;
+
+                var trim = mav.param["Q_TRIM_PITCH"];
+                if (trim != null)
+                    hoverAngle = 90 + trim.Value;
+                return true;
+            }
+            catch
+            {
+                // the parameters being reloaded
+                return false;
             }
         }
 

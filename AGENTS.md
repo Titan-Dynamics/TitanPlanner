@@ -176,7 +176,12 @@ the git log has those. `ChangeLog.txt` is upstream's and is not maintained here.
   and draws the rest as the 2D map does (`GMapMarkerBase.InactiveDisplayStyle`), marked by `VehicleMarkerOverlay`'s
   beacon. `QuadRenderer` quads take an opacity, which the beacon and the waypoint markers' fade near the vehicle use.
   `VehicleTracker` dead-reckons and Kalman-filters the pose (MAVLink velocity is north, east, down); the trail and
-  ADS-B prediction smooth too, and `Map3DSettings.SmoothMovement` turns all of it off for raw telemetry.
+  ADS-B prediction smooth too, and `Map3DSettings.SmoothMovement` turns all of it off for raw telemetry. A tailsitter's
+  attitude arrives in its hover frame (90° plus `Q_TRIM_PITCH` nose down from the airframe) from the end of the
+  transition into hover to the end of the one out of it; `Scene/TailsitterFrame` finds which frame each report is in (the
+  vehicle's VTOL state or mode, and the 90° jump the report makes at a transition's end), and the tracker gives the model
+  the airframe's attitude (`NoseUp`, then `ModelRoll`/`ModelPitch`/`ModelYaw`) while the cameras and lines keep the
+  reported one.
   `CloudRenderer` draws the layers `Scene/CloudField` defines (a tiling noise texture, heights kept above the
   vehicle, and the coverage thresholds for a cloud density, measured on the texture with the shader's sampling) as
   quads shaded in the fragment shader. Selection, loading and the cloud field are pure logic with tests in
