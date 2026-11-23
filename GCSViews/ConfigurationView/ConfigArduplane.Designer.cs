@@ -55,6 +55,8 @@
             this.label38 = new System.Windows.Forms.Label();
             this.LIM_ROLL_CD = new MissionPlanner.Controls.MavlinkNumericUpDown();
             this.label37 = new System.Windows.Forms.Label();
+            this.PTCH_TRIM_DEG = new MissionPlanner.Controls.MavlinkNumericUpDown();
+            this.label84 = new System.Windows.Forms.Label();
             this.groupBox16 = new System.Windows.Forms.GroupBox();
             this.KFF_PTCH2THR = new MissionPlanner.Controls.MavlinkNumericUpDown();
             this.label83 = new System.Windows.Forms.Label();
@@ -148,6 +150,7 @@
             ((System.ComponentModel.ISupportInitialize)(this.LIM_PITCH_MIN)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.LIM_PITCH_MAX)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.LIM_ROLL_CD)).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)(this.PTCH_TRIM_DEG)).BeginInit();
             this.groupBox16.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.KFF_PTCH2THR)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.KFF_RDDRMIX)).BeginInit();
@@ -340,6 +343,8 @@
             this.groupBox2.Controls.Add(this.label38);
             this.groupBox2.Controls.Add(this.LIM_ROLL_CD);
             this.groupBox2.Controls.Add(this.label37);
+            this.groupBox2.Controls.Add(this.PTCH_TRIM_DEG);
+            this.groupBox2.Controls.Add(this.label84);
             resources.ApplyResources(this.groupBox2, "groupBox2");
             this.groupBox2.Name = "groupBox2";
             this.groupBox2.TabStop = false;
@@ -385,6 +390,20 @@
             // 
             resources.ApplyResources(this.label37, "label37");
             this.label37.Name = "label37";
+            // 
+            // PTCH_TRIM_DEG
+            // 
+            resources.ApplyResources(this.PTCH_TRIM_DEG, "PTCH_TRIM_DEG");
+            this.PTCH_TRIM_DEG.Max = 1F;
+            this.PTCH_TRIM_DEG.Min = 0F;
+            this.PTCH_TRIM_DEG.Name = "PTCH_TRIM_DEG";
+            this.PTCH_TRIM_DEG.ParamName = null;
+            this.PTCH_TRIM_DEG.ValueUpdated += new System.EventHandler(this.numeric_ValueUpdated);
+            // 
+            // label84
+            // 
+            resources.ApplyResources(this.label84, "label84");
+            this.label84.Name = "label84";
             // 
             // groupBox16
             // 
@@ -1032,6 +1051,7 @@
             ((System.ComponentModel.ISupportInitialize)(this.LIM_PITCH_MIN)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.LIM_PITCH_MAX)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.LIM_ROLL_CD)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this.PTCH_TRIM_DEG)).EndInit();
             this.groupBox16.ResumeLayout(false);
             ((System.ComponentModel.ISupportInitialize)(this.KFF_PTCH2THR)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.KFF_RDDRMIX)).EndInit();
@@ -1105,6 +1125,8 @@
         private System.Windows.Forms.Label label38;
         private Controls.MavlinkNumericUpDown LIM_ROLL_CD;
         private System.Windows.Forms.Label label37;
+        private Controls.MavlinkNumericUpDown PTCH_TRIM_DEG;
+        private System.Windows.Forms.Label label84;
         private System.Windows.Forms.GroupBox groupBox16;
         private Controls.MavlinkNumericUpDown KFF_PTCH2THR;
         private System.Windows.Forms.Label label83;

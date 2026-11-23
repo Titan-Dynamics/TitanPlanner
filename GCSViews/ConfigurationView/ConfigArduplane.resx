@@ -729,6 +729,57 @@
   <data name="&gt;&gt;label37.ZOrder" xml:space="preserve">
     <value>5</value>
   </data>
+  <data name="PTCH_TRIM_DEG.Enabled" type="System.Boolean, mscorlib">
+    <value>False</value>
+  </data>
+  <data name="PTCH_TRIM_DEG.Location" type="System.Drawing.Point, System.Drawing">
+    <value>111, 82</value>
+  </data>
+  <data name="PTCH_TRIM_DEG.Size" type="System.Drawing.Size, System.Drawing">
+    <value>78, 20</value>
+  </data>
+  <data name="PTCH_TRIM_DEG.TabIndex" type="System.Int32, mscorlib">
+    <value>13</value>
+  </data>
+  <data name="&gt;&gt;PTCH_TRIM_DEG.Name" xml:space="preserve">
+    <value>PTCH_TRIM_DEG</value>
+  </data>
+  <data name="&gt;&gt;PTCH_TRIM_DEG.Type" xml:space="preserve">
+    <value>MissionPlanner.Controls.MavlinkNumericUpDown, MissionPlanner, Version=1.3.8889.42655, Culture=neutral, PublicKeyToken=null</value>
+  </data>
+  <data name="&gt;&gt;PTCH_TRIM_DEG.Parent" xml:space="preserve">
+    <value>groupBox2</value>
+  </data>
+  <data name="&gt;&gt;PTCH_TRIM_DEG.ZOrder" xml:space="preserve">
+    <value>6</value>
+  </data>
+  <data name="label84.ImeMode" type="System.Windows.Forms.ImeMode, System.Windows.Forms">
+    <value>NoControl</value>
+  </data>
+  <data name="label84.Location" type="System.Drawing.Point, System.Drawing">
+    <value>6, 86</value>
+  </data>
+  <data name="label84.Size" type="System.Drawing.Size, System.Drawing">
+    <value>57, 13</value>
+  </data>
+  <data name="label84.TabIndex" type="System.Int32, mscorlib">
+    <value>14</value>
+  </data>
+  <data name="label84.Text" xml:space="preserve">
+    <value>Pitch Trim</value>
+  </data>
+  <data name="&gt;&gt;label84.Name" xml:space="preserve">
+    <value>label84</value>
+  </data>
+  <data name="&gt;&gt;label84.Type" xml:space="preserve">
+    <value>System.Windows.Forms.Label, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </data>
+  <data name="&gt;&gt;label84.Parent" xml:space="preserve">
+    <value>groupBox2</value>
+  </data>
+  <data name="&gt;&gt;label84.ZOrder" xml:space="preserve">
+    <value>7</value>
+  </data>
   <data name="groupBox2.Location" type="System.Drawing.Point, System.Drawing">
     <value>213, 339</value>
   </data>

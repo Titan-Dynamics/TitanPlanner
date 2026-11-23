@@ -60,6 +60,8 @@ namespace MissionPlanner.GCSViews.ConfigurationView
             LIM_PITCH_MIN.setup(0, 0, 1, 1, "PTCH_LIM_MIN_DEG", MainV2.comPort.MAV.param);
             LIM_PITCH_MAX.setup(0, 0, 1, 1, "PTCH_LIM_MAX_DEG", MainV2.comPort.MAV.param);
             LIM_ROLL_CD.setup(0, 0, 1, 1, "ROLL_LIMIT_DEG", MainV2.comPort.MAV.param);
+            // the range and step are the metadata's when it has them
+            PTCH_TRIM_DEG.setup(-45, 45, 1, 0.1f, "PTCH_TRIM_DEG", MainV2.comPort.MAV.param);
 
             KFF_PTCH2THR.setup(0, 0, 1, 0, new string[] { "KFF_THR2PTCH","KFF_PTCH2THR"}, MainV2.comPort.MAV.param);
             KFF_RDDRMIX.setup(0, 0, 1, 0, "KFF_RDDRMIX", MainV2.comPort.MAV.param);
