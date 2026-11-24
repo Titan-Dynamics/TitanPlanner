@@ -215,6 +215,11 @@ the git log has those. `ChangeLog.txt` is upstream's and is not maintained here.
   them in a mission, handle drags), tested in `MissionPlannerTests/Utilities/AutolandPatternTests.cs`. The grid stays
   the mission: `GCSViews/FlightPlanner.Autoland.cs` writes the rows, finds the sequences again at the end of every
   `writeKML`, and draws the box and handles (`Controls/Autoland/`, excluded from the LIB build) with the editing panel.
+- **Fixed-wing Motor Setup.** A plane without Q_ENABLE gets `ConfigFixedWingMotorTest` (same menu name as `ConfigMotorTest`):
+  its motors are the outputs set to Throttle, Throttle Left or Throttle Right (`Utilities/FixedWingMotors`, tested in
+  `MissionPlannerTests/Utilities/FixedWingMotorsTests.cs`). ArduPlane's MAV_CMD_DO_MOTOR_TEST is the quadplane's only, so a
+  spin borrows the output: SERVOn_FUNCTION to 0, DO_SET_SERVO for the test, then the function back. The borrowed outputs
+  are kept in the settings (`FixedWingMotorTest_Borrowed`) until set back, and the page sets back any left over on open.
 - **Joystick.** `JoystickBase.mainloop` reads the joystick at `JoystickBase.RateHz` (25 to 100 Hz, the Send Rate on the
   joystick page) and signals each reading; `MainV2.joysticksend` waits on `WaitForReading` and sends it straight away
   (RC_CHANNELS_OVERRIDE, or MANUAL_CONTROL). `JoystickBase.FineTimer` holds Windows' timer at 1 ms while the joystick or

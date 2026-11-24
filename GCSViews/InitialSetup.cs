@@ -218,6 +218,11 @@ namespace MissionPlanner.GCSViews
             {
                 AddBackstageViewPage(typeof(ConfigMotorTest), rm.GetString("backstageViewPageMotorTest.Text"), isConnected && gotAllParams, mand);
             }
+            else if (MainV2.DisplayConfiguration.displayMotorTest && isPlane)
+            {
+                // a plane's motors are its throttle outputs, which ArduPlane's motor test doesn't spin
+                AddBackstageViewPage(typeof(ConfigFixedWingMotorTest), rm.GetString("backstageViewPageMotorTest.Text"), isConnected && gotAllParams, mand);
+            }
             if (MainV2.DisplayConfiguration.displayServoOutput)
             {
                 AddBackstageViewPage(typeof(ConfigRadioOutput), "Servo Output", isConnected && gotAllParams, mand);

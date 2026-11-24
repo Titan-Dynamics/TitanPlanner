@@ -145,6 +145,8 @@ Themed search bar with suggest-only autocomplete; search resets when navigating 
 ## Betaflight-Style Motor Setup
 **Motor Setup** (upstream's "Motor Test") is a Betaflight-style page in the Mandatory Hardware section, shown only for copter/quadplane vehicles, with live frame and class type images. The frame diagrams ship with the app, so they show on air-gapped setups, and are refreshed from ardupilot.org when online.
 
+A fixed-wing plane gets its own Motor Setup: one row per output set to Throttle, Throttle Left or Throttle Right, each with its output to choose and a Spin button. With two or more motors, Test All, Test Sequence and a **?** button spin a motor and ask which one turned, then set the outputs to match; for a twin it sets the left and right motors. ArduPlane has no motor test for a plane's motors, so a spin sets the output to no function, drives it, and sets it back. Choosing an output that already has another function asks before swapping the two.
+
 ## Servo Output Tab
 A revamped Servo Output panel with click-or-drag sliders for trim, an "Equidistant" min/max helper, and proper min/max-from-trim handling. The trim slider stays in sync with the combobox. Min, trim and max accept 500–2500 µs and step by 10. Edits are written in the background once you pause, so the page never waits on the vehicle.
 
