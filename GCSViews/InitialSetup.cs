@@ -351,8 +351,8 @@ namespace MissionPlanner.GCSViews
                 AddBackstageViewPage(typeof(ConfigAM32), "AM32", true, web);
             }
             AddBackstageViewPage(typeof(ConfigTitanLRS), "TitanLRS Flasher", true, web);
-            AddBackstageViewPage(typeof(ConfigEdgeTXBuddy), "EdgeTX Buddy", true, web);
             AddBackstageViewPage(typeof(ConfigLRSBackpack), "LRS Backpack", true, web);
+            AddBackstageViewPage(typeof(ConfigEdgeTXBuddy), "EdgeTX Buddy", true, web);
 
             if (MainV2.DisplayConfiguration.isAdvancedMode)
             {
