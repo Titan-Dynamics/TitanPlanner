@@ -1,3 +1,4 @@
+using MissionPlanner.Utilities;
 using System;
 using System.Drawing;
 using System.Windows.Forms;
@@ -22,7 +23,8 @@ namespace MissionPlanner.Controls
             FormBorderStyle = FormBorderStyle.None;
             ShowInTaskbar = false;
             StartPosition = FormStartPosition.Manual;
-            TopMost = true;
+            // topmost through CreateParams, not TopMost: WinForms focuses a form with TopMost set as it shows it, taking
+            // the focus from the page being edited
             AutoSize = false;
             AutoSizeMode = AutoSizeMode.GrowAndShrink;
             BackColor = Color.FromArgb(34, 34, 34);
@@ -53,6 +55,9 @@ namespace MissionPlanner.Controls
             var preferred = label.PreferredSize;
             ClientSize = new Size(preferred.Width + padding * 2, preferred.Height + padding * 2);
 
+            // in the theme's colors (MainV2 themes only the forms that take the focus from it)
+            ThemeManager.ApplyThemeTo(this);
+
             _timer = new Timer { Interval = 50 };
             _timer.Tick += (s, e) =>
             {
@@ -82,6 +87,8 @@ namespace MissionPlanner.Controls
                 var cp = base.CreateParams;
                 // Tool window style keeps it out of alt-tab.
                 cp.ExStyle |= 0x80;
+                // WS_EX_TOPMOST keeps it above other windows.
+                cp.ExStyle |= 0x08;
                 // WS_EX_NOACTIVATE prevents focus stealing.
                 cp.ExStyle |= 0x08000000;
                 return cp;
