@@ -132,7 +132,7 @@ Themed search bar with suggest-only autocomplete; search resets when navigating 
 
 ## Other
 - No confirmation dialogs after param writes (reboot-required and save-failed are still shown)
-- Toast notification on successful param write
+- Toast notification on successful param write, which leaves the focus where it was
 - Tree collapsed by default in tab embeddings to save space, with a drawn arrow on its show/hide button
 - Param lists that are showing, including the one docked under the DATA map, reload once the full list has arrived after connecting
 - **Reset** (to defaults) sits apart at the toolbar's right edge as a plain button
@@ -154,7 +154,7 @@ A revamped Servo Output panel with click-or-drag sliders for trim, an "Equidista
 Visual-stick-controls Radio Calibration UI with upstream's reversing logic; polished accel calibration.
 
 ## Other Setup Pages
-GUI cleanups across Accelerometer Calibration, Compass, Failsafe, Flight Modes, Initial Setup Serial; Battery Monitor pages merged into one unified screen; voltage/current calibration enabled regardless of selected sensor. Flight Modes shows its modes and RC Options in side-by-side boxes and writes each change as it is made, with no Save button. The Planner settings page packs its boxes into equal-width columns across the whole window, with a Keyboard Shortcuts box across the bottom listing every shortcut by where it works. Optional Hardware has a **TitanLRS Flasher** page showing the TitanLRS web flasher and an **EdgeTX Buddy** page showing EdgeTX Buddy's radio flasher, as its AM32 page shows the AM32 configurator. Advanced has an **LRS Backpack** page showing the radio backpack's web page (10.0.0.1), or, while it doesn't answer, that the page needs MAVLink telemetry through an ExpressLRS or TitanLRS radio, with a Retry.
+GUI cleanups across Accelerometer Calibration, Compass, Failsafe, Flight Modes, Initial Setup Serial; Battery Monitor pages merged into one unified screen; voltage/current calibration enabled regardless of selected sensor. Flight Modes shows its modes and RC Options in side-by-side boxes and writes each change as it is made, with no Save button. The Planner settings page packs its boxes into equal-width columns across the whole window, with a Keyboard Shortcuts box across the bottom listing every shortcut by where it works. A **Web Tools** section under Optional Hardware gathers the hardware websites: **AM32** (the AM32 configurator), **TitanLRS Flasher** (the TitanLRS web flasher), **EdgeTX Buddy** (EdgeTX Buddy's radio flasher) and **LRS Backpack** (the radio backpack's web page at 10.0.0.1, or, while it doesn't answer, that the page needs MAVLink telemetry through an ExpressLRS or TitanLRS radio, with a Retry).
 
 ## Joystick Configuration
 The Joystick configuration window opens quickly and lays out the joystick's inputs, the RC channels and the button assignments in side-by-side boxes, under a top row with the joystick, its buttons and the Elevons, Manual Control and Send Rate options. The inputs box shows every axis, slider and hat the joystick has, by the joystick's own names and the axis to choose for each, with live values, and every button lit while it is pressed, enabled or not. Each Detect button reads "Detecting..." while it listens, with no prompts: a channel takes the axis that moved most in 3 seconds, a button row the next button pressed. The send rate (25 to 100 Hz, 50 by default) sets how often the joystick is read and sent to the vehicle, each reading going out as soon as it is taken, and how often the window shows it.

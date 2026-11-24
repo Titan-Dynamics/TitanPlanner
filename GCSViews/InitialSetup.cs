@@ -324,12 +324,6 @@ namespace MissionPlanner.GCSViews
             {
                 AddBackstageViewPage(typeof(ConfigAntennaTracker), rm.GetString("backstageViewPageAntTrack.Text"), isTracker, opt);
             }
-            if (MainV2.DisplayConfiguration.displayMotorTest)
-            {
-                AddBackstageViewPage(typeof(ConfigAM32), "AM32", true, opt);
-            }
-            AddBackstageViewPage(typeof(ConfigTitanLRS), "TitanLRS Flasher", true, opt);
-            AddBackstageViewPage(typeof(ConfigEdgeTXBuddy), "EdgeTX Buddy", true, opt);
             if (MainV2.DisplayConfiguration.displayBluetooth)
             {
                 AddBackstageViewPage(typeof(ConfigHWBT), rm.GetString("backstageViewPagehwbt.Text"), true, opt);
@@ -351,11 +345,18 @@ namespace MissionPlanner.GCSViews
                 AddBackstageViewPage(typeof(ConfigFFT), "FFT Setup", isConnected && gotAllParams, opt);
             }
 
+            var web = AddBackstageViewPage(typeof(ConfigWebTools), "Web Tools");
+            if (MainV2.DisplayConfiguration.displayMotorTest)
+            {
+                AddBackstageViewPage(typeof(ConfigAM32), "AM32", true, web);
+            }
+            AddBackstageViewPage(typeof(ConfigTitanLRS), "TitanLRS Flasher", true, web);
+            AddBackstageViewPage(typeof(ConfigEdgeTXBuddy), "EdgeTX Buddy", true, web);
+            AddBackstageViewPage(typeof(ConfigLRSBackpack), "LRS Backpack", true, web);
+
             if (MainV2.DisplayConfiguration.isAdvancedMode)
             {
                 var adv = AddBackstageViewPage(typeof(ConfigAdvanced), "Advanced");
-
-                AddBackstageViewPage(typeof(ConfigLRSBackpack), "LRS Backpack", true, adv);
 
                 if (MainV2.DisplayConfiguration.displayTerminal)
                 {
