@@ -9,9 +9,9 @@ using System.Windows.Forms;
 namespace MissionPlanner.GCSViews.ConfigurationView
 {
     /// <summary>
-    /// A setup page that is a website (the AM32 configurator, the TitanLRS flasher, an LRS backpack) in a WebView2,
-    /// loaded the first time the page is opened. A page that sets <see cref="UnreachableMessage"/> first checks the site
-    /// answers, and says so instead, with a Retry, when it doesn't.
+    /// A setup page that is a website (the AM32 configurator, the TitanLRS flasher, EdgeTX Buddy, an LRS backpack) in a
+    /// WebView2, loaded the first time the page is opened. A page that sets <see cref="UnreachableMessage"/> first checks
+    /// the site answers, and says so instead, with a Retry, when it doesn't.
     /// </summary>
     public abstract class ConfigWebPage : MyUserControl, IActivate
     {
